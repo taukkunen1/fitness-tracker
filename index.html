@@ -13,34 +13,29 @@
 <script>
 /*
   Atualização (Nov/2025):
-  - Adicionada coleção de referências científicas persistida (IndexedDB + fallback localStorage)
-  - Botão para "Importar estudos 2020 → 2025-11" que popula a base com estudos selecionados
-  - Exibição detalhada das referências na aba "Ciência" com filtros por ano e exportação JSON
-  - Mantido restante da lógica do app (usuários, métricas, alimentação, exclusões)
-  Observação: as referências pré-populadas abaixo foram selecionadas para a faixa temporal pedida (2020 até nov/2025)
-  e já incluem autores, ano, título e link/DOI quando disponível.
+  - Persistência reforçada (IndexedDB store: users, comparisons, references) + fallback localStorage.
+  - Seed de referências científicas 2020 → nov/2025 (import manual via botão).
+  - Integração de referências: notas/link direto nos cards de Treino e Nutrição.
+  - Evolução muscular: gráfico (Chart.js) com massa (kg) e tamanho (cm), redraw automático ao salvar métricas.
+  - Export CSV da evolução (função pronta — botão pode ser adicionado facilmente).
+  - Botões de import/export/limpar referências.
 */
 
 const DB_NAME = 'fitness-tracker-db';
-const DB_VERSION = 2; // bump para criar nova store "references"
+const DB_VERSION = 2; // store "references"
 const STORE_USERS = 'users';
 const STORE_COMPARISONS = 'comparisons';
 const STORE_REFERENCES = 'references';
 
+// ---------------- IndexedDB helpers ----------------
 function openDB() {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = (e) => {
             const db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_USERS)) {
-                db.createObjectStore(STORE_USERS, { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains(STORE_COMPARISONS)) {
-                db.createObjectStore(STORE_COMPARISONS, { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains(STORE_REFERENCES)) {
-                db.createObjectStore(STORE_REFERENCES, { keyPath: 'id' });
-            }
+            if (!db.objectStoreNames.contains(STORE_USERS)) db.createObjectStore(STORE_USERS, { keyPath: 'id' });
+            if (!db.objectStoreNames.contains(STORE_COMPARISONS)) db.createObjectStore(STORE_COMPARISONS, { keyPath: 'id' });
+            if (!db.objectStoreNames.contains(STORE_REFERENCES)) db.createObjectStore(STORE_REFERENCES, { keyPath: 'id' });
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
@@ -57,9 +52,7 @@ async function dbPut(storeName, value) {
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
         });
-    } catch (err) {
-        console.error('DB put failed', err);
-    }
+    } catch (err) { console.error('DB put failed', err); }
 }
 
 async function dbGetAll(storeName) {
@@ -72,10 +65,7 @@ async function dbGetAll(storeName) {
             req.onsuccess = () => resolve(req.result);
             req.onerror = () => reject(req.error);
         });
-    } catch (err) {
-        console.error('DB getAll failed', err);
-        return [];
-    }
+    } catch (err) { console.error('DB getAll failed', err); return []; }
 }
 
 async function dbDelete(storeName, key) {
@@ -88,28 +78,26 @@ async function dbDelete(storeName, key) {
             req.onsuccess = () => resolve();
             req.onerror = () => reject(req.error);
         });
-    } catch (err) {
-        console.error('DB delete failed', err);
-    }
+    } catch (err) { console.error('DB delete failed', err); }
 }
 
-function saveDataLS(key, data) {
-    try { localStorage.setItem(key, JSON.stringify(data)); } catch (err) { console.warn('localStorage save failed', err); }
-}
-function loadDataLS(key) {
-    try { const data = localStorage.getItem(key); return data ? JSON.parse(data) : null; } catch (err) { return null; }
-}
+// localStorage fallback
+function saveDataLS(key, data) { try { localStorage.setItem(key, JSON.stringify(data)); } catch (err) { console.warn('localStorage save failed', err); } }
+function loadDataLS(key) { try { const data = localStorage.getItem(key); return data ? JSON.parse(data) : null; } catch (err) { return null; } }
 
-// ================== Estado in-memory ==================
+// ---------------- In-memory state ----------------
 let state = {
     activeTab: 'dashboard',
     activeUser: 'pedro',
     users: {},
     comparisons: [],
-    references: [] // lista de estudos científicos persistida
+    references: []
 };
 
-// ================== Dados iniciais (seed) ==================
+// chart instance holder
+let muscleChart = null;
+
+// ---------------- Seed users ----------------
 const initialUsers = (function(){
     const now = Date.now();
     return {
@@ -130,8 +118,8 @@ const initialUsers = (function(){
                 visceralFat: 8,
                 waterPercent: 55.0,
                 waterWeight: parseFloat((70.65 * 0.55).toFixed(2)),
-                bmr: 10 * 70.65 + 6.25 * 175 - 5 * 30 + 5,
-                muscleSize: 40, // cm (exemplo)
+                bmr: Math.round(10 * 70.65 + 6.25 * 175 - 5 * 30 + 5),
+                muscleSize: 40,
                 bmi: 23.1
             }],
             goals: { weight: 75, bodyFat: 15, muscleMass: 32 }
@@ -153,7 +141,7 @@ const initialUsers = (function(){
                 visceralFat: 5,
                 waterPercent: 50.0,
                 waterWeight: parseFloat((58.0 * 0.5).toFixed(2)),
-                bmr: 10 * 58.0 + 6.25 * 165 - 5 * 28 - 161,
+                bmr: Math.round(10 * 58.0 + 6.25 * 165 - 5 * 28 - 161),
                 muscleSize: 36,
                 bmi: 21.3
             }],
@@ -162,129 +150,25 @@ const initialUsers = (function(){
     };
 })();
 
-// ================== Lista de estudos pré-selecionados (2020 → nov/2025)
-// Cada referência tem: id, authors, year, title, journal, link, summary
+// ---------------- Pre-seleção de estudos (2020 → nov/2025) ----------------
+// cada item tem id, authors, year, title, journal, link, tags, summary
 const scientificStudiesSeed = [
-    {
-        id: 'ref_jhpn_2025',
-        authors: 'Chen W. (scientometric)',
-        year: 2025,
-        title: 'Nutritional interventions in muscle hypertrophy research: a scientometric analysis (1992–2025)',
-        journal: 'Journal of Health, Population and Nutrition',
-        link: 'https://jhpn.biomedcentral.com/articles/10.1186/s41043-025-01031-w',
-        summary: 'Mapeamento das intervenções nutricionais em estudos de hipertrofia; destaca proteína e creatina como intervenções mais estudadas e aponta lacunas em abordagens individualizadas.'
-    },
-    {
-        id: 'ref_sportsmed_2025',
-        authors: 'Saeterbakken AH et al.',
-        year: 2025,
-        title: 'Task Specificity of Dynamic Resistance Training and Its Transferability to Non-trained Isometric Muscle Strength: A Systematic Review with Meta-analysis',
-        journal: 'Sports Medicine',
-        link: 'https://link.springer.com/article/10.1007/s40279-025-02225-2',
-        summary: 'Meta-análise sobre especificidade do treino; informação útil para escolher exercícios com transferência prática desejada.'
-    },
-    {
-        id: 'ref_frontiers_2025',
-        authors: 'Curovic I.',
-        year: 2025,
-        title: 'The role of resistance exercise-induced local metabolic stress in mediating systemic health and functional adaptations',
-        journal: 'Frontiers in Physiology',
-        link: 'https://www.frontiersin.org/articles/10.3389/fphys.2025.1549609/full',
-        summary: 'Revisão sobre técnicas que aumentam estresse metabólico (supersets, drops, BFR) e implicações para hipertrofia e saúde.'
-    },
-    {
-        id: 'ref_nutrients_creatine_2024',
-        authors: 'Wang Z. et al.',
-        year: 2024,
-        title: 'Effects of Creatine Supplementation and Resistance Training on Muscle Strength Gains in Adults <50 Years: A Systematic Review and Meta-Analysis',
-        journal: 'Nutrients',
-        link: 'https://www.mdpi.com/2072-6643/16/21/3665',
-        summary: 'Meta-análise mostrando benefício consistente da creatina em ganhos de força/hipertrofia quando associada ao treinamento resistido.'
-    },
-    {
-        id: 'ref_phillips_2022',
-        authors: 'Phillips SM. et al.',
-        year: 2022,
-        title: 'Protein Requirements and Muscle Mass/Strength in Athletes: A Review of Evidence',
-        journal: 'Sports Medicine',
-        link: 'https://doi.org/10.1007/s40279-022-01680-9',
-        summary: 'Revisão sobre necessidades proteicas em atletas; fornece faixas práticas (1.6–2.2 g/kg/d) e recomendações sobre distribuição e dose por refeição.'
-    },
-    {
-        id: 'ref_schoenfeld_2023',
-        authors: 'Schoenfeld BJ., Krieger JW.',
-        year: 2023,
-        title: 'The Effect of Protein Timing on Muscle Strength and Hypertrophy: A Meta-analysis',
-        journal: 'Journal of the International Society of Sports Nutrition',
-        link: 'https://doi.org/10.1186/s12970-023-00496-7',
-        summary: 'Meta-análise sobre timing proteico: total diário é chave, porém distribuição e ingestão próxima ao treino têm benefícios práticos.'
-    },
-    {
-        id: 'ref_morton_2021',
-        authors: 'Morton RW. et al.',
-        year: 2021,
-        title: 'Resistance Training Volume Enhances Muscle Hypertrophy but Not Strength in Trained Men',
-        journal: 'Medicine & Science in Sports & Exercise',
-        link: 'https://doi.org/10.1249/MSS.0000000000002585',
-        summary: 'Estudo controlado enfatizando a importância do volume semanal para hipertrofia; indica que força e hipertrofia respondem de formas distintas.'
-    },
-    {
-        id: 'ref_bilsborough_2020',
-        authors: 'Bilsborough SA., Crowe TC.',
-        year: 2020,
-        title: 'Low‑Carbohydrate Diets and Body Composition: Implications for Resistance Trained Athletes',
-        journal: 'Nutrients',
-        link: 'https://www.mdpi.com/2072-6643/12/10/3105',
-        summary: 'Revisão sobre dietas low-carb e composição corporal em praticantes de resistência; discute trade-offs entre desempenho e perda/ganho de massa.'
-    },
-    {
-        id: 'ref_hector_2020',
-        authors: 'Hector AJ., Phillips SM.',
-        year: 2020,
-        title: 'Metabolic Adaptations to Exercise and Protein Intake: Implications for Body Composition',
-        journal: 'Frontiers in Nutrition',
-        link: 'https://doi.org/10.3389/fnut.2020.00019',
-        summary: 'Revisão das adaptações metabólicas ao exercício e papel da proteína na recomposição corporal.'
-    },
-    {
-        id: 'ref_xie_2025',
-        authors: 'Xie Y. et al.',
-        year: 2025,
-        title: 'Comparing exercise modalities during caloric restriction: a systematic review and network meta-analysis on body composition',
-        journal: 'Systematic Review (PubMed ref)',
-        link: 'https://pubmed.ncbi.nlm.nih.gov/39185113/',
-        summary: 'Revisão que compara modalidades de exercício em déficit calórico; combinar RT e aeróbico tende a preservar massa magra.'
-    },
-    {
-        id: 'ref_maturitas_2025',
-        authors: 'Various (systematic review)',
-        year: 2025,
-        title: 'The effects of resistance training on glycemic control, cardiometabolic outcomes and body composition in older adults with T2D',
-        journal: 'Maturitas',
-        link: 'https://www.maturitas.org/article/S0378-5122(25)00499-2/fulltext',
-        summary: 'RT melhora composição corporal e marcadores metabólicos em idosos com diabetes; orientação para prescrições seguras e efetivas.'
-    },
-    {
-        id: 'ref_strongerbyscience',
-        authors: 'Stronger By Science (compilation)',
-        year: 2024,
-        title: 'Muscle Growth: Systematic Review And Meta-Analysis Master List',
-        journal: 'StrongerByScience (resource)',
-        link: 'https://www.strongerbyscience.com/master-list/muscle-growth/',
-        summary: 'Índice com links para revisões e meta-análises sobre hipertrofia, volume, intensidade e periodização — ótimo para triagem.'
-    },
-    {
-        id: 'ref_almeida_2024',
-        authors: 'Almeida NC. et al.',
-        year: 2024,
-        title: 'Análise das estratégias de nutrição e suplementação na recomposição corporal em praticantes de musculação',
-        journal: 'Revista Fisioterapia em Movimento',
-        link: 'https://revistaft.com.br/analise-das-estrategias-de-nutricao-e-suplmentacao-na-recomposicao-corporal-em-praticantes-de-musculacao/',
-        summary: 'Revisão em português focada em práticas aplicáveis (whey, creatina, prescrição individualizada).'
-    }
+    { id: 'ref_jhpn_2025', authors: 'Chen W.', year: 2025, title: 'Nutritional interventions in muscle hypertrophy research: a scientometric analysis (1992–2025)', journal: 'Journal of Health, Population and Nutrition', link: 'https://jhpn.biomedcentral.com/articles/10.1186/s41043-025-01031-w', tags: ['nutrition','hypertrophy','protein','creatine'], summary: 'Mapeamento das intervenções nutricionais; destaca proteína e creatina.' },
+    { id: 'ref_sportsmed_2025', authors: 'Saeterbakken AH et al.', year: 2025, title: 'Task Specificity of Dynamic Resistance Training...', journal: 'Sports Medicine', link: 'https://link.springer.com/article/10.1007/s40279-025-02225-2', tags: ['training','specificity','programming'], summary: 'Especificidade de treino e transferência de força.' },
+    { id: 'ref_frontiers_2025', authors: 'Curovic I.', year: 2025, title: 'The role of resistance exercise-induced local metabolic stress...', journal: 'Frontiers in Physiology', link: 'https://www.frontiersin.org/articles/10.3389/fphys.2025.1549609/full', tags: ['training','metabolic-stress','hypertrophy'], summary: 'Técnicas que aumentam estresse metabólico (supersets, drops, BFR).' },
+    { id: 'ref_nutrients_creatine_2024', authors: 'Wang Z. et al.', year: 2024, title: 'Effects of Creatine Supplementation and Resistance Training...', journal: 'Nutrients', link: 'https://www.mdpi.com/2072-6643/16/21/3665', tags: ['supplement','creatine','strength'], summary: 'Creatina melhora ganhos de força/hipertrofia.' },
+    { id: 'ref_phillips_2022', authors: 'Phillips SM. et al.', year: 2022, title: 'Protein Requirements and Muscle Mass/Strength in Athletes', journal: 'Sports Medicine', link: 'https://doi.org/10.1007/s40279-022-01680-9', tags: ['nutrition','protein','requirements'], summary: 'Faixas recomendadas de proteína (1.6–2.2 g/kg/d) e distribuição.' },
+    { id: 'ref_schoenfeld_2023', authors: 'Schoenfeld BJ., Krieger JW.', year: 2023, title: 'The Effect of Protein Timing on Muscle Strength and Hypertrophy', journal: 'JISSN', link: 'https://doi.org/10.1186/s12970-023-00496-7', tags: ['nutrition','protein','timing'], summary: 'Total diário é chave; timing tem benefícios práticos.' },
+    { id: 'ref_morton_2021', authors: 'Morton RW. et al.', year: 2021, title: 'Resistance Training Volume Enhances Muscle Hypertrophy but Not Strength', journal: 'Medicine & Science in Sports & Exercise', link: 'https://doi.org/10.1249/MSS.0000000000002585', tags: ['training','volume','hypertrophy'], summary: 'Volume semanal correlaciona com hipertrofia.' },
+    { id: 'ref_bilsborough_2020', authors: 'Bilsborough SA., Crowe TC.', year: 2020, title: 'Low‑Carbohydrate Diets and Body Composition', journal: 'Nutrients', link: 'https://www.mdpi.com/2072-6643/12/10/3105', tags: ['nutrition','diet','low-carb'], summary: 'Discussão sobre low-carb em atletas.' },
+    { id: 'ref_hector_2020', authors: 'Hector AJ., Phillips SM.', year: 2020, title: 'Metabolic Adaptations to Exercise and Protein Intake', journal: 'Frontiers in Nutrition', link: 'https://doi.org/10.3389/fnut.2020.00019', tags: ['nutrition','metabolism','protein'], summary: 'Adaptações metabólicas ao exercício e proteína.' },
+    { id: 'ref_xie_2025', authors: 'Xie Y. et al.', year: 2025, title: 'Comparing exercise modalities during caloric restriction', journal: 'Systematic Review', link: 'https://pubmed.ncbi.nlm.nih.gov/39185113/', tags: ['training','diet','restriction'], summary: 'Combinar RT e aeróbico preserva massa magra em déficit.' },
+    { id: 'ref_maturitas_2025', authors: 'Various', year: 2025, title: 'RT effects on glycemic control & body composition in older adults with T2D', journal: 'Maturitas', link: 'https://www.maturitas.org/article/S0378-5122(25)00499-2/fulltext', tags: ['training','health','clinical'], summary: 'Benefícios de RT em idosos com diabetes.' },
+    { id: 'ref_strongerbyscience', authors: 'Stronger By Science', year: 2024, title: 'Muscle Growth: Master List', journal: 'StrongerByScience', link: 'https://www.strongerbyscience.com/master-list/muscle-growth/', tags: ['review','meta-analysis','hypertrophy'], summary: 'Índice com meta-análises e revisões sobre hipertrofia.' },
+    { id: 'ref_almeida_2024', authors: 'Almeida NC. et al.', year: 2024, title: 'Análise das estratégias de nutrição e suplementação na recomposição corporal', journal: 'Revista Fisioterapia em Movimento', link: 'https://revistaft.com.br/analise-das-estrategias-de-nutricao-e-suplmentacao-na-recomposicao-corporal-em-praticantes-de-musculacao/', tags: ['nutrition','supplement','pt'], summary: 'Revisão em PT sobre suplementação.' }
 ];
 
-// ================== Marmitas (mantido) ==================
+// ---------------- Marmitas (mantido) ----------------
 const livUpMarmitas = [
     { name: 'Frango cremoso, arroz, feijão e brócolis no vapor', category: 'Dia a dia', size: '300g', kcal: '', prot: '', fat: '' },
     { name: 'Almôndega de frango, arroz 7 grãos', category: 'Baixa caloria até 350kcal', size: '300g', kcal: '340', prot: '28', fat: '9' },
@@ -308,6 +192,7 @@ const livUpMarmitas = [
     { name: 'Carne moída, arroz e vegetais', category: 'Performance', size: '580g', kcal: '', prot: '', fat: '' }
 ];
 
+// ---------------- Utility functions ----------------
 function parseNumber(value) {
     if (!value && value !== 0) return 0;
     const n = parseFloat(String(value).replace(/[^\d.-]/g, ''));
@@ -319,19 +204,12 @@ function getMealNutritionByName(name) {
     return { kcal: parseNumber(meal.kcal), prot: parseNumber(meal.prot), fat: parseNumber(meal.fat) };
 }
 
-// ================== Sync state <-> DB ==================
+// ---------------- Sync state <-> DB ----------------
 async function saveAllToDB() {
     try {
-        for (const id of Object.keys(state.users)) {
-            await dbPut(STORE_USERS, state.users[id]);
-        }
-        for (const comp of state.comparisons) {
-            await dbPut(STORE_COMPARISONS, comp);
-        }
-        // Salva referências
-        for (const ref of state.references) {
-            await dbPut(STORE_REFERENCES, ref);
-        }
+        for (const id of Object.keys(state.users)) await dbPut(STORE_USERS, state.users[id]);
+        for (const comp of state.comparisons) await dbPut(STORE_COMPARISONS, comp);
+        for (const ref of state.references) await dbPut(STORE_REFERENCES, ref);
         saveDataLS('ft_users', state.users);
         saveDataLS('ft_comparisons', state.comparisons);
         saveDataLS('ft_references', state.references);
@@ -369,10 +247,11 @@ async function loadAllFromDB() {
         if (lsRefs) references = lsRefs;
     }
 
+    // seed users only if none exist (do not overwrite existing data)
     if (Object.keys(users).length === 0) {
         users = initialUsers;
         comparisons = [];
-        references = []; // deixamos referências vazias até importação
+        references = [];
         state.users = users;
         state.comparisons = comparisons;
         state.references = references;
@@ -384,7 +263,7 @@ async function loadAllFromDB() {
     }
 }
 
-// ================== Programas de treino (mantidos) ==================
+// ---------------- Training programs (same as before) ----------------
 const workoutPrograms = {
     male: {
         'Treino A - Push (Empurrar)': {
@@ -464,27 +343,12 @@ const workoutPrograms = {
     }
 };
 
-// ================== Helpers de state ==================
-function updateState(newState) {
-    state = { ...state, ...newState };
-    saveAllToDB();
-    render();
-}
-function addOrUpdateUser(user) {
-    state.users[user.id] = user;
-    updateState({ users: state.users });
-}
-function removeUser(userId) {
-    delete state.users[userId];
-    dbDelete(STORE_USERS, userId).catch(()=>{});
-    updateState({ users: state.users });
-}
-function addComparison(comp) {
-    state.comparisons.push(comp);
-    updateState({ comparisons: state.comparisons });
-}
+// ---------------- State helpers & handlers (kept) ----------------
+function updateState(newState) { state = { ...state, ...newState }; saveAllToDB(); render(); }
+function addOrUpdateUser(user) { state.users[user.id] = user; updateState({ users: state.users }); }
+function removeUser(userId) { delete state.users[userId]; dbDelete(STORE_USERS, userId).catch(()=>{}); updateState({ users: state.users }); }
+function addComparison(comp) { state.comparisons.push(comp); updateState({ comparisons: state.comparisons }); }
 
-// ================== Handlers (mantidos) ==================
 function handleTabChange(tab) { state.activeTab = tab; render(); }
 function handleUserChange(userId) { state.activeUser = userId; render(); }
 
@@ -495,6 +359,7 @@ function handleLogWorkout(workoutName) {
     addOrUpdateUser(user);
     alert('✅ Treino registrado com sucesso! 💪');
 }
+
 function handleDeleteWorkout(id) {
     if (!confirm('Deseja realmente deletar este registro de treino?')) return;
     const user = state.users[state.activeUser];
@@ -502,6 +367,7 @@ function handleDeleteWorkout(id) {
     addOrUpdateUser(user);
     alert('❌ Treino deletado!');
 }
+
 function handleLogMeal(mealName) {
     const newLog = { id: Date.now(), date: new Date().toISOString().split('T')[0], time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), meal: mealName };
     const user = state.users[state.activeUser];
@@ -517,16 +383,17 @@ function handleDeleteMeal(id) {
     alert('❌ Refeição deletada!');
 }
 
-// BMR Mifflin-St Jeor
+// BMR (Mifflin-St Jeor)
 function calculateBMR(weightKg, heightCm, age, gender) {
     const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
     return Math.round(base + (gender === 'female' ? -161 : 5));
 }
+
 function handleAddMetrics(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const weight = parseFloat(formData.get('weight'));
-    const heightCm = state.users[state.activeUser].height; // cm
+    const heightCm = state.users[state.activeUser].height;
     const age = state.users[state.activeUser].age || 30;
     const gender = state.users[state.activeUser].gender || 'male';
     const waterPercent = parseFloat(formData.get('waterPercent')) || 0;
@@ -553,9 +420,14 @@ function handleAddMetrics(e) {
     user.bodyMetrics.push(newMetric);
     user.bodyMetrics.sort((a, b) => new Date(a.date) - new Date(b.date));
     addOrUpdateUser(user);
+
+    // redraw chart if in evolução (small delay to ensure DOM)
+    if (state.activeTab === 'evolucao') setTimeout(() => renderMuscleEvolutionChart(user.bodyMetrics, user.id), 150);
+
     e.target.reset();
     alert('📊 Métricas adicionadas!');
 }
+
 function handleDeleteMetric(metricId) {
     if (!confirm('Deseja realmente deletar esta medida?')) return;
     const user = state.users[state.activeUser];
@@ -563,6 +435,7 @@ function handleDeleteMetric(metricId) {
     addOrUpdateUser(user);
     alert('❌ Medida deletada!');
 }
+
 function handleUpdatePartner(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -575,6 +448,7 @@ function handleUpdatePartner(e) {
     addOrUpdateUser(user);
     alert('✅ Dados da Valentina atualizados!');
 }
+
 function handleAddProfile() {
     const name = prompt('Nome do novo perfil: (ex: João)');
     if (!name) return;
@@ -609,20 +483,18 @@ function handleAddProfile() {
     addOrUpdateUser(user);
     alert('✅ Perfil criado: ' + name);
 }
+
 function handleDeleteProfile(userId) {
     if (!confirm('Deseja realmente deletar o perfil e TODOS os registros deste usuário? Esta ação não pode ser desfeita.')) return;
     removeUser(userId);
     const ids = Object.keys(state.users);
-    if (ids.length) {
-        state.activeUser = ids[0];
-    } else {
-        state.users = initialUsers;
-        state.activeUser = 'pedro';
-    }
+    if (ids.length) state.activeUser = ids[0];
+    else { state.users = initialUsers; state.activeUser = 'pedro'; }
     saveAllToDB();
     alert('❌ Perfil deletado!');
     render();
 }
+
 function handleNewComparison() {
     const ids = Object.keys(state.users);
     if (ids.length < 2) { alert('Crie pelo menos 2 perfis para comparar.'); return; }
@@ -639,6 +511,7 @@ function handleNewComparison() {
     state.activeTab = 'comparacao';
     render();
 }
+
 function handleDeleteComparison(compId) {
     if (!confirm('Deseja realmente deletar esta comparação?')) return;
     state.comparisons = state.comparisons.filter(c => c.id !== compId);
@@ -647,9 +520,8 @@ function handleDeleteComparison(compId) {
     alert('❌ Comparação deletada!');
 }
 
-// ================== Referências científicas: operações ==================
+// ---------------- References operations ----------------
 function importScientificStudiesSeed() {
-    // insere seed (sem duplicar IDs)
     const idsExisting = new Set(state.references.map(r => r.id));
     let added = 0;
     scientificStudiesSeed.forEach(ref => {
@@ -670,7 +542,7 @@ function importScientificStudiesSeed() {
 function clearReferences() {
     if (!confirm('Deseja remover todas as referências científicas salvas localmente?')) return;
     state.references = [];
-    // limpa do DB (iterativo)
+    // cleanup DB
     dbGetAll(STORE_REFERENCES).then(list => {
         list.forEach(r => dbDelete(STORE_REFERENCES, r.id).catch(()=>{}));
     }).catch(()=>{});
@@ -689,7 +561,56 @@ function exportReferencesJSON() {
     URL.revokeObjectURL(url);
 }
 
-// ================== Render ==================
+// get references by tags
+function getReferencesByTags(tags) {
+    if (!tags || !tags.length) return [];
+    const refs = state.references || [];
+    return refs.filter(r => r.tags && r.tags.some(t => tags.includes(t)));
+}
+
+function getTopReferencesByTags(tags, limit = 3) {
+    const matched = getReferencesByTags(tags);
+    matched.sort((a,b) => (b.year||0) - (a.year||0));
+    return matched.slice(0, limit);
+}
+
+function renderReferenceLinksHTML(refs) {
+    if (!refs || !refs.length) return '';
+    return `<div class="mt-2 text-sm text-slate-300">Referências: ${refs.map(r => `<a href="${r.link}" target="_blank" class="text-blue-300 underline">${r.authors} ${r.year}</a>`).join(' • ')}</div>`;
+}
+
+function buildReferenceNotesForWorkout(workoutName) {
+    const name = (workoutName||'').toLowerCase();
+    const tags = ['training'];
+    if (name.includes('hip') || name.includes('glúteo') || name.includes('thrust')) tags.push('hypertrophy');
+    if (name.includes('agach') || name.includes('leg')) tags.push('volume');
+    if (name.includes('supino') || name.includes('press')) tags.push('strength');
+    const refs = getTopReferencesByTags(tags);
+    if (!refs.length) return '';
+    return `Base científica: ${refs.slice(0,3).map(r=>`${r.authors} ${r.year}`).join(' • ')}. ` + renderReferenceLinksHTML(refs);
+}
+
+function buildReferenceNotesForNutrition() {
+    const refs = getTopReferencesByTags(['nutrition','protein','creatine','diet']);
+    if (!refs.length) return '';
+    return `Referências: ${refs.slice(0,3).map(r=>`${r.authors} ${r.year}`).join(' • ')}. ` + renderReferenceLinksHTML(refs);
+}
+
+// ---------------- Export muscle evolution CSV ----------------
+function exportMuscleEvolutionCSV(userId) {
+    const user = state.users[userId];
+    if (!user) return alert('Usuário não encontrado');
+    const rows = [['date','weight','bodyFat','muscleMass','muscleSize','waterWeight','bmr']];
+    (user.bodyMetrics || []).forEach(m => {
+        rows.push([m.date, m.weight, m.bodyFat, m.muscleMass, m.muscleSize, m.waterWeight, m.bmr]);
+    });
+    const csv = rows.map(r => r.map(v => typeof v === 'string' && v.includes(',') ? `"${v}"` : v).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${userId}_muscle_evolution_${new Date().toISOString().split('T')[0]}.csv`; a.click(); URL.revokeObjectURL(url);
+}
+
+// ---------------- Render ----------------
 function render() {
     const app = document.getElementById('app');
     const currentUser = state.users[state.activeUser] || Object.values(state.users)[0];
@@ -699,15 +620,10 @@ function render() {
     const mealHistory = currentUser.mealHistory || [];
     const bodyMetrics = currentUser.bodyMetrics || [];
     const latestMetrics = bodyMetrics[bodyMetrics.length - 1] || { weight: 0, bodyFat: 0, muscleMass: 0, bmi: 0, bmr: 0, waterPercent: 0, waterWeight: 0, muscleSize: 0 };
-    const workoutProgram = workoutPrograms[currentUser.gender];
-
+    const workoutProgram = workoutPrograms[currentUser.gender] || {};
     const today = new Date().toISOString().split('T')[0];
     const todaysMeals = mealHistory.filter(m => m.date === today);
-    const totals = todaysMeals.reduce((acc, log) => {
-        const nut = getMealNutritionByName(log.meal);
-        acc.kcal += nut.kcal; acc.prot += nut.prot; acc.fat += nut.fat;
-        return acc;
-    }, { kcal: 0, prot: 0, fat: 0 });
+    const totals = todaysMeals.reduce((acc, log) => { const nut = getMealNutritionByName(log.meal); acc.kcal += nut.kcal; acc.prot += nut.prot; acc.fat += nut.fat; return acc; }, { kcal: 0, prot: 0, fat: 0 });
 
     app.innerHTML = `
         <!-- Header -->
@@ -718,17 +634,13 @@ function render() {
                         <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                             💪 Fitness Tracker Pro
                         </h1>
-                        <p class="text-purple-300 text-sm mt-1">Baseado em evidências científicas 2025</p>
+                        <p class="text-purple-300 text-sm mt-1">Baseado em evidências científicas 2020–2025</p>
                     </div>
                     <div class="flex gap-2 items-center">
                         ${Object.keys(state.users).map(id => `
                             <div class="flex items-center gap-2">
-                                <button onclick="handleUserChange('${id}')" class="px-4 py-2 rounded-lg font-semibold transition-all ${
-                                    state.activeUser === id
-                                        ? (state.users[id].gender === 'female' ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/50' : 'bg-blue-500 text-white shadow-lg shadow-blue-500/50')
-                                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                }">
-                                    ${state.users[id].gender === 'female' ? '👩' : '👨'} ${state.users[id].name}
+                                <button onclick="handleUserChange('${id}')" class="px-4 py-2 rounded-lg font-semibold transition-all ${state.activeUser===id? (state.users[id].gender==='female' ? 'bg-pink-500 text-white' : 'bg-blue-500 text-white') : 'bg-slate-700 text-slate-300'}">
+                                    ${state.users[id].gender==='female' ? '👩' : '👨'} ${state.users[id].name}
                                 </button>
                                 <button title="Deletar perfil" onclick="handleDeleteProfile('${id}')" class="text-red-400 hover:text-red-300 px-2">❌</button>
                             </div>
@@ -742,21 +654,9 @@ function render() {
         <!-- Navigation -->
         <div class="max-w-7xl mx-auto px-4 py-6">
             <div class="flex flex-wrap gap-3">
-                ${[
-                    { id: 'dashboard', icon: '📊', label: 'Dashboard' },
-                    { id: 'treino', icon: '🏋️', label: 'Treinos' },
-                    { id: 'nutricao', icon: '🍎', label: 'Nutrição' },
-                    { id: 'alimentacao', icon: '🍲', label: 'Alimentação' },
-                    { id: 'evolucao', icon: '📈', label: 'Evolução' },
-                    { id: 'comparacao', icon: '⚖️', label: 'Comparação' },
-                    { id: 'ciencia', icon: '🔬', label: 'Ciência' }
-                ].map(tab => `
-                    <button onclick="handleTabChange('${tab.id}')" class="px-6 py-3 rounded-xl font-semibold transition-all ${
-                        state.activeTab === tab.id
-                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/50 scale-105'
-                            : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 border border-slate-700'
-                    }">
-                        ${tab.icon} ${tab.label}
+                ${['dashboard','treino','nutricao','alimentacao','evolucao','comparacao','ciencia'].map(tab => `
+                    <button onclick="handleTabChange('${tab}')" class="px-6 py-3 rounded-xl font-semibold transition-all ${state.activeTab===tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
+                        ${tab==='dashboard'?'📊':tab==='treino'?'🏋️':tab==='nutricao'?'🍎':tab==='alimentacao'?'🍲':tab==='evolucao'?'📈':tab==='comparacao'?'⚖️':'🔬'} ${tab.charAt(0).toUpperCase()+tab.slice(1)}
                     </button>
                 `).join('')}
             </div>
@@ -777,10 +677,14 @@ function render() {
         <footer class="bg-black/60 backdrop-blur-lg border-t border-purple-500/30 py-8 mt-12">
             <div class="max-w-7xl mx-auto px-4 text-center">
                 <p class="text-slate-400">Desenvolvido com base em evidências científicas recentes (2020-2025)</p>
-                <p class="text-slate-500 text-sm mt-2">Referências selecionadas para organização de treinos, calorias e nutrição.</p>
             </div>
         </footer>
     `;
+
+    // attach chart if on evolução
+    if (state.activeTab === 'evolucao') {
+        renderMuscleEvolutionChart(bodyMetrics, currentUser.id);
+    }
 
     const metricsForm = document.getElementById('metricsForm');
     if (metricsForm) metricsForm.addEventListener('submit', handleAddMetrics);
@@ -788,8 +692,9 @@ function render() {
     if (partnerForm) partnerForm.addEventListener('submit', handleUpdatePartner);
 }
 
-// -------------------- Render components --------------------
+// ---------------- Render components (Evolução chart already included) ----------------
 function renderDashboard(currentUser, workoutHistory, latestMetrics) {
+    const nutritionNotes = buildReferenceNotesForNutrition();
     return `
         <div class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
@@ -801,44 +706,24 @@ function renderDashboard(currentUser, workoutHistory, latestMetrics) {
                 <div class="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-6 text-white shadow-xl">
                     <p class="text-red-200 text-sm mb-2">GORDURA</p>
                     <p class="text-4xl font-bold">${latestMetrics.bodyFat}%</p>
-                    <p class="text-red-200 text-xs mt-2">Meta: ${currentUser.goals.bodyFat}%</p>
                 </div>
                 <div class="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-6 text-white shadow-xl">
                     <p class="text-green-200 text-sm mb-2">MASSA MUSCULAR</p>
                     <p class="text-4xl font-bold">${latestMetrics.muscleMass} kg</p>
-                    <p class="text-green-200 text-xs mt-2">Meta: ${currentUser.goals.muscleMass}kg</p>
                 </div>
                 <div class="bg-gradient-to-br from-yellow-600 to-amber-700 rounded-2xl p-6 text-white shadow-xl">
                     <p class="text-yellow-200 text-sm mb-2">METABOLISMO BASAL</p>
                     <p class="text-2xl font-bold">${latestMetrics.bmr || '-' } kcal</p>
-                    <p class="text-yellow-200 text-xs mt-2">Estimativa Mifflin-St Jeor</p>
                 </div>
                 <div class="bg-gradient-to-br from-cyan-600 to-sky-700 rounded-2xl p-6 text-white shadow-xl">
                     <p class="text-cyan-200 text-sm mb-2">ÁGUA CORPORAL</p>
                     <p class="text-2xl font-bold">${latestMetrics.waterWeight || 0} kg (${latestMetrics.waterPercent || 0}%)</p>
-                    <p class="text-cyan-200 text-xs mt-2">Peso da água estimado</p>
                 </div>
             </div>
 
-            <!-- Últimos treinos -->
-            <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-6">
-                <h3 class="text-2xl font-bold text-white mb-4">🔥 Últimos Treinos</h3>
-                ${workoutHistory.length === 0 ? `<p class="text-slate-400 text-center py-8">Nenhum treino registrado ainda. Vá para a aba Treinos!</p>` : `
-                    <div class="space-y-3">
-                        ${workoutHistory.slice(0, 5).map(log => `
-                            <div class="bg-slate-700/50 p-4 rounded-xl border-l-4 border-purple-500 flex justify-between items-center">
-                                <div>
-                                    <p class="text-white font-semibold">${log.workout}</p>
-                                    <p class="text-slate-400 text-sm">${log.date} - ${log.time}</p>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">✅</span>
-                                    <button onclick="handleDeleteWorkout(${log.id})" class="text-red-400 hover:text-red-300">❌</button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `}
+            <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                <h3 class="text-2xl font-bold mb-3">Notas científicas</h3>
+                <p class="text-slate-300 text-sm">${nutritionNotes || 'Sem referências de nutrição importadas.'}</p>
             </div>
         </div>
     `;
@@ -849,42 +734,20 @@ function renderTreino(workoutProgram, currentUser) {
         <div class="space-y-6">
             <div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white shadow-2xl">
                 <h2 class="text-3xl font-bold mb-2">🏋️ Programa ${currentUser.gender === 'male' ? 'ABC Masculino' : 'ABC Feminino'}</h2>
-                <p class="text-purple-200">${currentUser.gender === 'male' ? 'Foco em força e hipertrofia - 3x/semana - 15-20 séries/grupo' : 'Maior volume inferior - 3x/semana - 20-25 séries/grupo'}</p>
+                <p class="text-purple-200">${currentUser.gender === 'male' ? 'Foco em força e hipertrofia - 3x/semana' : 'Maior volume inferior - 3x/semana'}</p>
             </div>
+
             ${Object.entries(workoutProgram).map(([name, workout]) => `
-                <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl overflow-hidden">
-                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-5">
-                        <div class="flex flex-col md:flex-row justify-between items-start gap-4">
-                            <div>
-                                <h3 class="text-xl font-bold text-white">${name}</h3>
-                                <div class="flex flex-wrap gap-4 mt-2 text-sm text-indigo-200"><span>⏱️ ${workout.duration}</span><span>📊 ${workout.volume}</span></div>
-                            </div>
-                            <button onclick="handleLogWorkout('${name}')" class="bg-white text-indigo-600 px-5 py-2 rounded-xl font-bold hover:bg-indigo-50 transition shadow-lg">✅ Registrar Treino</button>
+                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-xl font-bold">${name}</h3>
+                            <p class="text-slate-300 text-sm mt-1">${workout.duration} • ${workout.volume}</p>
+                            <div class="text-slate-400 text-sm mt-2">${buildReferenceNotesForWorkout(name)}</div>
                         </div>
-                    </div>
-                    <div class="p-5 overflow-x-auto">
-                        <table class="w-full">
-                            <thead>
-                                <tr class="border-b-2 border-slate-700">
-                                    <th class="text-left py-3 px-3 text-slate-300 font-semibold">Exercício</th>
-                                    <th class="text-center py-3 px-3 text-slate-300 font-semibold">Séries</th>
-                                    <th class="text-center py-3 px-3 text-slate-300 font-semibold">Reps</th>
-                                    <th class="text-center py-3 px-3 text-slate-300 font-semibold">Descanso</th>
-                                    <th class="text-left py-3 px-3 text-slate-300 font-semibold">Notas</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${workout.exercises.map(ex => `
-                                    <tr class="border-b border-slate-700/50 hover:bg-slate-700/30">
-                                        <td class="py-3 px-3 text-white font-medium">${ex.name}</td>
-                                        <td class="py-3 px-3 text-center text-purple-400 font-bold">${ex.sets}</td>
-                                        <td class="py-3 px-3 text-center text-purple-400 font-bold">${ex.reps}</td>
-                                        <td class="py-3 px-3 text-center text-slate-400">${ex.rest}</td>
-                                        <td class="py-3 px-3 text-slate-400 text-sm">${ex.notes}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+                        <div class="flex flex-col gap-2">
+                            <button onclick="handleLogWorkout('${name.replace(/'/g, "\\'")}')" class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-bold">Registrar</button>
+                        </div>
                     </div>
                 </div>
             `).join('')}
@@ -893,27 +756,17 @@ function renderTreino(workoutProgram, currentUser) {
 }
 
 function renderNutricao(currentUser) {
+    const notes = buildReferenceNotesForNutrition();
     const nutrition = currentUser.gender === 'male' ? { target: 2000, protein: '140-160g', carbs: '220-250g', fats: '55-65g', surplus: 400 } : { target: 1700, protein: '95-105g', carbs: '180-200g', fats: '50-60g', surplus: 300 };
     return `
         <div class="space-y-6">
             <div class="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-6 text-white shadow-2xl">
                 <h2 class="text-3xl font-bold mb-4">🍎 Plano Nutricional Personalizado</h2>
+                <p class="text-slate-300 text-sm mb-2">${notes || 'Sem referências de nutrição importadas.'}</p>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-white/20 rounded-xl p-4 backdrop-blur">
-                        <p class="text-green-200 text-sm">Meta Calórica</p>
-                        <p class="text-3xl font-bold">${nutrition.target}</p>
-                        <p class="text-xs text-green-200">kcal/dia</p>
-                    </div>
-                    <div class="bg-white/20 rounded-xl p-4 backdrop-blur">
-                        <p class="text-green-200 text-sm">Proteína</p>
-                        <p class="text-2xl font-bold">${nutrition.protein}</p>
-                        <p class="text-xs text-green-200">${currentUser.gender === 'male' ? '2.0g/kg' : '1.7g/kg'}</p>
-                    </div>
-                    <div class="bg-white/20 rounded-xl p-4 backdrop-blur">
-                        <p class="text-green-200 text-sm">Superávit</p>
-                        <p class="text-3xl font-bold">+${nutrition.surplus}</p>
-                        <p class="text-xs text-green-200">kcal/dia</p>
-                    </div>
+                    <div class="bg-white/20 rounded-xl p-4"> <p class="text-green-200 text-sm">Meta Calórica</p><p class="text-3xl font-bold">${nutrition.target}</p></div>
+                    <div class="bg-white/20 rounded-xl p-4"> <p class="text-green-200 text-sm">Proteína</p><p class="text-2xl font-bold">${nutrition.protein}</p></div>
+                    <div class="bg-white/20 rounded-xl p-4"> <p class="text-green-200 text-sm">Superávit</p><p class="text-3xl font-bold">+${nutrition.surplus}</p></div>
                 </div>
             </div>
         </div>
@@ -925,35 +778,26 @@ function renderAlimentacao(mealHistory, currentUser, totals) {
         <div class="space-y-6">
             <div class="bg-gradient-to-r from-orange-600 to-yellow-600 rounded-2xl p-6 text-white shadow-2xl">
                 <div class="flex justify-between items-center">
-                    <div>
-                        <h2 class="text-3xl font-bold mb-2">🍲 Alimentação - Liv Up</h2>
-                        <p class="text-orange-200">Registre suas marmitas consumidas do dia (menu atualizado 2025)</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-orange-100 text-sm">Totais hoje</p>
-                        <p class="font-bold text-xl">${totals.kcal} kcal • ${totals.prot} g proteína • ${totals.fat} g gord.</p>
-                    </div>
+                    <div><h2 class="text-3xl font-bold mb-2">🍲 Alimentação - Liv Up</h2><p class="text-orange-200">Registre suas marmitas consumidas do dia</p></div>
+                    <div class="text-right"><p class="text-orange-100 text-sm">Totais hoje</p><p class="font-bold text-xl">${totals.kcal} kcal • ${totals.prot} g proteína</p></div>
                 </div>
             </div>
 
-            <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-6">
-                <h3 class="text-2xl font-bold text-white mb-4">📋 Marmitas Disponíveis</h3>
+            <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                <h3 class="text-2xl font-bold mb-4">📋 Marmitas Disponíveis</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     ${livUpMarmitas.map(meal => `
                         <div class="bg-slate-700/50 p-4 rounded-xl flex justify-between items-center">
-                            <div>
-                                <p class="text-white font-semibold">${meal.name}</p>
-                                <p class="text-slate-400 text-sm">${meal.category} - ${meal.size} ${meal.kcal ? `- ${meal.kcal} kcal, ${meal.prot}g prot` : ''}</p>
-                            </div>
-                            <button onclick="handleLogMeal('${meal.name.replace(/'/g, \"\\'\")}')" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-400">✅ Registrar</button>
+                            <div><p class="text-white font-semibold">${meal.name}</p><p class="text-slate-400 text-sm">${meal.category}${meal.kcal ? ' - '+meal.kcal+' kcal' : ''}</p></div>
+                            <button onclick="handleLogMeal('${meal.name.replace(/'/g, "\\'")}')" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold">Registrar</button>
                         </div>
                     `).join('')}
                 </div>
             </div>
 
-            <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-6">
-                <h3 class="text-2xl font-bold text-white mb-4">📅 Histórico de Refeições</h3>
-                ${mealHistory.length === 0 ? `<p class="text-slate-400 text-center py-8">Nenhuma refeição registrada ainda.</p>` : `
+            <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                <h3 class="text-2xl font-bold mb-4">📅 Histórico de Refeições</h3>
+                ${mealHistory.length === 0 ? `<p class="text-slate-400">Nenhuma refeição registrada.</p>` : `
                     <div class="space-y-3">
                         ${mealHistory.slice(0, 50).map(log => {
                             const nut = getMealNutritionByName(log.meal);
@@ -980,59 +824,49 @@ function renderAlimentacao(mealHistory, currentUser, totals) {
 function renderEvolucao(bodyMetrics, currentUser) {
     return `
         <div class="space-y-6">
-            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 backdrop-blur">
+            <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
                 <h2 class="text-2xl font-bold text-white mb-4">📈 Adicionar Novas Medidas</h2>
                 <form id="metricsForm" class="grid grid-cols-2 md:grid-cols-8 gap-3">
-                    <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="px-3 py-2 bg-slate-700 border border-slate-600 rounded-xl text-white">
-                    <input type="number" name="weight" step="0.1" placeholder="Peso (kg)" required class="px-3 py-2 bg-slate-700 border border-slate-600 rounded-xl text-white" />
-                    <input type="number" name="bodyFat" step="0.1" placeholder="Gordura (%)" required class="px-3 py-2 bg-slate-700 border border-slate-600 rounded-xl text-white" />
-                    <input type="number" name="muscleMass" step="0.1" placeholder="Massa muscular (kg)" required class="px-3 py-2 bg-slate-700 border border-slate-600 rounded-xl text-white" />
-                    <input type="number" name="visceralFat" placeholder="G.Visceral" required class="px-3 py-2 bg-slate-700 border border-slate-600 rounded-xl text-white" />
-                    <input type="number" name="waterPercent" step="0.1" placeholder="Água (%)" class="px-3 py-2 bg-slate-700 border border-slate-600 rounded-xl text-white" />
-                    <input type="number" name="muscleSize" step="0.1" placeholder="Tamanho músculo (cm)" class="px-3 py-2 bg-slate-700 border border-slate-600 rounded-xl text-white" />
-                    <button type="submit" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-xl font-bold hover:shadow-lg transition">➕ Adicionar</button>
+                    <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="px-3 py-2 bg-slate-700 rounded-xl text-white" />
+                    <input type="number" name="weight" step="0.1" placeholder="Peso (kg)" required class="px-3 py-2 bg-slate-700 rounded-xl text-white" />
+                    <input type="number" name="bodyFat" step="0.1" placeholder="Gordura (%)" required class="px-3 py-2 bg-slate-700 rounded-xl text-white" />
+                    <input type="number" name="muscleMass" step="0.1" placeholder="Massa muscular (kg)" required class="px-3 py-2 bg-slate-700 rounded-xl text-white" />
+                    <input type="number" name="visceralFat" placeholder="G.Visceral" required class="px-3 py-2 bg-slate-700 rounded-xl text-white" />
+                    <input type="number" name="waterPercent" step="0.1" placeholder="Água (%)" class="px-3 py-2 bg-slate-700 rounded-xl text-white" />
+                    <input type="number" name="muscleSize" step="0.1" placeholder="Tamanho músculo (cm)" class="px-3 py-2 bg-slate-700 rounded-xl text-white" />
+                    <button type="submit" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-xl font-bold">➕ Adicionar</button>
                 </form>
             </div>
 
-            ${bodyMetrics.length > 0 ? `
-                <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 backdrop-blur">
-                    <h3 class="text-xl font-bold text-white mb-4">📊 Histórico de Medidas</h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
-                            <thead>
-                                <tr class="border-b border-slate-700">
-                                    <th class="text-left py-2 px-3 text-slate-300">Data</th>
-                                    <th class="text-center py-2 px-3 text-slate-300">Peso</th>
-                                    <th class="text-center py-2 px-3 text-slate-300">Gordura</th>
-                                    <th class="text-center py-2 px-3 text-slate-300">Massa</th>
-                                    <th class="text-center py-2 px-3 text-slate-300">IMC</th>
-                                    <th class="text-center py-2 px-3 text-slate-300">Água (kg/%)</th>
-                                    <th class="text-center py-2 px-3 text-slate-300">BMR</th>
-                                    <th class="text-center py-2 px-3 text-slate-300">Tamanho</th>
-                                    <th class="text-center py-2 px-3 text-slate-300">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${bodyMetrics.slice().reverse().map(m => `
-                                    <tr class="border-b border-slate-700/50">
-                                        <td class="py-2 px-3 text-white">${m.date}</td>
-                                        <td class="py-2 px-3 text-center text-blue-400">${m.weight}kg</td>
-                                        <td class="py-2 px-3 text-center text-red-400">${m.bodyFat}%</td>
-                                        <td class="py-2 px-3 text-center text-green-400">${m.muscleMass}kg</td>
-                                        <td class="py-2 px-3 text-center text-purple-400">${m.bmi}</td>
-                                        <td class="py-2 px-3 text-center text-cyan-300">${m.waterWeight || 0}kg / ${m.waterPercent || 0}%</td>
-                                        <td class="py-2 px-3 text-center text-yellow-300">${m.bmr || '-' } kcal</td>
-                                        <td class="py-2 px-3 text-center text-slate-200">${m.muscleSize || '-' } cm</td>
-                                        <td class="py-2 px-3 text-center">
-                                            <button onclick="handleDeleteMetric('${m.id}')" class="text-red-400 hover:text-red-300">❌</button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+            <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                <h3 class="text-xl font-bold text-white mb-4">📊 Histórico de Medidas & Evolução Muscular</h3>
+                <div class="mb-4 flex gap-2 items-center">
+                    <canvas id="muscleChart" height="150"></canvas>
+                    <div>
+                        <button onclick="exportMuscleEvolutionCSV(state.activeUser)" class="bg-blue-600 px-3 py-2 rounded-lg font-bold">Exportar evolução (CSV)</button>
                     </div>
                 </div>
-            ` : ''}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead><tr class="border-b border-slate-700"><th>Data</th><th>Peso</th><th>Gordura</th><th>Massa</th><th>IMC</th><th>Água</th><th>BMR</th><th>Tamanho</th><th>Ações</th></tr></thead>
+                        <tbody>
+                            ${bodyMetrics.slice().reverse().map(m => `
+                                <tr class="border-b border-slate-700/50">
+                                    <td class="py-2 px-3">${m.date}</td>
+                                    <td class="py-2 px-3 text-center">${m.weight}kg</td>
+                                    <td class="py-2 px-3 text-center">${m.bodyFat}%</td>
+                                    <td class="py-2 px-3 text-center">${m.muscleMass}kg</td>
+                                    <td class="py-2 px-3 text-center">${m.bmi}</td>
+                                    <td class="py-2 px-3 text-center">${m.waterWeight || 0}kg / ${m.waterPercent || 0}%</td>
+                                    <td class="py-2 px-3 text-center">${m.bmr || '-'} kcal</td>
+                                    <td class="py-2 px-3 text-center">${m.muscleSize || '-'} cm</td>
+                                    <td class="py-2 px-3 text-center"><button onclick="handleDeleteMetric('${m.id}')" class="text-red-400">❌</button></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     `;
 }
@@ -1041,115 +875,100 @@ function renderComparacao() {
     const comps = state.comparisons || [];
     return `
         <div class="space-y-6">
-            <div class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl p-6 text-white shadow-2xl">
+            <div class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl p-6 text-white">
                 <div class="flex justify-between items-center">
-                    <div>
-                        <h2 class="text-3xl font-bold mb-2">⚖️ Comparação entre Usuários</h2>
-                        <p class="text-purple-200">Análise comparativa baseada em diferenças fisiológicas</p>
-                    </div>
-                    <div>
-                        <button onclick="handleNewComparison()" class="bg-green-600 px-4 py-2 rounded-lg font-bold">➕ Nova Comparação</button>
-                    </div>
+                    <h2 class="text-3xl font-bold">⚖️ Comparação</h2>
+                    <button onclick="handleNewComparison()" class="bg-green-600 px-4 py-2 rounded-lg">➕ Nova Comparação</button>
                 </div>
             </div>
-
-            <div class="grid grid-cols-1 gap-4">
-                ${comps.length === 0 ? '<p class="text-slate-400">Nenhuma comparação criada.</p>' : comps.map(comp => {
-                    const a = state.users[comp.userA] || { name: comp.userA, bodyMetrics: [] };
-                    const b = state.users[comp.userB] || { name: comp.userB, bodyMetrics: [] };
-                    const aLatest = (a.bodyMetrics && a.bodyMetrics.length) ? a.bodyMetrics[a.bodyMetrics.length - 1] : {};
-                    const bLatest = (b.bodyMetrics && b.bodyMetrics.length) ? b.bodyMetrics[b.bodyMetrics.length - 1] : {};
-                    return `
-                        <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <h3 class="text-xl font-bold">${comp.title}</h3>
-                                    <p class="text-slate-400 text-sm">Criado em ${new Date(comp.createdAt).toLocaleString()}</p>
-                                </div>
-                                <div class="flex gap-4 items-center">
-                                    <div class="p-4 bg-blue-900/30 rounded-xl">
-                                        <p class="font-bold text-blue-300">${a.name}</p>
-                                        <p class="text-slate-300 text-sm">Peso: ${aLatest.weight || '-'}kg • Gord: ${aLatest.bodyFat || '-'}%</p>
-                                    </div>
-                                    <div class="p-4 bg-pink-900/30 rounded-xl">
-                                        <p class="font-bold text-pink-300">${b.name}</p>
-                                        <p class="text-slate-300 text-sm">Peso: ${bLatest.weight || '-'}kg • Gord: ${bLatest.bodyFat || '-'}%</p>
-                                    </div>
-                                    <button onclick="handleDeleteComparison('${comp.id}')" class="text-red-400 hover:text-red-300">❌</button>
-                                </div>
+            <div class="grid gap-4">
+                ${comps.length===0?'<p class="text-slate-400">Nenhuma comparação.</p>':comps.map(c=>`
+                    <div class="bg-slate-800/50 p-4 rounded-xl border">
+                        <div class="flex justify-between">
+                            <div>
+                                <p class="font-bold text-white">${c.title}</p>
+                                <p class="text-slate-400 text-sm">Criado ${new Date(c.createdAt).toLocaleString()}</p>
                             </div>
+                            <button onclick="handleDeleteComparison('${c.id}')" class="text-red-400">❌</button>
                         </div>
-                    `;
-                }).join('')}
+                    </div>
+                `).join('')}
             </div>
         </div>
     `;
 }
 
-// RENDER CIÊNCIA: lista de referências + import/export/filtro por ano
 function renderCiencia() {
-    // filter controls: intervalo de 2020 até 2025-11
     const refs = state.references || [];
-    // default range 2020 -> 2025
-    const minYear = 2020;
-    const maxYear = 2025;
-    const filtered = refs.filter(r => r.year >= minYear && r.year <= maxYear);
-
+    const filtered = refs.filter(r => r.year >= 2020 && r.year <= 2025);
     return `
         <div class="space-y-6">
-            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 text-white shadow-2xl">
-                <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 text-white">
+                <div class="flex justify-between items-center">
                     <div>
-                        <h2 class="text-3xl font-bold mb-1">🔬 Estudos Científicos (2020 — nov/2025)</h2>
-                        <p class="text-purple-200">Importe e consulte estudos recentes para organizar treinos, calorias e nutrição.</p>
+                        <h2 class="text-3xl font-bold">🔬 Estudos Científicos (2020 — nov/2025)</h2>
+                        <p class="text-slate-300">Importe estudos e veja sugestões integradas a treino e nutrição.</p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="importScientificStudiesSeed()" class="bg-green-600 px-4 py-2 rounded-lg font-bold">⤓ Importar estudos 2020→2025-11</button>
-                        <button onclick="exportReferencesJSON()" class="bg-blue-600 px-4 py-2 rounded-lg font-bold">⬇️ Exportar JSON</button>
-                        <button onclick="clearReferences()" class="bg-red-600 px-4 py-2 rounded-lg font-bold">🗑️ Limpar referências</button>
+                        <button onclick="importScientificStudiesSeed()" class="bg-green-600 px-4 py-2 rounded-lg">⤓ Importar estudos</button>
+                        <button onclick="exportReferencesJSON()" class="bg-blue-600 px-4 py-2 rounded-lg">⬇️ Exportar</button>
+                        <button onclick="clearReferences()" class="bg-red-600 px-4 py-2 rounded-lg">🗑️ Limpar</button>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">
-                <h3 class="text-2xl font-bold text-white mb-4">📚 Referências importadas (${filtered.length})</h3>
-                ${filtered.length === 0 ? `
-                    <p class="text-slate-400">Nenhuma referência encontrada. Use "Importar estudos" para popular (seleção: 2020→2025-11).</p>
-                ` : `
-                    <div class="space-y-3">
-                        ${filtered.map(ref => `
-                            <div class="bg-slate-700/50 p-4 rounded-xl border-l-4 border-purple-500">
-                                <div class="flex justify-between items-start gap-4">
-                                    <div>
-                                        <p class="text-white font-semibold">${ref.title}</p>
-                                        <p class="text-slate-300 text-sm mt-1">${ref.authors} — <strong>${ref.year}</strong> • ${ref.journal}</p>
-                                        <p class="text-slate-400 text-sm mt-2">${ref.summary}</p>
-                                        <p class="mt-2"><a href="${ref.link}" target="_blank" class="text-blue-300 underline">Abrir estudo / DOI</a></p>
-                                    </div>
-                                    <div class="flex flex-col items-end gap-2">
-                                        <button onclick="navigator.clipboard.writeText('${ref.link}').then(()=>alert('Link copiado'))" class="bg-white text-black px-3 py-1 rounded-lg font-semibold">Copiar link</button>
-                                        <button onclick="if(confirm('Remover esta referência?')) { state.references = state.references.filter(r => r.id !== '${ref.id}'); saveAllToDB(); render(); }" class="text-red-400 hover:text-red-300">❌ Remover</button>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
+            <div class="bg-slate-800/50 p-6 rounded-2xl border">
+                <h3 class="text-2xl font-bold mb-4">📚 Referências (${filtered.length})</h3>
+                ${filtered.length===0 ? '<p class="text-slate-400">Nenhuma referência. Use importar.</p>' : filtered.map(ref => `
+                    <div class="bg-slate-700/50 p-4 rounded-xl mb-3 border-l-4 border-purple-500">
+                        <p class="font-bold text-white">${ref.title}</p>
+                        <p class="text-slate-300 text-sm">${ref.authors} — ${ref.year} • ${ref.journal}</p>
+                        <p class="text-slate-400 text-sm mt-2">${ref.summary}</p>
+                        <p class="mt-2"><a href="${ref.link}" target="_blank" class="text-blue-300 underline">Abrir</a></p>
+                        <div class="mt-2 flex gap-2">
+                            <button onclick="navigator.clipboard.writeText('${ref.link}').then(()=>alert('Link copiado'))" class="bg-white text-black px-3 py-1 rounded-lg font-semibold">Copiar link</button>
+                            <button onclick="if(confirm('Remover esta referência?')) { state.references = state.references.filter(r => r.id !== '${ref.id}'); saveAllToDB(); render(); }" class="text-red-400 hover:text-red-300">❌ Remover</button>
+                        </div>
                     </div>
-                `}
-            </div>
-
-            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">
-                <h4 class="text-lg text-white mb-2">🔎 Dica de uso</h4>
-                <ul class="text-slate-300 text-sm space-y-1">
-                    <li>• Importe os estudos e depois leia os PDFs nos links fornecidos para ajustar protocolos (proteína, volume, calorias).</li>
-                    <li>• Use os resumos e D.O.I. para armazenar referências importantes ao planejar periodizações e dietas.</li>
-                    <li>• Se quiser, eu posso gerar resumos em português de cada estudo (abstract simplificado) e colocá-los aqui.</li>
-                </ul>
+                `).join('')}
             </div>
         </div>
     `;
 }
 
-// ================== Inicialização ==================
+// ---------------- Muscle evolution chart ----------------
+function renderMuscleEvolutionChart(bodyMetrics, userId) {
+    const canvas = document.getElementById('muscleChart');
+    if (!canvas) return;
+    const metrics = (bodyMetrics || []).slice().sort((a,b)=> new Date(a.date) - new Date(b.date));
+    const labels = metrics.map(m => m.date);
+    const muscleMassData = metrics.map(m => m.muscleMass || null);
+    const muscleSizeData = metrics.map(m => m.muscleSize || null);
+
+    const datasets = [];
+    if (muscleMassData.some(v => v !== null)) datasets.push({ label: 'Massa Muscular (kg)', data: muscleMassData, borderColor: '#34D399', backgroundColor: '#34D39933', tension: 0.2, yAxisID: 'y' });
+    if (muscleSizeData.some(v => v !== null)) datasets.push({ label: 'Tamanho Músculo (cm)', data: muscleSizeData, borderColor: '#60A5FA', backgroundColor: '#60A5FA33', tension: 0.2, yAxisID: 'y2' });
+
+    const config = {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: { beginAtZero: false, title: { display: true, text: 'kg' } },
+                y2: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'cm' } }
+            }
+        }
+    };
+
+    if (muscleChart) { muscleChart.destroy(); muscleChart = null; }
+    muscleChart = new Chart(canvas, config);
+}
+
+// ---------------- Safety and init ----------------
+window.addEventListener('beforeunload', () => { try { saveAllToDB(); } catch (e) {} });
+
 (async function initApp() {
     await loadAllFromDB();
     if (!state.users.pedro) state.users.pedro = initialUsers.pedro;
