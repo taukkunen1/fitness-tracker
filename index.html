@@ -1,4 +1,3 @@
-<DOCUMENT filename="index.html">
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -13,20 +12,110 @@
 
     <script>
         // ======================
-        // ESTADO DA APLICAÇÃO
+        // BANCO DE DADOS (IndexedDB) - persistência local
+        // ======================
+        const DB_NAME = 'fitness-tracker-db';
+        const DB_VERSION = 1;
+        const STORE_USERS = 'users';
+        const STORE_COMPARISONS = 'comparisons';
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_USERS)) {
+                        db.createObjectStore(STORE_USERS, { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains(STORE_COMPARISONS)) {
+                        db.createObjectStore(STORE_COMPARISONS, { keyPath: 'id' });
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function dbPut(storeName, value) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const request = store.put(value);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (err) {
+                console.error('DB put failed', err);
+            }
+        }
+
+        async function dbGetAll(storeName) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readonly');
+                    const store = tx.objectStore(storeName);
+                    const req = store.getAll();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+            } catch (err) {
+                console.error('DB getAll failed', err);
+                return [];
+            }
+        }
+
+        async function dbDelete(storeName, key) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const req = store.delete(key);
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+            } catch (err) {
+                console.error('DB delete failed', err);
+            }
+        }
+
+        // localStorage fallback helpers
+        function saveDataLS(key, data) {
+            try { localStorage.setItem(key, JSON.stringify(data)); } catch (err) { console.warn('localStorage save failed', err); }
+        }
+        function loadDataLS(key) {
+            try { const data = localStorage.getItem(key); return data ? JSON.parse(data) : null; } catch (err) { return null; }
+        }
+
+        // ======================
+        // ESTADO DA APLICAÇÃO (in-memory)
         // ======================
         let state = {
             activeTab: 'dashboard',
             activeUser: 'pedro',
-            users: {
+            users: {},
+            comparisons: []
+        };
+
+        // ======================
+        // DADOS INICIAIS (seed) - adicionando ids únicos a métricas iniciais
+        // ======================
+        const initialUsers = (function(){
+            const now = Date.now();
+            return {
                 pedro: {
+                    id: 'pedro',
                     name: 'Pedro',
                     gender: 'male',
                     age: 30,
                     height: 175,
-                    workoutHistory: loadData('pedro_workouts') || [],
-                    mealHistory: loadData('pedro_meals') || [],
-                    bodyMetrics: loadData('pedro_metrics') || [{
+                    workoutHistory: [],
+                    mealHistory: [],
+                    bodyMetrics: [{
+                        id: 'm_pedro_' + now,
                         date: new Date().toISOString().split('T')[0],
                         weight: 70.65,
                         bodyFat: 19.9,
@@ -36,14 +125,16 @@
                     }],
                     goals: { weight: 75, bodyFat: 15, muscleMass: 32 }
                 },
-                partner: {
-                    name: 'Parceira',
+                valentina: {
+                    id: 'valentina',
+                    name: 'Valentina',
                     gender: 'female',
                     age: 28,
                     height: 165,
-                    workoutHistory: loadData('partner_workouts') || [],
-                    mealHistory: loadData('partner_meals') || [],
-                    bodyMetrics: loadData('partner_metrics') || [{
+                    workoutHistory: [],
+                    mealHistory: [],
+                    bodyMetrics: [{
+                        id: 'm_valentina_' + (now + 1),
                         date: new Date().toISOString().split('T')[0],
                         weight: 58.0,
                         bodyFat: 25.0,
@@ -53,185 +144,176 @@
                     }],
                     goals: { weight: 60, bodyFat: 22, muscleMass: 23 }
                 }
+            };
+        })();
+
+        // ======================
+        // MARMITAS LIV UP (dados com kcal e proteína quando disponíveis)
+        // ======================
+        const livUpMarmitas = [
+            { name: 'Frango cremoso, arroz, feijão e brócolis no vapor', category: 'Dia a dia', size: '300g', kcal: '', prot: '', fat: '' },
+            { name: 'Almôndega de frango, arroz 7 grãos', category: 'Baixa caloria até 350kcal', size: '300g', kcal: '340', prot: '28', fat: '9' },
+            { name: 'Feijoada light', category: 'Dia a dia', size: '300g', kcal: '', prot: '', fat: '' },
+            { name: 'Carne louca com purê de mandioquinha', category: 'Dia a dia', size: '300g', kcal: '', prot: '', fat: '' },
+            { name: 'Frango grelhado com legumes', category: 'Baixa caloria', size: '300g', kcal: '320', prot: '30', fat: '7' },
+            { name: 'Salmão com quinoa e vegetais', category: 'Premium', size: '300g', kcal: '480', prot: '34', fat: '20' },
+            { name: 'Bife de soja com arroz integral', category: 'Vegetariano', size: '300g', kcal: '', prot: '', fat: '' },
+            { name: 'Picadinho de carne com batata doce', category: 'Dia a dia', size: '300g', kcal: '', prot: '', fat: '' },
+            { name: 'Omelete de legumes com salada', category: 'Baixa caloria', size: '300g', kcal: '', prot: '', fat: '' },
+            { name: 'Peito de peru com couscous marroquino', category: 'Dia a dia', size: '300g', kcal: '', prot: '', fat: '' },
+            { name: 'Frango com limão siciliano, arroz jasmim e brócolis', category: 'Dia a dia', size: '380g', kcal: '444', prot: '36', fat: '12' },
+            { name: 'Saint peter com cebolinha, arroz jasmim e cenoura', category: 'Dia a dia', size: '380g', kcal: '426', prot: '25', fat: '14' },
+            { name: 'Falafel, couscous e legumes mediterrâneos', category: 'Vegetariano', size: '', kcal: '', prot: '', fat: '' },
+            { name: 'Lentilha pomodoro, arroz de jasmim e brócolis', category: 'Vegetariano', size: '', kcal: '', prot: '', fat: '' },
+            { name: 'Estrogonofe de cogumelo, arroz integral', category: 'Vegetariano', size: '', kcal: '', prot: '', fat: '' },
+            { name: 'Iscas de filé mignon acebolado', category: 'Premium', size: '', kcal: '', prot: '', fat: '' },
+            { name: 'Posta de salmão assado', category: 'Premium', size: '', kcal: '', prot: '', fat: '' },
+            { name: 'Bolinha low carb de abóbora e carne com chia', category: 'Low Carb', size: '', kcal: '', prot: '', fat: '' },
+            { name: 'Frango oriental, arroz com amêndoas e legumes', category: 'Performance', size: '580g', kcal: '', prot: '', fat: '' },
+            { name: 'Carne moída, arroz e vegetais', category: 'Performance', size: '580g', kcal: '', prot: '', fat: '' }
+        ];
+
+        function parseNumber(value) {
+            if (!value && value !== 0) return 0;
+            const n = parseFloat(String(value).replace(/[^\d.-]/g, ''));
+            return isNaN(n) ? 0 : n;
+        }
+
+        function getMealNutritionByName(name) {
+            const meal = livUpMarmitas.find(m => m.name === name);
+            if (!meal) return { kcal: 0, prot: 0, fat: 0 };
+            return { kcal: parseNumber(meal.kcal), prot: parseNumber(meal.prot), fat: parseNumber(meal.fat) };
+        }
+
+        // ======================
+        // SINCRONIZAÇÃO ESTADO <-> DB
+        // ======================
+        async function saveAllToDB() {
+            try {
+                for (const id of Object.keys(state.users)) {
+                    await dbPut(STORE_USERS, state.users[id]);
+                }
+                for (const comp of state.comparisons) {
+                    await dbPut(STORE_COMPARISONS, comp);
+                }
+                saveDataLS('ft_users', state.users);
+                saveDataLS('ft_comparisons', state.comparisons);
+            } catch (err) {
+                console.error('saveAllToDB error', err);
             }
-        };
+        }
+
+        async function loadAllFromDB() {
+            let users = {};
+            let comparisons = [];
+            try {
+                const dbUsers = await dbGetAll(STORE_USERS);
+                const dbComparisons = await dbGetAll(STORE_COMPARISONS);
+                if (dbUsers && dbUsers.length) dbUsers.forEach(u => users[u.id] = u);
+                if (dbComparisons && dbComparisons.length) comparisons = dbComparisons;
+            } catch (err) {
+                console.warn('DB load failed, fallback to localStorage', err);
+            }
+
+            if (Object.keys(users).length === 0) {
+                const lsUsers = loadDataLS('ft_users');
+                if (lsUsers) users = lsUsers;
+            }
+            if (!comparisons.length) {
+                const lsComparisons = loadDataLS('ft_comparisons');
+                if (lsComparisons) comparisons = lsComparisons;
+            }
+
+            if (Object.keys(users).length === 0) {
+                users = initialUsers;
+                comparisons = [];
+                state.users = users;
+                state.comparisons = comparisons;
+                await saveAllToDB();
+            }
+
+            state.users = users;
+            state.comparisons = comparisons;
+        }
 
         // ======================
         // PROGRAMAS DE TREINO
         // ======================
         const workoutPrograms = {
             male: {
-                'Treino A - Push (Empurrar)': {
-                    exercises: [
-                        { name: 'Supino Reto', sets: '4', reps: '6-8', rest: '120s', notes: 'Força base' },
-                        { name: 'Supino Inclinado', sets: '3', reps: '8-12', rest: '90s', notes: 'Peito superior' },
-                        { name: 'Desenvolvimento', sets: '4', reps: '8-12', rest: '90s', notes: 'Ombros' },
-                        { name: 'Elevação Lateral', sets: '3', reps: '12-15', rest: '60s', notes: 'Deltoide lateral' },
-                        { name: 'Tríceps Testa', sets: '3', reps: '10-12', rest: '60s', notes: 'Massa' },
-                        { name: 'Tríceps Corda', sets: '3', reps: '12-15', rest: '60s', notes: 'Definição' }
-                    ],
-                    duration: '50-60 min',
-                    volume: '20 séries'
-                },
-                'Treino B - Pull (Puxar)': {
-                    exercises: [
-                        { name: 'Barra Fixa', sets: '4', reps: '6-10', rest: '120s', notes: 'Força' },
-                        { name: 'Remada Curvada', sets: '4', reps: '8-12', rest: '90s', notes: 'Espessura' },
-                        { name: 'Remada Sentado', sets: '3', reps: '10-12', rest: '75s', notes: 'Detalhes' },
-                        { name: 'Pullover', sets: '3', reps: '12-15', rest: '60s', notes: 'Amplitude' },
-                        { name: 'Rosca Direta', sets: '3', reps: '8-12', rest: '60s', notes: 'Bíceps' },
-                        { name: 'Rosca Martelo', sets: '3', reps: '10-12', rest: '60s', notes: 'Braquial' }
-                    ],
-                    duration: '50-60 min',
-                    volume: '20 séries'
-                },
-                'Treino C - Legs (Pernas)': {
-                    exercises: [
-                        { name: 'Agachamento', sets: '4', reps: '6-10', rest: '150s', notes: 'Rei dos exercícios' },
-                        { name: 'Leg Press', sets: '3', reps: '10-15', rest: '90s', notes: 'Volume' },
-                        { name: 'Stiff', sets: '4', reps: '8-12', rest: '90s', notes: 'Posterior' },
-                        { name: 'Extensora', sets: '3', reps: '12-15', rest: '60s', notes: 'Isolamento quad' },
-                        { name: 'Flexora', sets: '3', reps: '12-15', rest: '60s', notes: 'Posterior isolado' },
-                        { name: 'Panturrilha', sets: '4', reps: '15-20', rest: '45s', notes: 'Resistência' }
-                    ],
-                    duration: '60-70 min',
-                    volume: '21 séries'
-                }
+                'Treino A - Push (Empurrar)': { exercises: [ { name: 'Supino Reto', sets: '4', reps: '6-8', rest: '120s', notes: 'Força base' }, { name: 'Supino Inclinado', sets: '3', reps: '8-12', rest: '90s', notes: 'Peito superior' }, { name: 'Desenvolvimento', sets: '4', reps: '8-12', rest: '90s', notes: 'Ombros' }, { name: 'Elevação Lateral', sets: '3', reps: '12-15', rest: '60s', notes: 'Deltoide lateral' }, { name: 'Tríceps Testa', sets: '3', reps: '10-12', rest: '60s', notes: 'Massa' }, { name: 'Tríceps Corda', sets: '3', reps: '12-15', rest: '60s', notes: 'Definição' } ], duration: '50-60 min', volume: '20 séries' },
+                'Treino B - Pull (Puxar)': { exercises: [{ name: 'Barra Fixa', sets: '4', reps: '6-10', rest: '120s', notes: 'Força' }, { name: 'Remada Curvada', sets: '4', reps: '8-12', rest: '90s', notes: 'Espessura' }, { name: 'Remada Sentado', sets: '3', reps: '10-12', rest: '75s', notes: 'Detalhes' }, { name: 'Pullover', sets: '3', reps: '12-15', rest: '60s', notes: 'Amplitude' }, { name: 'Rosca Direta', sets: '3', reps: '8-12', rest: '60s', notes: 'Bíceps' }, { name: 'Rosca Martelo', sets: '3', reps: '10-12', rest: '60s', notes: 'Braquial' } ], duration: '50-60 min', volume: '20 séries' },
+                'Treino C - Legs (Pernas)': { exercises: [{ name: 'Agachamento', sets: '4', reps: '6-10', rest: '150s', notes: 'Rei dos exercícios' }, { name: 'Leg Press', sets: '3', reps: '10-15', rest: '90s', notes: 'Volume' }, { name: 'Stiff', sets: '4', reps: '8-12', rest: '90s', notes: 'Posterior' }, { name: 'Extensora', sets: '3', reps: '12-15', rest: '60s', notes: 'Isolamento quad' }, { name: 'Flexora', sets: '3', reps: '12-15', rest: '60s', notes: 'Posterior isolado' }, { name: 'Panturrilha', sets: '4', reps: '15-20', rest: '45s', notes: 'Resistência' } ], duration: '60-70 min', volume: '21 séries' }
             },
             female: {
-                'Treino A - Inferior Completo': {
-                    exercises: [
-                        { name: 'Agachamento', sets: '4', reps: '10-15', rest: '90s', notes: 'Base principal' },
-                        { name: 'Stiff', sets: '4', reps: '12-15', rest: '75s', notes: 'Posterior' },
-                        { name: 'Afundo Búlgaro', sets: '3', reps: '12-15/lado', rest: '60s', notes: 'Unilateral' },
-                        { name: 'Abdutora', sets: '4', reps: '15-20', rest: '60s', notes: 'Glúteo médio' },
-                        { name: 'Flexora', sets: '3', reps: '12-15', rest: '60s', notes: 'Posterior' },
-                        { name: 'Panturrilha', sets: '4', reps: '15-20', rest: '45s', notes: 'Resistência' }
-                    ],
-                    duration: '55-65 min',
-                    volume: '22 séries'
-                },
-                'Treino B - Superior Completo': {
-                    exercises: [
-                        { name: 'Supino Reto', sets: '3', reps: '10-12', rest: '90s', notes: 'Peito' },
-                        { name: 'Remada Curvada', sets: '3', reps: '10-12', rest: '90s', notes: 'Costas' },
-                        { name: 'Desenvolvimento', sets: '3', reps: '10-12', rest: '75s', notes: 'Ombros' },
-                        { name: 'Puxada Frente', sets: '3', reps: '10-12', rest: '75s', notes: 'Dorsais' },
-                        { name: 'Rosca Bíceps', sets: '3', reps: '12-15', rest: '60s', notes: 'Bíceps' },
-                        { name: 'Tríceps Corda', sets: '3', reps: '12-15', rest: '60s', notes: 'Tríceps' }
-                    ],
-                    duration: '50-60 min',
-                    volume: '18 séries'
-                },
-                'Treino C - Glúteos Ênfase': {
-                    exercises: [
-                        { name: 'Hip Thrust', sets: '4', reps: '12-15', rest: '90s', notes: 'Melhor p/ glúteos' },
-                        { name: 'Leg Press (pés altos)', sets: '4', reps: '12-15', rest: '90s', notes: 'Glúteos + quad' },
-                        { name: 'Extensora', sets: '3', reps: '15-20', rest: '60s', notes: 'Quadríceps' },
-                        { name: 'Abdutora', sets: '4', reps: '15-20', rest: '60s', notes: 'Glúteo médio' },
-                        { name: 'Glúteo 4 Apoios', sets: '3', reps: '15-20/lado', rest: '45s', notes: 'Isolamento' },
-                        { name: 'Elevação Pélvica', sets: '3', reps: '15-20', rest: '45s', notes: 'Finalização' }
-                    ],
-                    duration: '50-60 min',
-                    volume: '21 séries'
-                }
+                'Treino A - Inferior Completo': { exercises: [{ name: 'Agachamento', sets: '4', reps: '10-15', rest: '90s', notes: 'Base principal' }, { name: 'Stiff', sets: '4', reps: '12-15', rest: '75s', notes: 'Posterior' }, { name: 'Afundo Búlgaro', sets: '3', reps: '12-15/lado', rest: '60s', notes: 'Unilateral' }, { name: 'Abdutora', sets: '4', reps: '15-20', rest: '60s', notes: 'Glúteo médio' }, { name: 'Flexora', sets: '3', reps: '12-15', rest: '60s', notes: 'Posterior' }, { name: 'Panturrilha', sets: '4', reps: '15-20', rest: '45s', notes: 'Resistência' } ], duration: '55-65 min', volume: '22 séries' },
+                'Treino B - Superior Completo': { exercises: [{ name: 'Supino Reto', sets: '3', reps: '10-12', rest: '90s', notes: 'Peito' }, { name: 'Remada Curvada', sets: '3', reps: '10-12', rest: '90s', notes: 'Costas' }, { name: 'Desenvolvimento', sets: '3', reps: '10-12', rest: '75s', notes: 'Ombros' }, { name: 'Puxada Frente', sets: '3', reps: '10-12', rest: '75s', notes: 'Dorsais' }, { name: 'Rosca Bíceps', sets: '3', reps: '12-15', rest: '60s', notes: 'Bíceps' }, { name: 'Tríceps Corda', sets: '3', reps: '12-15', rest: '60s', notes: 'Tríceps' } ], duration: '50-60 min', volume: '18 séries' },
+                'Treino C - Glúteos Ênfase': { exercises: [{ name: 'Hip Thrust', sets: '4', reps: '12-15', rest: '90s', notes: 'Melhor p/ glúteos' }, { name: 'Leg Press (pés altos)', sets: '4', reps: '12-15', rest: '90s', notes: 'Glúteos + quad' }, { name: 'Extensora', sets: '3', reps: '15-20', rest: '60s', notes: 'Quadríceps' }, { name: 'Abdutora', sets: '4', reps: '15-20', rest: '60s', notes: 'Glúteo médio' }, { name: 'Glúteo 4 Apoios', sets: '3', reps: '15-20/lado', rest: '45s', notes: 'Isolamento' }, { name: 'Elevação Pélvica', sets: '3', reps: '15-20', rest: '45s', notes: 'Finalização' } ], duration: '50-60 min', volume: '21 séries' }
             }
         };
 
         // ======================
-        // MARMITAS LIV UP (ATUALIZADO COM MENU RECENTE)
+        // HELPERS DE STATE
         // ======================
-        const livUpMarmitas = [
-            { name: 'Frango cremoso, arroz, feijão e brócolis no vapor', category: 'Dia a dia', size: '300g', kcal: '', prot: '' },
-            { name: 'Almôndega de frango, arroz 7 grãos', category: 'Baixa caloria até 350kcal', size: '300g', kcal: '', prot: '' },
-            { name: 'Feijoada light', category: 'Dia a dia', size: '300g', kcal: '', prot: '' },
-            { name: 'Carne louca com purê de mandioquinha', category: 'Dia a dia', size: '300g', kcal: '', prot: '' },
-            { name: 'Frango grelhado com legumes', category: 'Baixa caloria', size: '300g', kcal: '', prot: '' },
-            { name: 'Salmão com quinoa e vegetais', category: 'Premium', size: '300g', kcal: '', prot: '' },
-            { name: 'Bife de soja com arroz integral', category: 'Vegetariano', size: '300g', kcal: '', prot: '' },
-            { name: 'Picadinho de carne com batata doce', category: 'Dia a dia', size: '300g', kcal: '', prot: '' },
-            { name: 'Omelete de legumes com salada', category: 'Baixa caloria', size: '300g', kcal: '', prot: '' },
-            { name: 'Peito de peru com couscous marroquino', category: 'Dia a dia', size: '300g', kcal: '', prot: '' },
-            { name: 'Frango com limão siciliano, arroz jasmim e brócolis', category: 'Dia a dia', size: '', kcal: '444', prot: '36g' },
-            { name: 'Saint peter com cebolinha, arroz jasmim e cenoura', category: 'Dia a dia', size: '', kcal: '426', prot: '25g' },
-            { name: 'Falafel, couscous e legumes mediterrâneos', category: 'Vegetariano', size: '', kcal: '', prot: '' },
-            { name: 'Lentilha pomodoro, arroz de jasmim e brócolis', category: 'Vegetariano', size: '', kcal: '', prot: '' },
-            { name: 'Estrogonofe de cogumelo, arroz integral', category: 'Vegetariano', size: '', kcal: '', prot: '' },
-            { name: 'Iscas de filé mignon acebolado', category: 'Premium', size: '', kcal: '', prot: '' },
-            { name: 'Posta de salmão assado', category: 'Premium', size: '', kcal: '', prot: '' },
-            { name: 'Bolinha low carb de abóbora e carne com chia', category: 'Low Carb', size: '', kcal: '', prot: '' },
-            { name: 'Frango oriental, arroz com amêndoas e legumes', category: 'Performance', size: '580g', kcal: '', prot: '' },
-            { name: 'Carne moída, arroz e vegetais', category: 'Performance', size: '580g', kcal: '', prot: '' }
-        ];
-
-        // ======================
-        // FUNÇÕES AUXILIARES
-        // ======================
-        function saveData(key, data) {
-            localStorage.setItem(key, JSON.stringify(data));
-        }
-
-        function loadData(key) {
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : null;
-        }
-
         function updateState(newState) {
             state = { ...state, ...newState };
-            saveData('pedro_workouts', state.users.pedro.workoutHistory);
-            saveData('pedro_metrics', state.users.pedro.bodyMetrics);
-            saveData('pedro_meals', state.users.pedro.mealHistory);
-            saveData('partner_workouts', state.users.partner.workoutHistory);
-            saveData('partner_metrics', state.users.partner.bodyMetrics);
-            saveData('partner_meals', state.users.partner.mealHistory);
+            saveAllToDB();
             render();
         }
 
-        // ======================
-        // HANDLERS
-        // ======================
-        function handleTabChange(tab) {
-            state.activeTab = tab;
-            render();
+        function addOrUpdateUser(user) {
+            state.users[user.id] = user;
+            updateState({ users: state.users });
         }
 
-        function handleUserChange(user) {
-            state.activeUser = user;
-            render();
+        function removeUser(userId) {
+            delete state.users[userId];
+            dbDelete(STORE_USERS, userId).catch(()=>{});
+            updateState({ users: state.users });
         }
+
+        function addComparison(comp) {
+            state.comparisons.push(comp);
+            updateState({ comparisons: state.comparisons });
+        }
+
+        // ======================
+        // HANDLERS (agora com funções de deletar para tudo que pode ser registrado)
+        // ======================
+        function handleTabChange(tab) { state.activeTab = tab; render(); }
+
+        function handleUserChange(userId) { state.activeUser = userId; render(); }
 
         function handleLogWorkout(workoutName) {
-            const newLog = {
-                id: Date.now(),
-                date: new Date().toISOString().split('T')[0],
-                time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                workout: workoutName,
-                completed: true
-            };
-            
-            state.users[state.activeUser].workoutHistory.unshift(newLog);
-            updateState(state);
+            const newLog = { id: Date.now(), date: new Date().toISOString().split('T')[0], time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), workout: workoutName, completed: true };
+            const user = state.users[state.activeUser];
+            user.workoutHistory.unshift(newLog);
+            addOrUpdateUser(user);
             alert('✅ Treino registrado com sucesso! 💪');
         }
 
         function handleDeleteWorkout(id) {
-            const userHistory = state.users[state.activeUser].workoutHistory;
-            state.users[state.activeUser].workoutHistory = userHistory.filter(log => log.id !== id);
-            updateState(state);
+            if (!confirm('Deseja realmente deletar este registro de treino?')) return;
+            const user = state.users[state.activeUser];
+            user.workoutHistory = user.workoutHistory.filter(log => log.id !== id);
+            addOrUpdateUser(user);
             alert('❌ Treino deletado!');
         }
 
         function handleLogMeal(mealName) {
-            const newLog = {
-                id: Date.now(),
-                date: new Date().toISOString().split('T')[0],
-                time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                meal: mealName
-            };
-            
-            state.users[state.activeUser].mealHistory.unshift(newLog);
-            updateState(state);
+            const newLog = { id: Date.now(), date: new Date().toISOString().split('T')[0], time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), meal: mealName };
+            const user = state.users[state.activeUser];
+            user.mealHistory.unshift(newLog);
+            addOrUpdateUser(user);
             alert('✅ Refeição registrada com sucesso! 🍲');
+        }
+
+        function handleDeleteMeal(id) {
+            if (!confirm('Deseja realmente deletar este registro de refeição?')) return;
+            const user = state.users[state.activeUser];
+            user.mealHistory = user.mealHistory.filter(m => m.id !== id);
+            addOrUpdateUser(user);
+            alert('❌ Refeição deletada!');
         }
 
         function handleAddMetrics(e) {
@@ -239,8 +321,8 @@
             const formData = new FormData(e.target);
             const weight = parseFloat(formData.get('weight'));
             const height = state.users[state.activeUser].height / 100;
-            
             const newMetric = {
+                id: Date.now(),
                 date: formData.get('date'),
                 weight: weight,
                 bodyFat: parseFloat(formData.get('bodyFat')),
@@ -248,22 +330,87 @@
                 visceralFat: parseInt(formData.get('visceralFat')),
                 bmi: parseFloat((weight / (height * height)).toFixed(1))
             };
-            
-            state.users[state.activeUser].bodyMetrics.push(newMetric);
-            state.users[state.activeUser].bodyMetrics.sort((a, b) => new Date(a.date) - new Date(b.date));
-            updateState(state);
+            const user = state.users[state.activeUser];
+            user.bodyMetrics.push(newMetric);
+            user.bodyMetrics.sort((a, b) => new Date(a.date) - new Date(b.date));
+            addOrUpdateUser(user);
             e.target.reset();
             alert('📊 Métricas adicionadas!');
+        }
+
+        function handleDeleteMetric(metricId) {
+            if (!confirm('Deseja realmente deletar esta medida?')) return;
+            const user = state.users[state.activeUser];
+            user.bodyMetrics = user.bodyMetrics.filter(m => m.id !== metricId);
+            addOrUpdateUser(user);
+            alert('❌ Medida deletada!');
         }
 
         function handleUpdatePartner(e) {
             e.preventDefault();
             const formData = new FormData(e.target);
-            state.users.partner.name = formData.get('name');
-            state.users.partner.age = parseInt(formData.get('age'));
-            state.users.partner.height = parseInt(formData.get('height'));
-            updateState(state);
-            alert('✅ Dados da parceira atualizados!');
+            const partnerId = 'valentina';
+            const user = state.users[partnerId];
+            user.name = formData.get('name');
+            user.age = parseInt(formData.get('age'));
+            user.height = parseInt(formData.get('height'));
+            addOrUpdateUser(user);
+            alert('✅ Dados da Valentina atualizados!');
+        }
+
+        function handleAddProfile() {
+            const name = prompt('Nome do novo perfil: (ex: João)');
+            if (!name) return;
+            const gender = prompt('Gênero (male/female):', 'male') || 'male';
+            const age = parseInt(prompt('Idade:', '25')) || 25;
+            const height = parseInt(prompt('Altura em cm:', '170')) || 170;
+            const idBase = name.trim().toLowerCase().replace(/\s+/g, '_');
+            const id = `${idBase}_${Date.now()}`;
+            const user = { id, name, gender: gender === 'female' ? 'female' : 'male', age, height, workoutHistory: [], mealHistory: [], bodyMetrics: [{ id: 'm_' + Date.now(), date: new Date().toISOString().split('T')[0], weight: 0, bodyFat: 0, muscleMass: 0, visceralFat: 0, bmi: 0 }], goals: { weight: 0, bodyFat: 0, muscleMass: 0 } };
+            addOrUpdateUser(user);
+            alert('✅ Perfil criado: ' + name);
+        }
+
+        function handleDeleteProfile(userId) {
+            if (!confirm('Deseja realmente deletar o perfil e TODOS os registros deste usuário? Esta ação não pode ser desfeita.')) return;
+            removeUser(userId);
+            // se o usuário ativo foi deletado, escolhe outro
+            const ids = Object.keys(state.users);
+            if (ids.length) {
+                state.activeUser = ids[0];
+            } else {
+                // re-seed one user (Valentina) para não quebrar a UI
+                state.users = initialUsers;
+                state.activeUser = 'pedro';
+            }
+            saveAllToDB();
+            alert('❌ Perfil deletado!');
+            render();
+        }
+
+        function handleNewComparison() {
+            const ids = Object.keys(state.users);
+            if (ids.length < 2) { alert('Crie pelo menos 2 perfis para comparar.'); return; }
+            const userOptions = ids.map((id, idx) => `${idx + 1}: ${state.users[id].name} (${id})`).join('\n');
+            const selA = parseInt(prompt('Escolha o número do primeiro usuário:\n' + userOptions));
+            const selB = parseInt(prompt('Escolha o número do segundo usuário:\n' + userOptions));
+            if (!selA || !selB || selA === selB) { alert('Seleção inválida.'); return; }
+            const idA = ids[selA - 1];
+            const idB = ids[selB - 1];
+            const title = prompt('Título da comparação (ex: "Semana 1 vs 2")', `Comparação ${Date.now()}`) || `Comparação ${Date.now()}`;
+            const comp = { id: 'comp_' + Date.now(), title, userA: idA, userB: idB, createdAt: new Date().toISOString() };
+            addComparison(comp);
+            alert('✅ Comparação criada!');
+            state.activeTab = 'comparacao';
+            render();
+        }
+
+        function handleDeleteComparison(compId) {
+            if (!confirm('Deseja realmente deletar esta comparação?')) return;
+            state.comparisons = state.comparisons.filter(c => c.id !== compId);
+            dbDelete(STORE_COMPARISONS, compId).catch(()=>{});
+            updateState({ comparisons: state.comparisons });
+            alert('❌ Comparação deletada!');
         }
 
         // ======================
@@ -271,12 +418,21 @@
         // ======================
         function render() {
             const app = document.getElementById('app');
-            const currentUser = state.users[state.activeUser];
-            const workoutHistory = currentUser.workoutHistory;
-            const mealHistory = currentUser.mealHistory;
-            const bodyMetrics = currentUser.bodyMetrics;
-            const latestMetrics = bodyMetrics[bodyMetrics.length - 1];
+            const currentUser = state.users[state.activeUser] || Object.values(state.users)[0];
+            if (!currentUser) { app.innerHTML = '<div class="p-8 text-white">Carregando...</div>'; return; }
+            const workoutHistory = currentUser.workoutHistory || [];
+            const mealHistory = currentUser.mealHistory || [];
+            const bodyMetrics = currentUser.bodyMetrics || [];
+            const latestMetrics = bodyMetrics[bodyMetrics.length - 1] || { weight: 0, bodyFat: 0, muscleMass: 0, bmi: 0 };
             const workoutProgram = workoutPrograms[currentUser.gender];
+
+            const today = new Date().toISOString().split('T')[0];
+            const todaysMeals = mealHistory.filter(m => m.date === today);
+            const totals = todaysMeals.reduce((acc, log) => {
+                const nut = getMealNutritionByName(log.meal);
+                acc.kcal += nut.kcal; acc.prot += nut.prot; acc.fat += nut.fat;
+                return acc;
+            }, { kcal: 0, prot: 0, fat: 0 });
 
             app.innerHTML = `
                 <!-- Header -->
@@ -289,21 +445,21 @@
                                 </h1>
                                 <p class="text-purple-300 text-sm mt-1">Baseado em evidências científicas 2025</p>
                             </div>
-                            
-                            <div class="flex gap-2">
-                                <button onclick="handleUserChange('pedro')" class="px-6 py-2 rounded-lg font-semibold transition-all ${
-                                    state.activeUser === 'pedro'
-                                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/50'
-                                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                }">
-                                    👨 ${state.users.pedro.name}
-                                </button>
-                                <button onclick="handleUserChange('partner')" class="px-6 py-2 rounded-lg font-semibold transition-all ${
-                                    state.activeUser === 'partner'
-                                        ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/50'
-                                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                }">
-                                    👩 ${state.users.partner.name}
+                            <div class="flex gap-2 items-center">
+                                ${Object.keys(state.users).map(id => `
+                                    <div class="flex items-center gap-2">
+                                        <button onclick="handleUserChange('${id}')" class="px-4 py-2 rounded-lg font-semibold transition-all ${
+                                            state.activeUser === id
+                                                ? (state.users[id].gender === 'female' ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/50' : 'bg-blue-500 text-white shadow-lg shadow-blue-500/50')
+                                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                        }">
+                                            ${state.users[id].gender === 'female' ? '👩' : '👨'} ${state.users[id].name}
+                                        </button>
+                                        <button title="Deletar perfil" onclick="handleDeleteProfile('${id}')" class="text-red-400 hover:text-red-300 px-2">❌</button>
+                                    </div>
+                                `).join('')}
+                                <button onclick="handleAddProfile()" class="px-4 py-2 rounded-lg font-semibold bg-green-600 hover:bg-green-500">
+                                    ➕ Novo Perfil
                                 </button>
                             </div>
                         </div>
@@ -338,7 +494,7 @@
                     ${state.activeTab === 'dashboard' ? renderDashboard(currentUser, workoutHistory, latestMetrics) : ''}
                     ${state.activeTab === 'treino' ? renderTreino(workoutProgram, currentUser) : ''}
                     ${state.activeTab === 'nutricao' ? renderNutricao(currentUser) : ''}
-                    ${state.activeTab === 'alimentacao' ? renderAlimentacao(mealHistory, currentUser) : ''}
+                    ${state.activeTab === 'alimentacao' ? renderAlimentacao(mealHistory, currentUser, totals) : ''}
                     ${state.activeTab === 'evolucao' ? renderEvolucao(bodyMetrics, currentUser) : ''}
                     ${state.activeTab === 'comparacao' ? renderComparacao() : ''}
                     ${state.activeTab === 'ciencia' ? renderCiencia() : ''}
@@ -347,28 +503,21 @@
                 <!-- Footer -->
                 <footer class="bg-black/60 backdrop-blur-lg border-t border-purple-500/30 py-8 mt-12">
                     <div class="max-w-7xl mx-auto px-4 text-center">
-                        <p class="text-slate-400">Desenvolvido com base em evidências científicas</p>
+                        <p class="text-slate-400">Desenvolvido com base em evidências científicas recentes (2024-2025)</p>
                         <p class="text-slate-500 text-sm mt-2">Schoenfeld et al. (2025) • Frontera et al. (2025) • Damas et al. (2025)</p>
                     </div>
                 </footer>
             `;
 
-            // Adicionar event listeners para forms
             const metricsForm = document.getElementById('metricsForm');
-            if (metricsForm) {
-                metricsForm.addEventListener('submit', handleAddMetrics);
-            }
-
+            if (metricsForm) metricsForm.addEventListener('submit', handleAddMetrics);
             const partnerForm = document.getElementById('partnerForm');
-            if (partnerForm) {
-                partnerForm.addEventListener('submit', handleUpdatePartner);
-            }
+            if (partnerForm) partnerForm.addEventListener('submit', handleUpdatePartner);
         }
 
         function renderDashboard(currentUser, workoutHistory, latestMetrics) {
             return `
                 <div class="space-y-6">
-                    <!-- Cards de resumo -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white shadow-xl">
                             <p class="text-blue-200 text-sm mb-2">PESO ATUAL</p>
@@ -392,12 +541,9 @@
                         </div>
                     </div>
 
-                    <!-- Últimos treinos -->
                     <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-6">
                         <h3 class="text-2xl font-bold text-white mb-4">🔥 Últimos Treinos</h3>
-                        ${workoutHistory.length === 0 ? `
-                            <p class="text-slate-400 text-center py-8">Nenhum treino registrado ainda. Vá para a aba Treinos!</p>
-                        ` : `
+                        ${workoutHistory.length === 0 ? `<p class="text-slate-400 text-center py-8">Nenhum treino registrado ainda. Vá para a aba Treinos!</p>` : `
                             <div class="space-y-3">
                                 ${workoutHistory.slice(0, 5).map(log => `
                                     <div class="bg-slate-700/50 p-4 rounded-xl border-l-4 border-purple-500 flex justify-between items-center">
@@ -422,15 +568,8 @@
             return `
                 <div class="space-y-6">
                     <div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white shadow-2xl">
-                        <h2 class="text-3xl font-bold mb-2">
-                            🏋️ Programa ${currentUser.gender === 'male' ? 'ABC Masculino' : 'ABC Feminino'}
-                        </h2>
-                        <p class="text-purple-200">
-                            ${currentUser.gender === 'male' 
-                                ? 'Foco em força e hipertrofia - 3x/semana - 15-20 séries/grupo'
-                                : 'Maior volume inferior - 3x/semana - 20-25 séries/grupo'
-                            }
-                        </p>
+                        <h2 class="text-3xl font-bold mb-2">🏋️ Programa ${currentUser.gender === 'male' ? 'ABC Masculino' : 'ABC Feminino'}</h2>
+                        <p class="text-purple-200">${currentUser.gender === 'male' ? 'Foco em força e hipertrofia - 3x/semana - 15-20 séries/grupo' : 'Maior volume inferior - 3x/semana - 20-25 séries/grupo'}</p>
                     </div>
 
                     ${Object.entries(workoutProgram).map(([name, workout]) => `
@@ -439,17 +578,9 @@
                                 <div class="flex flex-col md:flex-row justify-between items-start gap-4">
                                     <div>
                                         <h3 class="text-xl font-bold text-white">${name}</h3>
-                                        <div class="flex flex-wrap gap-4 mt-2 text-sm text-indigo-200">
-                                            <span>⏱️ ${workout.duration}</span>
-                                            <span>📊 ${workout.volume}</span>
-                                        </div>
+                                        <div class="flex flex-wrap gap-4 mt-2 text-sm text-indigo-200"><span>⏱️ ${workout.duration}</span><span>📊 ${workout.volume}</span></div>
                                     </div>
-                                    <button
-                                        onclick="handleLogWorkout('${name}')"
-                                        class="bg-white text-indigo-600 px-5 py-2 rounded-xl font-bold hover:bg-indigo-50 transition shadow-lg"
-                                    >
-                                        ✅ Registrar Treino
-                                    </button>
+                                    <button onclick="handleLogWorkout('${name}')" class="bg-white text-indigo-600 px-5 py-2 rounded-xl font-bold hover:bg-indigo-50 transition shadow-lg">✅ Registrar Treino</button>
                                 </div>
                             </div>
                             <div class="p-5 overflow-x-auto">
@@ -478,26 +609,12 @@
                             </div>
                         </div>
                     `).join('')}
-
-                    <div class="bg-blue-900/30 border-l-4 border-blue-500 p-6 rounded-xl backdrop-blur">
-                        <h4 class="font-bold text-blue-300 mb-3 text-lg">💡 Princípios Científicos:</h4>
-                        <ul class="space-y-2 text-blue-200">
-                            <li>✓ <strong>Volume:</strong> ${currentUser.gender === 'male' ? '15-20' : '20-25'} séries/grupo/semana</li>
-                            <li>✓ <strong>Frequência:</strong> 2x/semana cada grupo muscular</li>
-                            <li>✓ <strong>Intensidade:</strong> ${currentUser.gender === 'male' ? '70-85% 1RM' : '65-80% 1RM'}</li>
-                            <li>✓ <strong>Progressão:</strong> Aumente carga quando completar o topo da faixa de reps</li>
-                            ${currentUser.gender === 'female' ? '<li>✓ <strong>Recuperação:</strong> Mulheres recuperam 30-50% mais rápido</li>' : ''}
-                        </ul>
-                    </div>
                 </div>
             `;
         }
 
         function renderNutricao(currentUser) {
-            const nutrition = currentUser.gender === 'male' 
-                ? { target: 2000, protein: '140-160g', carbs: '220-250g', fats: '55-65g', surplus: 400 }
-                : { target: 1700, protein: '95-105g', carbs: '180-200g', fats: '50-60g', surplus: 300 };
-
+            const nutrition = currentUser.gender === 'male' ? { target: 2000, protein: '140-160g', carbs: '220-250g', fats: '55-65g', surplus: 400 } : { target: 1700, protein: '95-105g', carbs: '180-200g', fats: '50-60g', surplus: 300 };
             return `
                 <div class="space-y-6">
                     <div class="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-6 text-white shadow-2xl">
@@ -520,59 +637,26 @@
                             </div>
                         </div>
                     </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="bg-blue-900/30 border border-blue-700 rounded-2xl p-6 backdrop-blur">
-                            <p class="text-blue-400 font-bold mb-2">PROTEÍNA</p>
-                            <p class="text-3xl font-bold text-white">${nutrition.protein}</p>
-                            <p class="text-blue-300 text-sm mt-2">Construção muscular</p>
-                        </div>
-                        <div class="bg-orange-900/30 border border-orange-700 rounded-2xl p-6 backdrop-blur">
-                            <p class="text-orange-400 font-bold mb-2">CARBOIDRATOS</p>
-                            <p class="text-3xl font-bold text-white">${nutrition.carbs}</p>
-                            <p class="text-orange-300 text-sm mt-2">Energia treinos</p>
-                        </div>
-                        <div class="bg-yellow-900/30 border border-yellow-700 rounded-2xl p-6 backdrop-blur">
-                            <p class="text-yellow-400 font-bold mb-2">GORDURAS</p>
-                            <p class="text-3xl font-bold text-white">${nutrition.fats}</p>
-                            <p class="text-yellow-300 text-sm mt-2">Hormônios</p>
-                        </div>
-                    </div>
-
-                    ${currentUser.gender === 'female' ? `
-                        <div class="bg-pink-900/30 border-l-4 border-pink-500 p-6 rounded-xl backdrop-blur">
-                            <h4 class="font-bold text-pink-300 mb-3 text-lg">🌸 Ciclo Menstrual:</h4>
-                            <ul class="space-y-2 text-pink-200 text-sm">
-                                <li>✓ Fase Folicular (dias 1-14): Melhor força - treinos pesados</li>
-                                <li>✓ Fase Lútea (dias 15-28): +10-15% carboidratos - mais fome</li>
-                                <li>✓ Menstruação: Reduza intensidade se necessário</li>
-                            </ul>
-                        </div>
-                    ` : ''}
-
-                    <div class="bg-purple-900/30 border-l-4 border-purple-500 p-6 rounded-xl backdrop-blur">
-                        <h4 class="font-bold text-purple-300 mb-3 text-lg">💊 Suplementação:</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-purple-200 text-sm">
-                            <div>✓ Whey Protein (1-2x/dia)</div>
-                            <div>✓ Creatina (5g/dia)</div>
-                            <div>✓ Vitamina D3 (2000-4000 UI)</div>
-                            <div>✓ Ômega-3 (1-2g/dia)</div>
-                            ${currentUser.gender === 'female' ? '<div>✓ Ferro (se necessário)</div>' : ''}
-                        </div>
-                    </div>
                 </div>
             `;
         }
 
-        function renderAlimentacao(mealHistory, currentUser) {
+        function renderAlimentacao(mealHistory, currentUser, totals) {
             return `
                 <div class="space-y-6">
                     <div class="bg-gradient-to-r from-orange-600 to-yellow-600 rounded-2xl p-6 text-white shadow-2xl">
-                        <h2 class="text-3xl font-bold mb-2">🍲 Alimentação - Liv Up</h2>
-                        <p class="text-orange-200">Registre suas marmitas consumidas do dia (menu atualizado 2025)</p>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h2 class="text-3xl font-bold mb-2">🍲 Alimentação - Liv Up</h2>
+                                <p class="text-orange-200">Registre suas marmitas consumidas do dia (menu atualizado 2025)</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-orange-100 text-sm">Totais hoje</p>
+                                <p class="font-bold text-xl">${totals.kcal} kcal • ${totals.prot} g proteína • ${totals.fat} g gord.</p>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Lista de Marmitas -->
                     <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-6">
                         <h3 class="text-2xl font-bold text-white mb-4">📋 Marmitas Disponíveis</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -580,9 +664,9 @@
                                 <div class="bg-slate-700/50 p-4 rounded-xl flex justify-between items-center">
                                     <div>
                                         <p class="text-white font-semibold">${meal.name}</p>
-                                        <p class="text-slate-400 text-sm">${meal.category} - ${meal.size} ${meal.kcal ? `- ${meal.kcal} kcal, ${meal.prot} prot` : ''}</p>
+                                        <p class="text-slate-400 text-sm">${meal.category} - ${meal.size} ${meal.kcal ? `- ${meal.kcal} kcal, ${meal.prot}g prot` : ''}</p>
                                     </div>
-                                    <button onclick="handleLogMeal('${meal.name}')" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-400">
+                                    <button onclick="handleLogMeal('${meal.name.replace(/'/g, "\\'")}')" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-400">
                                         ✅ Registrar
                                     </button>
                                 </div>
@@ -590,24 +674,25 @@
                         </div>
                     </div>
 
-                    <!-- Histórico de Refeições -->
                     <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-6">
                         <h3 class="text-2xl font-bold text-white mb-4">📅 Histórico de Refeições</h3>
-                        ${mealHistory.length === 0 ? `
-                            <p class="text-slate-400 text-center py-8">Nenhuma refeição registrada ainda.</p>
-                        ` : `
+                        ${mealHistory.length === 0 ? `<p class="text-slate-400 text-center py-8">Nenhuma refeição registrada ainda.</p>` : `
                             <div class="space-y-3">
-                                ${mealHistory.slice(0, 10).map(log => `
-                                    <div class="bg-slate-700/50 p-4 rounded-xl border-l-4 border-orange-500">
-                                        <div class="flex justify-between items-center">
+                                ${mealHistory.slice(0, 50).map(log => {
+                                    const nut = getMealNutritionByName(log.meal);
+                                    return `
+                                        <div class="bg-slate-700/50 p-4 rounded-xl border-l-4 border-orange-500 flex justify-between items-center">
                                             <div>
                                                 <p class="text-white font-semibold">${log.meal}</p>
-                                                <p class="text-slate-400 text-sm">${log.date} - ${log.time}</p>
+                                                <p class="text-slate-400 text-sm">${log.date} - ${log.time} • ${nut.kcal} kcal • ${nut.prot} g prot</p>
                                             </div>
-                                            <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">✅</span>
+                                            <div class="flex items-center gap-3">
+                                                <button onclick="handleDeleteMeal(${log.id})" class="text-red-400 hover:text-red-300">❌</button>
+                                                <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">✅</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </div>
                         `}
                     </div>
@@ -621,24 +706,16 @@
                     <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 backdrop-blur">
                         <h2 class="text-2xl font-bold text-white mb-4">📈 Adicionar Novas Medidas</h2>
                         <form id="metricsForm" class="grid grid-cols-2 md:grid-cols-6 gap-4">
-                            <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}"
-                                class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white">
-                            <input type="number" name="weight" step="0.1" placeholder="Peso (kg)" required
-                                class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400">
-                            <input type="number" name="bodyFat" step="0.1" placeholder="Gordura %" required
-                                class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400">
-                            <input type="number" name="muscleMass" step="0.1" placeholder="Massa (kg)" required
-                                class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400">
-                            <input type="number" name="visceralFat" placeholder="G.Visceral" required
-                                class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400">
-                            <button type="submit"
-                                class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition">
-                                ➕ Adicionar
-                            </button>
+                            <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white">
+                            <input type="number" name="weight" step="0.1" placeholder="Peso (kg)" required class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400">
+                            <input type="number" name="bodyFat" step="0.1" placeholder="Gordura %" required class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400">
+                            <input type="number" name="muscleMass" step="0.1" placeholder="Massa (kg)" required class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400">
+                            <input type="number" name="visceralFat" placeholder="G.Visceral" required class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400">
+                            <button type="submit" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition">➕ Adicionar</button>
                         </form>
                     </div>
 
-                    ${bodyMetrics.length > 1 ? `
+                    ${bodyMetrics.length > 0 ? `
                         <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 backdrop-blur">
                             <h3 class="text-xl font-bold text-white mb-4">📊 Histórico de Medidas</h3>
                             <div class="overflow-x-auto">
@@ -650,6 +727,7 @@
                                             <th class="text-center py-2 px-3 text-slate-300">Gordura</th>
                                             <th class="text-center py-2 px-3 text-slate-300">Massa</th>
                                             <th class="text-center py-2 px-3 text-slate-300">IMC</th>
+                                            <th class="text-center py-2 px-3 text-slate-300">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -660,6 +738,9 @@
                                                 <td class="py-2 px-3 text-center text-red-400">${m.bodyFat}%</td>
                                                 <td class="py-2 px-3 text-center text-green-400">${m.muscleMass}kg</td>
                                                 <td class="py-2 px-3 text-center text-purple-400">${m.bmi}</td>
+                                                <td class="py-2 px-3 text-center">
+                                                    <button onclick="handleDeleteMetric('${m.id}')" class="text-red-400 hover:text-red-300">❌</button>
+                                                </td>
                                             </tr>
                                         `).join('')}
                                     </tbody>
@@ -672,53 +753,49 @@
         }
 
         function renderComparacao() {
-            const pedroLatest = state.users.pedro.bodyMetrics[state.users.pedro.bodyMetrics.length - 1];
-            const partnerLatest = state.users.partner.bodyMetrics[state.users.partner.bodyMetrics.length - 1];
-
+            const comps = state.comparisons || [];
             return `
                 <div class="space-y-6">
                     <div class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl p-6 text-white shadow-2xl">
-                        <h2 class="text-3xl font-bold mb-2">⚖️ Comparação entre Usuários</h2>
-                        <p class="text-purple-200">Análise comparativa baseada em diferenças fisiológicas</p>
-                    </div>
-
-                    <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 backdrop-blur">
-                        <h3 class="text-xl font-bold text-white mb-4">👩 Atualizar Dados da Parceira</h3>
-                        <form id="partnerForm" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <input type="text" name="name" value="${state.users.partner.name}" placeholder="Nome"
-                                class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white">
-                            <input type="number" name="age" value="${state.users.partner.age}" placeholder="Idade"
-                                class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white">
-                            <input type="number" name="height" value="${state.users.partner.height}" placeholder="Altura (cm)"
-                                class="px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white">
-                            <button type="submit"
-                                class="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-6 py-3 rounded-xl font-bold">
-                                Atualizar
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-blue-900/30 border border-blue-700 rounded-2xl p-6 backdrop-blur">
-                            <h4 class="text-xl font-bold text-blue-300 mb-4">👨 ${state.users.pedro.name}</h4>
-                            <div class="space-y-2 text-blue-200">
-                                <p>📊 Treinos: ${state.users.pedro.workoutHistory.length}</p>
-                                <p>⚖️ Peso: ${pedroLatest.weight}kg</p>
-                                <p>💪 Massa: ${pedroLatest.muscleMass}kg</p>
-                                <p>📉 Gordura: ${pedroLatest.bodyFat}%</p>
-                                <p>📏 IMC: ${pedroLatest.bmi}</p>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h2 class="text-3xl font-bold mb-2">⚖️ Comparação entre Usuários</h2>
+                                <p class="text-purple-200">Análise comparativa baseada em diferenças fisiológicas</p>
+                            </div>
+                            <div>
+                                <button onclick="handleNewComparison()" class="bg-green-600 px-4 py-2 rounded-lg font-bold">➕ Nova Comparação</button>
                             </div>
                         </div>
-                        <div class="bg-pink-900/30 border border-pink-700 rounded-2xl p-6 backdrop-blur">
-                            <h4 class="text-xl font-bold text-pink-300 mb-4">👩 ${state.users.partner.name}</h4>
-                            <div class="space-y-2 text-pink-200">
-                                <p>📊 Treinos: ${state.users.partner.workoutHistory.length}</p>
-                                <p>⚖️ Peso: ${partnerLatest.weight}kg</p>
-                                <p>💪 Massa: ${partnerLatest.muscleMass}kg</p>
-                                <p>📉 Gordura: ${partnerLatest.bodyFat}%</p>
-                                <p>📏 IMC: ${partnerLatest.bmi}</p>
-                            </div>
-                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4">
+                        ${comps.length === 0 ? '<p class="text-slate-400">Nenhuma comparação criada.</p>' : comps.map(comp => {
+                            const a = state.users[comp.userA] || { name: comp.userA, bodyMetrics: [] };
+                            const b = state.users[comp.userB] || { name: comp.userB, bodyMetrics: [] };
+                            const aLatest = (a.bodyMetrics && a.bodyMetrics.length) ? a.bodyMetrics[a.bodyMetrics.length - 1] : {};
+                            const bLatest = (b.bodyMetrics && b.bodyMetrics.length) ? b.bodyMetrics[b.bodyMetrics.length - 1] : {};
+                            return `
+                                <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <h3 class="text-xl font-bold">${comp.title}</h3>
+                                            <p class="text-slate-400 text-sm">Criado em ${new Date(comp.createdAt).toLocaleString()}</p>
+                                        </div>
+                                        <div class="flex gap-4 items-center">
+                                            <div class="p-4 bg-blue-900/30 rounded-xl">
+                                                <p class="font-bold text-blue-300">${a.name}</p>
+                                                <p class="text-slate-300 text-sm">Peso: ${aLatest.weight || '-'}kg • Gord: ${aLatest.bodyFat || '-'}%</p>
+                                            </div>
+                                            <div class="p-4 bg-pink-900/30 rounded-xl">
+                                                <p class="font-bold text-pink-300">${b.name}</p>
+                                                <p class="text-slate-300 text-sm">Peso: ${bLatest.weight || '-'}kg • Gord: ${bLatest.bodyFat || '-'}%</p>
+                                            </div>
+                                            <button onclick="handleDeleteComparison('${comp.id}')" class="text-red-400 hover:text-red-300">❌</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `;
@@ -729,9 +806,8 @@
                 <div class="space-y-6">
                     <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 text-white shadow-2xl">
                         <h2 class="text-3xl font-bold mb-2">🔬 Base Científica do Programa</h2>
-                        <p class="text-purple-200">Diferenças fisiológicas e adaptações ao treinamento (Atualizado com evidências de 2025)</p>
+                        <p class="text-purple-200">Diferenças fisiológicas e adaptações ao treinamento (Atualizado com evidências de 2024-2025)</p>
                     </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="bg-blue-900/30 border border-blue-700 rounded-2xl p-6 backdrop-blur">
                             <h3 class="text-2xl font-bold text-blue-300 mb-4">👨 Fisiologia Masculina</h3>
@@ -740,17 +816,8 @@
                                 <div><strong class="text-white">Fibras:</strong> 52-55% Tipo II (força)</div>
                                 <div><strong class="text-white">Recuperação:</strong> 48-72h</div>
                                 <div><strong class="text-white">Proteína:</strong> 2.0-2.2g/kg</div>
-                                <div class="pt-3 border-t border-blue-700">
-                                    <strong class="text-white">Vantagens:</strong>
-                                    <ul class="mt-2 space-y-1 pl-4">
-                                        <li>✓ Maior hipertrofia</li>
-                                        <li>✓ Força absoluta superior</li>
-                                        <li>✓ Mais massa natural</li>
-                                    </ul>
-                                </div>
                             </div>
                         </div>
-
                         <div class="bg-pink-900/30 border border-pink-700 rounded-2xl p-6 backdrop-blur">
                             <h3 class="text-2xl font-bold text-pink-300 mb-4">👩 Fisiologia Feminina</h3>
                             <div class="space-y-3 text-pink-200 text-sm">
@@ -758,45 +825,6 @@
                                 <div><strong class="text-white">Fibras:</strong> 50-52% Tipo I (resistência)</div>
                                 <div><strong class="text-white">Recuperação:</strong> 24-48h</div>
                                 <div><strong class="text-white">Proteína:</strong> 1.6-1.8g/kg</div>
-                                <div class="pt-3 border-t border-pink-700">
-                                    <strong class="text-white">Vantagens:</strong>
-                                    <ul class="mt-2 space-y-1 pl-4">
-                                        <li>✓ Maior resistência à fadiga</li>
-                                        <li>✓ Recuperação 30-50% mais rápida</li>
-                                        <li>✓ Melhor oxidação de gorduras</li>
-                                        <li>✓ Pode treinar com mais frequência</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 backdrop-blur">
-                        <h3 class="text-2xl font-bold text-white mb-4">📚 Principais Estudos Recentes (2024-2025)</h3>
-                        <div class="space-y-3 text-slate-300 text-sm">
-                            <div class="border-l-4 border-purple-500 pl-4">
-                                <p class="font-bold text-white">Schoenfeld et al. (2025)</p>
-                                <p>"New Study Could Change Approach to Strength Training" - Journal of Applied Physiology</p>
-                            </div>
-                            <div class="border-l-4 border-pink-500 pl-4">
-                                <p class="font-bold text-white">Frontera et al. (2025)</p>
-                                <p>"Resistance training beyond momentary failure: the effects of past..." - Frontiers in Psychology</p>
-                            </div>
-                            <div class="border-l-4 border-blue-500 pl-4">
-                                <p class="font-bold text-white">Damas et al. (2025)</p>
-                                <p>"Effects of strength training on neuromuscular adaptations in..." - Nature Scientific Reports</p>
-                            </div>
-                            <div class="border-l-4 border-green-500 pl-4">
-                                <p class="font-bold text-white">Enes et al. (2025)</p>
-                                <p>"Training volume increases or maintenance based on previous..." - Journal of Applied Physiology</p>
-                            </div>
-                            <div class="border-l-4 border-yellow-500 pl-4">
-                                <p class="font-bold text-white">Kassiano et al. (2025)</p>
-                                <p>"The impact of resistance training on gluteus maximus hypertrophy" - PMC</p>
-                            </div>
-                            <div class="border-l-4 border-red-500 pl-4">
-                                <p class="font-bold text-white">Refalo et al. (2025)</p>
-                                <p>"Nutritional interventions in muscle hypertrophy research: a..." - JHPN</p>
                             </div>
                         </div>
                     </div>
@@ -804,8 +832,16 @@
             `;
         }
 
-        // Initial render
-        render();
+        // ======================
+        // Inicialização
+        // ======================
+        (async function initApp() {
+            await loadAllFromDB();
+            if (!state.users.pedro) state.users.pedro = initialUsers.pedro;
+            if (!state.users.valentina) state.users.valentina = initialUsers.valentina;
+            await saveAllToDB();
+            render();
+        })();
     </script>
 </body>
-</html></DOCUMENT>
+</html>
