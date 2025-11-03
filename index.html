@@ -158,7 +158,9 @@ let state = {
   activeUser: 'pedro',
   users: {},
   comparisons: [],
-  references: []
+  references: [],
+  currentDay: new Date().toISOString().split('T')[0], // For day-by-day meal navigation
+  customMeals: [] // User-defined meals with nutrition info
 };
 
 // Chart holder
@@ -187,7 +189,46 @@ const initialUsers = (function() {
         waterWeight: parseFloat((70.65 * 0.55).toFixed(2)),
         bmr: Math.round(10 * 70.65 + 6.25 * 175 - 5 * 30 + 5),
         muscleSize: 40,
-        bmi: 23.1
+        bmi: 23.1,
+        // Segmented muscle mass (kg) - based on bioimpedance analysis
+        muscleMassRightArm: 3.2,
+        muscleMassLeftArm: 3.1,
+        muscleMassRightLeg: 9.5,
+        muscleMassLeftLeg: 9.4,
+        muscleMassTrunk: 26.7,
+        // Segmented body fat (%)
+        bodyFatRightArm: 18.5,
+        bodyFatLeftArm: 18.6,
+        bodyFatRightLeg: 20.2,
+        bodyFatLeftLeg: 20.3,
+        bodyFatTrunk: 21.5,
+        // Advanced body composition
+        boneMass: 3.2, // kg - bone mineral content
+        proteinMass: 13.5, // kg - protein content
+        mineralMass: 4.1, // kg - mineral content
+        // Metabolic rates
+        rmr: 1580, // Resting Metabolic Rate (kcal/day)
+        tdee: 2200, // Total Daily Energy Expenditure (kcal/day)
+        // Bioelectrical impedance analysis
+        impedance: 485, // Ohms - whole body impedance at 50kHz
+        phaseAngle: 6.8, // degrees - cellular health indicator (normal: 5-7°)
+        reactance: 58, // Ohms
+        resistance: 480, // Ohms
+        // Ages and body composition indices
+        metabolicAge: 28, // years - metabolic age
+        bodyAge: 29, // years - biological/body age
+        // Circumferences (cm) - for tracking muscle growth
+        chest: 98,
+        waist: 85,
+        hips: 95,
+        rightArm: 35,
+        leftArm: 34.5,
+        rightThigh: 58,
+        leftThigh: 57.5,
+        rightCalf: 38,
+        leftCalf: 37.5,
+        neck: 38,
+        shoulders: 112
       }],
       goals: { weight: 75, bodyFat: 15, muscleMass: 32 },
       customPrograms: {}
@@ -211,7 +252,46 @@ const initialUsers = (function() {
         waterWeight: parseFloat((58 * 0.5).toFixed(2)),
         bmr: Math.round(10 * 58 + 6.25 * 165 - 5 * 28 - 161),
         muscleSize: 36,
-        bmi: 21.3
+        bmi: 21.3,
+        // Segmented muscle mass (kg)
+        muscleMassRightArm: 2.1,
+        muscleMassLeftArm: 2.0,
+        muscleMassRightLeg: 7.8,
+        muscleMassLeftLeg: 7.7,
+        muscleMassTrunk: 20.4,
+        // Segmented body fat (%)
+        bodyFatRightArm: 24.2,
+        bodyFatLeftArm: 24.5,
+        bodyFatRightLeg: 26.1,
+        bodyFatLeftLeg: 26.3,
+        bodyFatTrunk: 25.8,
+        // Advanced body composition
+        boneMass: 2.3,
+        proteinMass: 10.2,
+        mineralMass: 3.1,
+        // Metabolic rates
+        rmr: 1290,
+        tdee: 1750,
+        // Bioelectrical impedance
+        impedance: 550,
+        phaseAngle: 5.9,
+        reactance: 52,
+        resistance: 545,
+        // Ages
+        metabolicAge: 26,
+        bodyAge: 27,
+        // Circumferences (cm)
+        chest: 88,
+        waist: 68,
+        hips: 92,
+        rightArm: 28,
+        leftArm: 27.5,
+        rightThigh: 52,
+        leftThigh: 51.5,
+        rightCalf: 35,
+        leftCalf: 34.5,
+        neck: 32,
+        shoulders: 96
       }],
       goals: { weight: 60, bodyFat: 22, muscleMass: 23 },
       customPrograms: {}
@@ -414,10 +494,34 @@ function parseNumber(value) {
   const n = parseFloat(String(value).replace(/[^\d.-]/g, ''));
   return isNaN(n) ? 0 : n;
 }
+
+// Combined meal nutrition lookup: prioritize custom meals, then LiveUp marmitas
+function getMealNutritionByNameCombined(name) {
+  // First check custom meals
+  const customMeal = state.customMeals.find(m => m.name === name);
+  if (customMeal) {
+    return { 
+      kcal: parseNumber(customMeal.kcal), 
+      prot: parseNumber(customMeal.prot), 
+      fat: parseNumber(customMeal.fat) 
+    };
+  }
+  // Then check LiveUp marmitas
+  const liveUpMeal = livUpMarmitas.find(m => m.name === name);
+  if (liveUpMeal) {
+    return { 
+      kcal: parseNumber(liveUpMeal.kcal), 
+      prot: parseNumber(liveUpMeal.prot), 
+      fat: parseNumber(liveUpMeal.fat) 
+    };
+  }
+  // Default values if not found
+  return { kcal: 0, prot: 0, fat: 0 };
+}
+
+// Legacy function for backward compatibility
 function getMealNutritionByName(name) {
-  const meal = livUpMarmitas.find(m => m.name === name);
-  if (!meal) return { kcal: 0, prot: 0, fat: 0 };
-  return { kcal: parseNumber(meal.kcal), prot: parseNumber(meal.prot), fat: parseNumber(meal.fat) };
+  return getMealNutritionByNameCombined(name);
 }
 
 /* ----------------------------- Persistence: Save / Load ----------------------------- */
@@ -506,6 +610,40 @@ async function loadAllFromDB() {
   }
 }
 
+/* ----------------------------- Custom Meals Management -----------------------------
+   Load and save custom meals from/to IndexedDB settings store and localStorage fallback
+-------------------------------------------------------------------------------------------- */
+async function loadCustomMeals() {
+  try {
+    const customMealsData = await dbGet(STORE_SETTINGS, 'customMeals').catch(() => null);
+    if (customMealsData && customMealsData.value) {
+      state.customMeals = customMealsData.value;
+      return;
+    }
+  } catch (err) {
+    console.warn('Failed to load custom meals from IndexedDB', err);
+  }
+  
+  // Fallback to localStorage
+  const lsCustomMeals = loadLS('ft_custom_meals');
+  if (lsCustomMeals && Array.isArray(lsCustomMeals)) {
+    state.customMeals = lsCustomMeals;
+  } else {
+    state.customMeals = [];
+  }
+}
+
+async function saveCustomMeals() {
+  try {
+    await dbPut(STORE_SETTINGS, { key: 'customMeals', value: state.customMeals });
+  } catch (err) {
+    console.error('Failed to save custom meals to IndexedDB', err);
+  }
+  
+  // Also save to localStorage as fallback
+  saveLS('ft_custom_meals', state.customMeals);
+}
+
 /* ----------------------------- Soft-delete / Archive workflow -----------------------------
    Instead of permanently deleting, we move to 'archive' store with metadata:
      { id, originStore, originId, type, payload, deletedAt, deletedBy }
@@ -588,21 +726,142 @@ function handleDeleteWorkout(id) {
 function handleLogMeal(mealName) {
   const user = state.users[state.activeUser];
   if (!user) return alert('Nenhum usuário ativo');
-  const newLog = { id: Date.now(), date: new Date().toISOString().split('T')[0], time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), meal: mealName };
+  // Use currentDay for meal logging, make meal name safe for storage
+  const safeMealName = String(mealName); // Ensure it's a string, handles special characters
+  const newLog = { 
+    id: Date.now(), 
+    date: state.currentDay, // Use selected day instead of today
+    time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), 
+    meal: safeMealName 
+  };
   user.mealHistory.unshift(newLog);
   addOrUpdateUser(user);
+  
+  // Show success notification
+  const nut = getMealNutritionByNameCombined(safeMealName);
+  const nutInfo = nut.kcal > 0 ? ` (${nut.kcal} kcal)` : '';
+  showNotification(`✅ Refeição registrada: ${safeMealName}${nutInfo}`, 'success');
 }
 
 function handleDeleteMeal(id) {
-  if (!confirm('Deseja mover este registro de refeição para o arquivo (archive)?')) return;
+  if (!confirm('Deseja excluir este registro de refeição? Ele será movido para o arquivo (archive) e poderá ser restaurado.')) return;
   const user = state.users[state.activeUser];
   const item = user.mealHistory.find(m => m.id === id);
   if (!item) return alert('Registro não encontrado');
   archiveItem('mealHistory', id, 'meal', item).then(() => {
     user.mealHistory = user.mealHistory.filter(m => m.id !== id);
     addOrUpdateUser(user);
-    alert('✅ Registro de refeição movido para archive.');
+    showNotification('✅ Registro de refeição excluído e movido para archive', 'success');
   });
+}
+
+/* ----------------------------- Notification System ----------------------------- */
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `fixed top-20 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-semibold transform transition-all duration-300 ${
+    type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+  }`;
+  notification.textContent = message;
+  notification.style.opacity = '0';
+  notification.style.transform = 'translateY(-20px)';
+  
+  document.body.appendChild(notification);
+  
+  // Animate in
+  setTimeout(() => {
+    notification.style.opacity = '1';
+    notification.style.transform = 'translateY(0)';
+  }, 10);
+  
+  // Animate out and remove
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateY(-20px)';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+/* ----------------------------- Day navigation for meals ----------------------------- */
+function setCurrentDay(dateString) {
+  state.currentDay = dateString;
+  render();
+}
+
+function goToPreviousDay() {
+  const current = new Date(state.currentDay);
+  current.setDate(current.getDate() - 1);
+  state.currentDay = current.toISOString().split('T')[0];
+  render();
+}
+
+function goToNextDay() {
+  const current = new Date(state.currentDay);
+  current.setDate(current.getDate() + 1);
+  state.currentDay = current.toISOString().split('T')[0];
+  render();
+}
+
+function goToToday() {
+  state.currentDay = new Date().toISOString().split('T')[0];
+  render();
+}
+
+/* ----------------------------- Custom meal handlers ----------------------------- */
+function handleAddCustomMeal(e) {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const name = formData.get('customMealName');
+  const kcal = formData.get('customMealKcal');
+  const prot = formData.get('customMealProt');
+  const fat = formData.get('customMealFat');
+  const saveAsReusable = formData.get('saveAsReusable') === 'on';
+  
+  if (!name || !kcal) {
+    alert('Nome e calorias são obrigatórios');
+    return;
+  }
+  
+  // Check if already exists
+  const exists = state.customMeals.find(m => m.name === name);
+  if (exists && !confirm('Já existe uma refeição com este nome. Deseja substituir?')) {
+    return;
+  }
+  
+  const customMeal = {
+    id: `custom_meal_${Date.now()}`,
+    name: name.trim(),
+    kcal: parseFloat(kcal) || 0,
+    prot: parseFloat(prot) || 0,
+    fat: parseFloat(fat) || 0,
+    createdAt: new Date().toISOString(),
+    createdBy: state.activeUser
+  };
+  
+  if (saveAsReusable) {
+    // Remove existing if updating
+    state.customMeals = state.customMeals.filter(m => m.name !== name);
+    state.customMeals.push(customMeal);
+    saveCustomMeals();
+  }
+  
+  // Always log the meal to current day
+  handleLogMeal(name.trim());
+  
+  // Reset form
+  e.target.reset();
+  
+  if (saveAsReusable) {
+    showNotification('✅ Refeição personalizada salva e registrada!', 'success');
+  }
+}
+
+function handleDeleteCustomMeal(mealId) {
+  if (!confirm('Deseja excluir esta refeição personalizada permanentemente?')) return;
+  state.customMeals = state.customMeals.filter(m => m.id !== mealId);
+  saveCustomMeals();
+  showNotification('✅ Refeição personalizada excluída', 'success');
+  render();
 }
 
 /* ----------------------------- BMR calculation ----------------------------- */
@@ -621,25 +880,76 @@ function handleAddMetrics(e) {
   const gender = state.users[state.activeUser].gender || 'male';
   const waterPercent = parseFloat(formData.get('waterPercent')) || 0;
   const muscleSize = parseFloat(formData.get('muscleSize')) || 0;
-  const bmr = calculateBMR(weight, heightCm, age, gender);
+  const bmr = formData.get('bmr') ? parseFloat(formData.get('bmr')) : calculateBMR(weight, heightCm, age, gender);
   const waterWeight = parseFloat((weight * (waterPercent / 100)).toFixed(2));
+  
   const newMetric = {
     id: Date.now().toString(),
     date: formData.get('date'),
     weight: weight,
     bodyFat: parseFloat(formData.get('bodyFat')),
     muscleMass: parseFloat(formData.get('muscleMass')),
-    visceralFat: parseInt(formData.get('visceralFat')),
+    visceralFat: parseFloat(formData.get('visceralFat')) || 0,
     waterPercent: waterPercent,
     waterWeight: waterWeight,
     bmr: bmr,
     muscleSize: muscleSize,
-    bmi: parseFloat((weight / Math.pow(heightCm / 100, 2)).toFixed(1))
+    bmi: parseFloat((weight / Math.pow(heightCm / 100, 2)).toFixed(1)),
+    
+    // Segmented muscle mass
+    muscleMassRightArm: parseFloat(formData.get('muscleMassRightArm')) || 0,
+    muscleMassLeftArm: parseFloat(formData.get('muscleMassLeftArm')) || 0,
+    muscleMassRightLeg: parseFloat(formData.get('muscleMassRightLeg')) || 0,
+    muscleMassLeftLeg: parseFloat(formData.get('muscleMassLeftLeg')) || 0,
+    muscleMassTrunk: parseFloat(formData.get('muscleMassTrunk')) || 0,
+    
+    // Segmented body fat
+    bodyFatRightArm: parseFloat(formData.get('bodyFatRightArm')) || 0,
+    bodyFatLeftArm: parseFloat(formData.get('bodyFatLeftArm')) || 0,
+    bodyFatRightLeg: parseFloat(formData.get('bodyFatRightLeg')) || 0,
+    bodyFatLeftLeg: parseFloat(formData.get('bodyFatLeftLeg')) || 0,
+    bodyFatTrunk: parseFloat(formData.get('bodyFatTrunk')) || 0,
+    
+    // Advanced body composition
+    boneMass: parseFloat(formData.get('boneMass')) || 0,
+    proteinMass: parseFloat(formData.get('proteinMass')) || 0,
+    mineralMass: parseFloat(formData.get('mineralMass')) || 0,
+    
+    // Metabolic rates
+    rmr: parseFloat(formData.get('rmr')) || 0,
+    tdee: parseFloat(formData.get('tdee')) || 0,
+    
+    // Bioelectrical impedance
+    impedance: parseFloat(formData.get('impedance')) || 0,
+    phaseAngle: parseFloat(formData.get('phaseAngle')) || 0,
+    reactance: parseFloat(formData.get('reactance')) || 0,
+    resistance: parseFloat(formData.get('resistance')) || 0,
+    
+    // Ages
+    metabolicAge: parseInt(formData.get('metabolicAge')) || 0,
+    bodyAge: parseInt(formData.get('bodyAge')) || 0,
+    
+    // Circumferences
+    chest: parseFloat(formData.get('chest')) || 0,
+    waist: parseFloat(formData.get('waist')) || 0,
+    hips: parseFloat(formData.get('hips')) || 0,
+    rightArm: parseFloat(formData.get('rightArm')) || 0,
+    leftArm: parseFloat(formData.get('leftArm')) || 0,
+    rightThigh: parseFloat(formData.get('rightThigh')) || 0,
+    leftThigh: parseFloat(formData.get('leftThigh')) || 0,
+    rightCalf: parseFloat(formData.get('rightCalf')) || 0,
+    leftCalf: parseFloat(formData.get('leftCalf')) || 0,
+    neck: parseFloat(formData.get('neck')) || 0,
+    shoulders: parseFloat(formData.get('shoulders')) || 0
   };
+  
   const user = state.users[state.activeUser];
   user.bodyMetrics.push(newMetric);
   user.bodyMetrics.sort((a, b) => new Date(a.date) - new Date(b.date));
   addOrUpdateUser(user);
+  
+  showNotification('✅ Medição completa adicionada com sucesso!', 'success');
+  
   // redraw chart if on evolução
   if (state.activeTab === 'evolucao') setTimeout(() => renderMuscleEvolutionChart(user.bodyMetrics, user.id), 150);
   e.target.reset();
@@ -647,14 +957,14 @@ function handleAddMetrics(e) {
 
 /* When deleting a metric, move it to archive rather than permanently delete */
 function handleDeleteMetric(metricId) {
-  if (!confirm('Deseja mover esta medida para archive (preservada)?')) return;
+  if (!confirm('Deseja excluir esta medida? Ela será movida para o arquivo (archive) e poderá ser restaurada.')) return;
   const user = state.users[state.activeUser];
   const metric = user.bodyMetrics.find(m => m.id === metricId);
   if (!metric) return alert('Medida não encontrada');
   archiveItem('bodyMetrics', metricId, 'metric', metric).then(() => {
     user.bodyMetrics = user.bodyMetrics.filter(m => m.id !== metricId);
     addOrUpdateUser(user);
-    alert('✅ Medida movida para archive.');
+    showNotification('✅ Medida excluída e movida para archive', 'success');
   });
 }
 
@@ -820,6 +1130,37 @@ function buildReferenceNotesForNutrition() {
   return `Referências: ${refs.slice(0,3).map(r => `${r.authors} ${r.year}`).join(' • ')}. ` + renderReferenceLinksHTML(refs);
 }
 
+/* ----------------------------- Event Delegation for Meal Buttons -----------------------------
+   This function attaches event listeners to meal registration buttons using event delegation.
+   This approach is more robust than inline onclick handlers and handles special characters properly.
+------------------------------------------------------------------------------------------------ */
+function attachMealButtons() {
+  const mealButtons = document.querySelectorAll('.meal-register-btn');
+  mealButtons.forEach(btn => {
+    // Remove old listener if exists by replacing with a new one
+    btn.onclick = function(e) {
+      e.preventDefault();
+      const mealName = this.getAttribute('data-meal-name');
+      if (mealName) {
+        handleLogMeal(mealName);
+      }
+    };
+  });
+}
+
+function attachMealDeleteButtons() {
+  const deleteButtons = document.querySelectorAll('.meal-delete-btn');
+  deleteButtons.forEach(btn => {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      const mealId = parseInt(this.getAttribute('data-meal-id'));
+      if (mealId) {
+        handleDeleteMeal(mealId);
+      }
+    };
+  });
+}
+
 /* ----------------------------- RENDER (UI) -----------------------------
    The UI is intentionally verbose and explanatory to ensure clarity for you.
    Buttons that perform deletions will refer to archive workflow; nothing is removed
@@ -838,15 +1179,6 @@ function render() {
   const mealHistory = currentUser.mealHistory || [];
   const bodyMetrics = currentUser.bodyMetrics || [];
   const latestMetrics = bodyMetrics[bodyMetrics.length - 1] || { weight: 0, bodyFat: 0, muscleMass: 0, bmi: 0, bmr: 0, waterPercent: 0, waterWeight: 0, muscleSize: 0 };
-
-  // compute today's totals
-  const today = new Date().toISOString().split('T')[0];
-  const todaysMeals = mealHistory.filter(m => m.date === today);
-  const totals = todaysMeals.reduce((acc, log) => {
-    const nut = getMealNutritionByName(log.meal);
-    acc.kcal += nut.kcal; acc.prot += nut.prot; acc.fat += nut.fat;
-    return acc;
-  }, { kcal: 0, prot: 0, fat: 0 });
 
   app.innerHTML = `
     <header class="bg-black/40 backdrop-blur-lg border-b border-purple-500/30 sticky top-0 z-50">
@@ -882,7 +1214,7 @@ function render() {
         ${state.activeTab === 'dashboard' ? renderDashboard(currentUser, latestMetrics) : ''}
         ${state.activeTab === 'treino' ? renderTreino(currentUser) : ''}
         ${state.activeTab === 'nutricao' ? renderNutricao(currentUser) : ''}
-        ${state.activeTab === 'alimentacao' ? renderAlimentacao(mealHistory, totals) : ''}
+        ${state.activeTab === 'alimentacao' ? renderAlimentacao() : ''}
         ${state.activeTab === 'evolucao' ? renderEvolucao(bodyMetrics, currentUser) : ''}
         ${state.activeTab === 'comparacao' ? renderComparacao() : ''}
         ${state.activeTab === 'ciencia' ? renderCiencia() : ''}
@@ -904,6 +1236,18 @@ function render() {
   // attach metric form listener if exists
   const metricsForm = document.getElementById('metricsForm');
   if (metricsForm) metricsForm.addEventListener('submit', handleAddMetrics);
+  
+  // attach custom meal form listener if in alimentacao tab
+  if (state.activeTab === 'alimentacao') {
+    const customMealForm = document.getElementById('customMealForm');
+    if (customMealForm) customMealForm.addEventListener('submit', handleAddCustomMeal);
+    
+    // attach meal buttons using event delegation
+    attachMealButtons();
+    
+    // attach delete buttons using event delegation
+    attachMealDeleteButtons();
+  }
 }
 
 /* ----------------------------- SMALL RENDER COMPONENTS ----------------------------- */
@@ -1000,11 +1344,91 @@ function renderNutricao(user) {
   `;
 }
 
-function renderAlimentacao(meals, totals) {
+function renderAlimentacao() {
+  const currentUser = state.users[state.activeUser];
+  const mealHistory = currentUser.mealHistory || [];
+  
+  // Filter meals for the selected day
+  const selectedDayMeals = mealHistory.filter(m => m.date === state.currentDay);
+  
+  // Calculate totals for the selected day
+  const dayTotals = selectedDayMeals.reduce((acc, log) => {
+    const nut = getMealNutritionByNameCombined(log.meal);
+    acc.kcal += nut.kcal; 
+    acc.prot += nut.prot; 
+    acc.fat += nut.fat;
+    return acc;
+  }, { kcal: 0, prot: 0, fat: 0 });
+  
+  // Format date for display
+  const displayDate = new Date(state.currentDay + 'T00:00:00');
+  const isToday = state.currentDay === new Date().toISOString().split('T')[0];
+  const dateLabel = isToday ? 'Hoje' : displayDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' });
+  
   return `
+    <!-- Day Navigation -->
     <div class="bg-slate-800 p-4 rounded mb-6">
-      <h3 class="font-bold">Marmitas LiveUp (restauradas)</h3>
-      <div class="grid md:grid-cols-2 gap-3 mt-3">
+      <div class="flex justify-between items-center">
+        <button onclick="goToPreviousDay()" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded">← Dia Anterior</button>
+        <div class="text-center">
+          <p class="text-lg font-bold">${dateLabel}</p>
+          <p class="text-sm text-slate-300">${state.currentDay}</p>
+        </div>
+        <button onclick="goToNextDay()" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded">Próximo Dia →</button>
+      </div>
+      ${!isToday ? `<div class="mt-2 text-center"><button onclick="goToToday()" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Ir para Hoje</button></div>` : ''}
+    </div>
+
+    <!-- Day Totals -->
+    <div class="bg-gradient-to-r from-green-600 to-green-800 p-4 rounded mb-6">
+      <h4 class="font-bold text-lg">Totais de ${dateLabel}</h4>
+      <p class="text-white text-xl">${Math.round(dayTotals.kcal)} kcal • ${Math.round(dayTotals.prot)} g proteína • ${Math.round(dayTotals.fat)} g gord.</p>
+    </div>
+
+    <!-- Custom Meal Form -->
+    <div class="bg-slate-800 p-4 rounded mb-6">
+      <h3 class="font-bold mb-3">➕ Adicionar Refeição Personalizada</h3>
+      <form id="customMealForm" class="grid md:grid-cols-5 gap-2">
+        <input type="text" name="customMealName" placeholder="Nome da refeição" required class="px-3 py-2 rounded bg-slate-700 text-white" />
+        <input type="number" name="customMealKcal" step="0.1" placeholder="Calorias (kcal)" required class="px-3 py-2 rounded bg-slate-700 text-white" />
+        <input type="number" name="customMealProt" step="0.1" placeholder="Proteína (g)" class="px-3 py-2 rounded bg-slate-700 text-white" />
+        <input type="number" name="customMealFat" step="0.1" placeholder="Gordura (g)" class="px-3 py-2 rounded bg-slate-700 text-white" />
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" name="saveAsReusable" class="rounded" />
+            Salvar como reutilizável
+          </label>
+          <button type="submit" class="bg-green-600 hover:bg-green-500 px-3 py-2 rounded font-semibold">Adicionar</button>
+        </div>
+      </form>
+      <p class="text-slate-400 text-xs mt-2">A refeição será registrada para ${dateLabel}. Marque "Salvar como reutilizável" para adicioná-la à lista abaixo.</p>
+    </div>
+
+    <!-- Custom Meals List -->
+    ${state.customMeals.length > 0 ? `
+    <div class="bg-slate-800 p-4 rounded mb-6">
+      <h3 class="font-bold mb-3">🍽️ Minhas Refeições Personalizadas</h3>
+      <div class="grid md:grid-cols-2 gap-3">
+        ${state.customMeals.map(m => `
+          <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
+            <div>
+              <p class="font-semibold">${m.name}</p>
+              <p class="text-slate-300 text-xs">${m.kcal} kcal • ${m.prot}g prot • ${m.fat}g gord</p>
+            </div>
+            <div class="flex gap-2">
+              <button data-meal-name="${m.name.replace(/"/g, '&quot;')}" class="meal-register-btn bg-orange-500 hover:bg-orange-400 px-3 py-1 rounded">Registrar</button>
+              <button onclick="handleDeleteCustomMeal('${m.id}')" class="text-red-400 hover:text-red-300 px-2">🗑️</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    ` : ''}
+
+    <!-- LiveUp Marmitas -->
+    <div class="bg-slate-800 p-4 rounded mb-6">
+      <h3 class="font-bold mb-3">🍱 Marmitas LiveUp (Disponíveis)</h3>
+      <div class="grid md:grid-cols-2 gap-3">
         ${livUpMarmitas.map(m => `
           <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
             <div>
@@ -1012,16 +1436,33 @@ function renderAlimentacao(meals, totals) {
               <p class="text-slate-300 text-xs">${m.category} • ${m.size}${m.kcal ? ' • ' + m.kcal + ' kcal' : ''}${m.notes ? ' • ' + m.notes : ''}</p>
             </div>
             <div>
-              <button onclick="handleLogMeal('${m.name.replace(/'/g, "\\'")}')" class="bg-orange-500 px-3 py-1 rounded">Registrar</button>
+              <button data-meal-name="${m.name.replace(/"/g, '&quot;')}" class="meal-register-btn bg-orange-500 hover:bg-orange-400 px-3 py-1 rounded">Registrar</button>
             </div>
           </div>
         `).join('')}
       </div>
+    </div>
 
-      <div class="mt-4">
-        <h4 class="font-bold">Totais hoje</h4>
-        <p class="text-slate-300">${totals.kcal} kcal • ${totals.prot} g proteína • ${totals.fat} g gord.</p>
-      </div>
+    <!-- Meal History for Selected Day -->
+    <div class="bg-slate-800 p-4 rounded">
+      <h3 class="font-bold mb-3">📋 Histórico de ${dateLabel}</h3>
+      ${selectedDayMeals.length === 0 ? 
+        '<p class="text-slate-400">Nenhuma refeição registrada neste dia.</p>' :
+        `<div class="space-y-2">
+          ${selectedDayMeals.map(log => {
+            const nut = getMealNutritionByNameCombined(log.meal);
+            return `
+              <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
+                <div>
+                  <p class="font-semibold">${log.meal}</p>
+                  <p class="text-slate-300 text-xs">${log.time} • ${nut.kcal} kcal • ${nut.prot}g prot • ${nut.fat}g gord</p>
+                </div>
+                <button data-meal-id="${log.id}" class="meal-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
+              </div>
+            `;
+          }).join('')}
+        </div>`
+      }
     </div>
   `;
 }
@@ -1029,16 +1470,111 @@ function renderAlimentacao(meals, totals) {
 function renderEvolucao(bodyMetrics, user) {
   return `
     <div class="bg-slate-800 p-4 rounded mb-6">
-      <h3 class="font-bold">Adicionar Medidas</h3>
-      <form id="metricsForm" class="grid md:grid-cols-8 gap-2 mt-3">
-        <input type="date" name="date" value="${new Date().toISOString().split('T')[0]}" required class="px-2 py-2 rounded bg-slate-700"/>
-        <input type="number" name="weight" step="0.1" required placeholder="Peso (kg)" class="px-2 py-2 rounded bg-slate-700"/>
-        <input type="number" name="bodyFat" step="0.1" required placeholder="Gordura (%)" class="px-2 py-2 rounded bg-slate-700"/>
-        <input type="number" name="muscleMass" step="0.1" required placeholder="Massa muscular (kg)" class="px-2 py-2 rounded bg-slate-700"/>
-        <input type="number" name="visceralFat" placeholder="G.Visceral" class="px-2 py-2 rounded bg-slate-700"/>
-        <input type="number" name="waterPercent" step="0.1" placeholder="Água (%)" class="px-2 py-2 rounded bg-slate-700"/>
-        <input type="number" name="muscleSize" step="0.1" placeholder="Tamanho músculo (cm)" class="px-2 py-2 rounded bg-slate-700"/>
-        <button type="submit" class="bg-purple-600 px-3 py-2 rounded">➕ Adicionar</button>
+      <h3 class="font-bold text-xl mb-4">📊 Adicionar Medidas de Bioimpedância Completa</h3>
+      <p class="text-slate-300 text-sm mb-4">Preencha todos os campos disponíveis do seu equipamento de bioimpedância. Os campos obrigatórios são marcados com *. Os demais são opcionais mas recomendados para análise completa.</p>
+      
+      <form id="metricsForm" class="space-y-4">
+        <!-- Informações Básicas -->
+        <div class="bg-slate-700 p-4 rounded">
+          <h4 class="font-semibold mb-3 text-purple-300">📅 Informações Básicas</h4>
+          <div class="grid md:grid-cols-4 gap-3">
+            <input type="date" name="date" value="${new Date().toISOString().split('T')[0]}" required class="px-3 py-2 rounded bg-slate-600 text-white" title="Data da medição"/>
+            <input type="number" name="weight" step="0.01" required placeholder="Peso (kg)*" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="bodyFat" step="0.1" required placeholder="Gordura Corporal (%)*" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="muscleMass" step="0.1" required placeholder="Massa Muscular (kg)*" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+          </div>
+        </div>
+
+        <!-- Composição Corporal Avançada -->
+        <div class="bg-slate-700 p-4 rounded">
+          <h4 class="font-semibold mb-3 text-green-300">🧬 Composição Corporal Avançada</h4>
+          <div class="grid md:grid-cols-4 gap-3">
+            <input type="number" name="visceralFat" step="0.1" placeholder="Gordura Visceral" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="waterPercent" step="0.1" placeholder="Água Corporal (%)" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="boneMass" step="0.1" placeholder="Massa Óssea (kg)" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="proteinMass" step="0.1" placeholder="Proteína (kg)" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="mineralMass" step="0.1" placeholder="Minerais (kg)" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+          </div>
+        </div>
+
+        <!-- Massa Muscular Segmentada -->
+        <div class="bg-slate-700 p-4 rounded">
+          <h4 class="font-semibold mb-3 text-blue-300">💪 Massa Muscular Segmentada (kg)</h4>
+          <div class="grid md:grid-cols-5 gap-3">
+            <input type="number" name="muscleMassRightArm" step="0.1" placeholder="Braço Direito" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="muscleMassLeftArm" step="0.1" placeholder="Braço Esquerdo" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="muscleMassRightLeg" step="0.1" placeholder="Perna Direita" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="muscleMassLeftLeg" step="0.1" placeholder="Perna Esquerda" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="muscleMassTrunk" step="0.1" placeholder="Tronco" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+          </div>
+        </div>
+
+        <!-- Gordura Corporal Segmentada -->
+        <div class="bg-slate-700 p-4 rounded">
+          <h4 class="font-semibold mb-3 text-red-300">🔥 Gordura Corporal Segmentada (%)</h4>
+          <div class="grid md:grid-cols-5 gap-3">
+            <input type="number" name="bodyFatRightArm" step="0.1" placeholder="Braço Direito" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="bodyFatLeftArm" step="0.1" placeholder="Braço Esquerdo" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="bodyFatRightLeg" step="0.1" placeholder="Perna Direita" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="bodyFatLeftLeg" step="0.1" placeholder="Perna Esquerda" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="bodyFatTrunk" step="0.1" placeholder="Tronco" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+          </div>
+        </div>
+
+        <!-- Taxas Metabólicas -->
+        <div class="bg-slate-700 p-4 rounded">
+          <h4 class="font-semibold mb-3 text-orange-300">⚡ Taxas Metabólicas (kcal/dia)</h4>
+          <div class="grid md:grid-cols-3 gap-3">
+            <input type="number" name="bmr" placeholder="TMB - Taxa Metabólica Basal" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="rmr" placeholder="TMR - Taxa Metabólica Repouso" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="tdee" placeholder="TDEE - Gasto Energético Total" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+          </div>
+        </div>
+
+        <!-- Impedância Bioelétrica (Bioelectrical Impedance Analysis - BIA) -->
+        <div class="bg-slate-700 p-4 rounded">
+          <h4 class="font-semibold mb-3 text-cyan-300">⚡ Análise de Impedância Bioelétrica (BIA)</h4>
+          <div class="grid md:grid-cols-4 gap-3">
+            <input type="number" name="impedance" step="0.1" placeholder="Impedância (Ω)" class="px-3 py-2 rounded bg-slate-600 text-white" title="Impedância corporal total a 50kHz"/>
+            <input type="number" name="resistance" step="0.1" placeholder="Resistência (Ω)" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="reactance" step="0.1" placeholder="Reatância (Ω)" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="phaseAngle" step="0.1" placeholder="Ângulo de Fase (°)" class="px-3 py-2 rounded bg-slate-600 text-white" title="Indicador de saúde celular (normal: 5-7°)"/>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">💡 Ângulo de Fase: indicador de saúde celular. Normal: 5-7°. Maior = melhor integridade celular.</p>
+        </div>
+
+        <!-- Idades e Índices -->
+        <div class="bg-slate-700 p-4 rounded">
+          <h4 class="font-semibold mb-3 text-yellow-300">🎂 Idades Metabólica e Corporal</h4>
+          <div class="grid md:grid-cols-3 gap-3">
+            <input type="number" name="metabolicAge" placeholder="Idade Metabólica (anos)" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="bodyAge" placeholder="Idade Corporal (anos)" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="muscleSize" step="0.1" placeholder="Tamanho Muscular (cm)" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+          </div>
+        </div>
+
+        <!-- Circunferências Corporais -->
+        <div class="bg-slate-700 p-4 rounded">
+          <h4 class="font-semibold mb-3 text-pink-300">📏 Circunferências Corporais (cm)</h4>
+          <div class="grid md:grid-cols-4 gap-3">
+            <input type="number" name="chest" step="0.1" placeholder="Peito" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="waist" step="0.1" placeholder="Cintura" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="hips" step="0.1" placeholder="Quadril" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="shoulders" step="0.1" placeholder="Ombros" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="rightArm" step="0.1" placeholder="Braço Direito" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="leftArm" step="0.1" placeholder="Braço Esquerdo" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="rightThigh" step="0.1" placeholder="Coxa Direita" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="leftThigh" step="0.1" placeholder="Coxa Esquerda" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="rightCalf" step="0.1" placeholder="Panturrilha Direita" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="leftCalf" step="0.1" placeholder="Panturrilha Esquerda" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="neck" step="0.1" placeholder="Pescoço" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <button type="submit" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded font-semibold text-lg">➕ Adicionar Medição Completa</button>
+          <button type="button" onclick="document.getElementById('metricsForm').reset()" class="bg-slate-600 hover:bg-slate-500 px-4 py-3 rounded">🔄 Limpar</button>
+        </div>
       </form>
     </div>
 
@@ -1048,32 +1584,107 @@ function renderEvolucao(bodyMetrics, user) {
           <canvas id="muscleChart" height="160"></canvas>
         </div>
         <div style="width: 180px;" class="flex flex-col gap-2">
-          <button onclick="exportMuscleEvolutionCSV('${user.id}')" class="bg-blue-600 px-3 py-2 rounded">Exportar CSV</button>
-          <button onclick="alert('Backup (full DB export) em breve')" class="bg-amber-600 px-3 py-2 rounded">Backup / Exportar DB</button>
-          <div class="text-slate-300 text-sm mt-2">Gráfico: massa (kg) e tamanho (cm). Ao adicionar nova medida o gráfico redesenha automaticamente.</div>
+          <button onclick="exportMuscleEvolutionCSV('${user.id}')" class="bg-blue-600 px-3 py-2 rounded">📊 Exportar CSV</button>
+          <button onclick="alert('Backup (full DB export) em breve')" class="bg-amber-600 px-3 py-2 rounded">💾 Backup DB</button>
+          <div class="text-slate-300 text-sm mt-2">Gráfico de evolução: massa muscular e composição corporal ao longo do tempo.</div>
         </div>
       </div>
 
       <div class="overflow-x-auto mt-4">
         <table class="w-full text-sm">
-          <thead><tr class="border-b"><th>Data</th><th>Peso</th><th>Gordura</th><th>Massa</th><th>IMC</th><th>Água</th><th>BMR</th><th>Tamanho</th><th>Ações</th></tr></thead>
+          <thead><tr class="border-b border-slate-600">
+            <th class="py-2 px-2">Data</th>
+            <th>Peso</th>
+            <th>Gordura</th>
+            <th>Massa Musc.</th>
+            <th>IMC</th>
+            <th>Água</th>
+            <th>BMR</th>
+            <th>Ângulo Fase</th>
+            <th>Idade Met.</th>
+            <th>Ações</th>
+          </tr></thead>
           <tbody>
             ${bodyMetrics.slice().reverse().map(m => `
-              <tr class="border-b">
-                <td class="py-1 px-2">${m.date}</td>
-                <td class="py-1 px-2">${m.weight}kg</td>
-                <td class="py-1 px-2">${m.bodyFat}%</td>
-                <td class="py-1 px-2">${m.muscleMass}kg</td>
-                <td class="py-1 px-2">${m.bmi}</td>
-                <td class="py-1 px-2">${m.waterWeight || 0}kg / ${m.waterPercent || 0}%</td>
-                <td class="py-1 px-2">${m.bmr || '-'}</td>
-                <td class="py-1 px-2">${m.muscleSize || '-'}</td>
-                <td class="py-1 px-2"><button onclick="handleDeleteMetric('${m.id}')" class="text-red-400">🗄️</button></td>
+              <tr class="border-b border-slate-700 hover:bg-slate-700">
+                <td class="py-2 px-2">${m.date}</td>
+                <td class="py-2 px-2">${m.weight}kg</td>
+                <td class="py-2 px-2">${m.bodyFat}%</td>
+                <td class="py-2 px-2">${m.muscleMass}kg</td>
+                <td class="py-2 px-2">${m.bmi || '-'}</td>
+                <td class="py-2 px-2">${m.waterWeight || 0}kg</td>
+                <td class="py-2 px-2">${m.bmr || '-'}</td>
+                <td class="py-2 px-2">${m.phaseAngle ? m.phaseAngle + '°' : '-'}</td>
+                <td class="py-2 px-2">${m.metabolicAge ? m.metabolicAge + 'a' : '-'}</td>
+                <td class="py-2 px-2">
+                  <button onclick="handleDeleteMetric('${m.id}')" class="text-red-400 hover:text-red-300" title="Excluir e mover para archive">🗑️</button>
+                </td>
               </tr>
             `).join('')}
           </tbody>
         </table>
       </div>
+
+      ${bodyMetrics.length > 0 ? `
+        <div class="mt-6 bg-slate-700 p-4 rounded">
+          <h4 class="font-semibold mb-3">📈 Métricas Detalhadas da Última Medição</h4>
+          ${(() => {
+            const latest = bodyMetrics[bodyMetrics.length - 1];
+            return `
+              <div class="grid md:grid-cols-3 gap-4 text-sm">
+                ${latest.muscleMassRightArm ? `
+                  <div class="bg-slate-800 p-3 rounded">
+                    <p class="text-slate-400 text-xs mb-2">💪 Massa Muscular Segmentada</p>
+                    <p>Braço D: ${latest.muscleMassRightArm}kg | E: ${latest.muscleMassLeftArm}kg</p>
+                    <p>Perna D: ${latest.muscleMassRightLeg}kg | E: ${latest.muscleMassLeftLeg}kg</p>
+                    <p>Tronco: ${latest.muscleMassTrunk}kg</p>
+                  </div>
+                ` : ''}
+                ${latest.bodyFatRightArm ? `
+                  <div class="bg-slate-800 p-3 rounded">
+                    <p class="text-slate-400 text-xs mb-2">🔥 Gordura Segmentada</p>
+                    <p>Braço D: ${latest.bodyFatRightArm}% | E: ${latest.bodyFatLeftArm}%</p>
+                    <p>Perna D: ${latest.bodyFatRightLeg}% | E: ${latest.bodyFatLeftLeg}%</p>
+                    <p>Tronco: ${latest.bodyFatTrunk}%</p>
+                  </div>
+                ` : ''}
+                ${latest.boneMass ? `
+                  <div class="bg-slate-800 p-3 rounded">
+                    <p class="text-slate-400 text-xs mb-2">🧬 Composição Avançada</p>
+                    <p>Massa Óssea: ${latest.boneMass}kg</p>
+                    <p>Proteína: ${latest.proteinMass}kg</p>
+                    <p>Minerais: ${latest.mineralMass}kg</p>
+                  </div>
+                ` : ''}
+                ${latest.phaseAngle ? `
+                  <div class="bg-slate-800 p-3 rounded">
+                    <p class="text-slate-400 text-xs mb-2">⚡ BIA - Impedância</p>
+                    <p>Ângulo de Fase: ${latest.phaseAngle}°</p>
+                    <p>Impedância: ${latest.impedance}Ω</p>
+                    <p>Resistência: ${latest.resistance}Ω</p>
+                  </div>
+                ` : ''}
+                ${latest.chest ? `
+                  <div class="bg-slate-800 p-3 rounded">
+                    <p class="text-slate-400 text-xs mb-2">📏 Circunferências (cm)</p>
+                    <p>Peito: ${latest.chest} | Cintura: ${latest.waist}</p>
+                    <p>Braço D: ${latest.rightArm} | E: ${latest.leftArm}</p>
+                    <p>Coxa D: ${latest.rightThigh} | E: ${latest.leftThigh}</p>
+                  </div>
+                ` : ''}
+                ${latest.tdee ? `
+                  <div class="bg-slate-800 p-3 rounded">
+                    <p class="text-slate-400 text-xs mb-2">⚡ Taxas Metabólicas</p>
+                    <p>TMB: ${latest.bmr} kcal/dia</p>
+                    <p>TMR: ${latest.rmr} kcal/dia</p>
+                    <p>TDEE: ${latest.tdee} kcal/dia</p>
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          })()}
+        </div>
+      ` : ''}
     </div>
   `;
 }
@@ -1157,6 +1768,8 @@ window.addEventListener('beforeunload', () => { try { saveAllToDB(); } catch (e)
 
 (async function initApp() {
   await loadAllFromDB();
+  await loadCustomMeals(); // Load custom meals from IndexedDB/localStorage
+  
   // Ensure default users exist (do not overwrite)
   if (!state.users.pedro) state.users.pedro = initialUsers.pedro;
   if (!state.users.valentina) state.users.valentina = initialUsers.valentina;
