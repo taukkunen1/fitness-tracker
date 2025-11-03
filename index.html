@@ -160,6 +160,7 @@ let state = {
   comparisons: [],
   references: [],
   currentDay: new Date().toISOString().split('T')[0], // For day-by-day meal navigation
+  currentWorkoutDay: new Date().toISOString().split('T')[0], // For day-by-day workout navigation
   customMeals: [] // User-defined meals with nutrition info
 };
 
@@ -697,29 +698,42 @@ function removeUserPermanentlyFromArchive(archiveId) {
 }
 
 /* ----------------------------- Handlers (workout / meal / metrics) ----------------------------- */
-function handleLogWorkout(workoutName) {
+function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '') {
   const user = state.users[state.activeUser];
   if (!user) return alert('Nenhum usuário ativo');
+  
   const newLog = {
     id: Date.now(),
-    date: new Date().toISOString().split('T')[0],
+    date: state.currentWorkoutDay, // Use selected day instead of today
     time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    workout: workoutName,
+    exercise: exerciseName,
+    sets: sets || '-',
+    reps: reps || '-',
+    weight: weight || '-',
     completed: true
   };
+  
+  if (!user.workoutHistory) user.workoutHistory = [];
   user.workoutHistory.unshift(newLog);
   addOrUpdateUser(user);
+  
+  // Show success notification
+  const details = sets && reps ? ` (${sets}x${reps}${weight ? ' @ ' + weight + 'kg' : ''})` : '';
+  showNotification(`✅ Exercício registrado: ${exerciseName}${details}`, 'success');
+  render();
 }
 
 function handleDeleteWorkout(id) {
-  if (!confirm('Deseja mover este registro de treino para o arquivo (archive)?')) return;
+  if (!confirm('Deseja excluir este registro de treino? Ele será movido para o arquivo (archive) e poderá ser restaurado.')) return;
   const user = state.users[state.activeUser];
+  if (!user.workoutHistory) user.workoutHistory = [];
   const log = user.workoutHistory.find(l => l.id === id);
   if (!log) return alert('Registro não encontrado');
   archiveItem('workoutHistory', id, 'workout', log).then(() => {
     user.workoutHistory = user.workoutHistory.filter(l => l.id !== id);
     addOrUpdateUser(user);
-    alert('✅ Registro movido para archive. Não foi excluído permanentemente.');
+    showNotification('✅ Registro de treino excluído e movido para archive', 'success');
+    render();
   });
 }
 
@@ -807,6 +821,86 @@ function goToToday() {
   render();
 }
 
+/* ----------------------------- Workout Day Navigation ----------------------------- */
+function goToPreviousWorkoutDay() {
+  const current = new Date(state.currentWorkoutDay);
+  current.setDate(current.getDate() - 1);
+  state.currentWorkoutDay = current.toISOString().split('T')[0];
+  render();
+}
+
+function goToNextWorkoutDay() {
+  const current = new Date(state.currentWorkoutDay);
+  current.setDate(current.getDate() + 1);
+  state.currentWorkoutDay = current.toISOString().split('T')[0];
+  render();
+}
+
+function goToTodayWorkout() {
+  state.currentWorkoutDay = new Date().toISOString().split('T')[0];
+  render();
+}
+
+/* ----------------------------- Exercise Library ----------------------------- */
+const EXERCISE_LIBRARY = [
+  // Peito
+  { name: 'Supino reto', category: 'Peito', equipment: 'Barra' },
+  { name: 'Supino inclinado', category: 'Peito', equipment: 'Barra' },
+  { name: 'Supino declinado', category: 'Peito', equipment: 'Barra' },
+  { name: 'Crucifixo', category: 'Peito', equipment: 'Halteres' },
+  { name: 'Fly (peck deck)', category: 'Peito', equipment: 'Máquina' },
+  { name: 'Flexão', category: 'Peito', equipment: 'Peso corporal' },
+  
+  // Costas
+  { name: 'Barra fixa', category: 'Costas', equipment: 'Peso corporal' },
+  { name: 'Puxada frontal', category: 'Costas', equipment: 'Máquina' },
+  { name: 'Remada curvada', category: 'Costas', equipment: 'Barra' },
+  { name: 'Remada unilateral', category: 'Costas', equipment: 'Halter' },
+  { name: 'Remada sentado', category: 'Costas', equipment: 'Máquina' },
+  { name: 'Levantamento terra', category: 'Costas', equipment: 'Barra' },
+  { name: 'Pullover', category: 'Costas', equipment: 'Halter' },
+  
+  // Ombros
+  { name: 'Desenvolvimento militar', category: 'Ombros', equipment: 'Barra' },
+  { name: 'Desenvolvimento com halteres', category: 'Ombros', equipment: 'Halteres' },
+  { name: 'Elevação lateral', category: 'Ombros', equipment: 'Halteres' },
+  { name: 'Elevação frontal', category: 'Ombros', equipment: 'Halteres' },
+  { name: 'Remada alta', category: 'Ombros', equipment: 'Barra' },
+  { name: 'Crucifixo inverso', category: 'Ombros', equipment: 'Halteres' },
+  
+  // Bíceps
+  { name: 'Rosca direta', category: 'Bíceps', equipment: 'Barra' },
+  { name: 'Rosca alternada', category: 'Bíceps', equipment: 'Halteres' },
+  { name: 'Rosca martelo', category: 'Bíceps', equipment: 'Halteres' },
+  { name: 'Rosca concentrada', category: 'Bíceps', equipment: 'Halter' },
+  { name: 'Rosca scott', category: 'Bíceps', equipment: 'Barra W' },
+  
+  // Tríceps
+  { name: 'Tríceps testa', category: 'Tríceps', equipment: 'Barra' },
+  { name: 'Tríceps francês', category: 'Tríceps', equipment: 'Halter' },
+  { name: 'Tríceps corda', category: 'Tríceps', equipment: 'Polia' },
+  { name: 'Tríceps banco', category: 'Tríceps', equipment: 'Peso corporal' },
+  { name: 'Mergulho', category: 'Tríceps', equipment: 'Paralelas' },
+  
+  // Pernas
+  { name: 'Agachamento livre', category: 'Pernas', equipment: 'Barra' },
+  { name: 'Leg press 45°', category: 'Pernas', equipment: 'Máquina' },
+  { name: 'Cadeira extensora', category: 'Pernas', equipment: 'Máquina' },
+  { name: 'Cadeira flexora', category: 'Pernas', equipment: 'Máquina' },
+  { name: 'Stiff', category: 'Pernas', equipment: 'Barra' },
+  { name: 'Avanço (afundo)', category: 'Pernas', equipment: 'Halteres' },
+  { name: 'Agachamento sumô', category: 'Pernas', equipment: 'Halter' },
+  { name: 'Panturrilha em pé', category: 'Pernas', equipment: 'Máquina' },
+  { name: 'Panturrilha sentado', category: 'Pernas', equipment: 'Máquina' },
+  
+  // Abdômen
+  { name: 'Abdominal supra', category: 'Abdômen', equipment: 'Peso corporal' },
+  { name: 'Abdominal infra', category: 'Abdômen', equipment: 'Peso corporal' },
+  { name: 'Prancha', category: 'Abdômen', equipment: 'Peso corporal' },
+  { name: 'Abdominal oblíquo', category: 'Abdômen', equipment: 'Peso corporal' },
+  { name: 'Roda abdominal', category: 'Abdômen', equipment: 'Roda' }
+];
+
 /* ----------------------------- Custom meal handlers ----------------------------- */
 function handleAddCustomMeal(e) {
   e.preventDefault();
@@ -862,6 +956,24 @@ function handleDeleteCustomMeal(mealId) {
   saveCustomMeals();
   showNotification('✅ Refeição personalizada excluída', 'success');
   render();
+}
+
+/* ----------------------------- Custom workout handler ----------------------------- */
+function handleAddCustomWorkout(e) {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const exercise = formData.get('customExercise');
+  const sets = formData.get('customSets');
+  const reps = formData.get('customReps');
+  const weight = formData.get('customWeight');
+  
+  if (!exercise) {
+    alert('Nome do exercício é obrigatório');
+    return;
+  }
+  
+  handleLogWorkout(exercise, sets, reps, weight);
+  e.target.reset();
 }
 
 /* ----------------------------- BMR calculation ----------------------------- */
@@ -1161,6 +1273,35 @@ function attachMealDeleteButtons() {
   });
 }
 
+function attachWorkoutButtons() {
+  const workoutButtons = document.querySelectorAll('.workout-register-btn');
+  workoutButtons.forEach(btn => {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      const exercise = this.getAttribute('data-exercise');
+      const sets = this.getAttribute('data-sets');
+      const reps = this.getAttribute('data-reps');
+      const weight = this.getAttribute('data-weight');
+      if (exercise) {
+        handleLogWorkout(exercise, sets, reps, weight);
+      }
+    };
+  });
+}
+
+function attachWorkoutDeleteButtons() {
+  const deleteButtons = document.querySelectorAll('.workout-delete-btn');
+  deleteButtons.forEach(btn => {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      const workoutId = parseInt(this.getAttribute('data-workout-id'));
+      if (workoutId) {
+        handleDeleteWorkout(workoutId);
+      }
+    };
+  });
+}
+
 /* ----------------------------- RENDER (UI) -----------------------------
    The UI is intentionally verbose and explanatory to ensure clarity for you.
    Buttons that perform deletions will refer to archive workflow; nothing is removed
@@ -1248,6 +1389,18 @@ function render() {
     // attach delete buttons using event delegation
     attachMealDeleteButtons();
   }
+  
+  // attach workout form and buttons if in treino tab
+  if (state.activeTab === 'treino') {
+    const customWorkoutForm = document.getElementById('customWorkoutForm');
+    if (customWorkoutForm) customWorkoutForm.addEventListener('submit', handleAddCustomWorkout);
+    
+    // attach workout buttons using event delegation
+    attachWorkoutButtons();
+    
+    // attach workout delete buttons using event delegation
+    attachWorkoutDeleteButtons();
+  }
 }
 
 /* ----------------------------- SMALL RENDER COMPONENTS ----------------------------- */
@@ -1289,41 +1442,112 @@ function renderDashboard(user, latest) {
 }
 
 function renderTreino(user) {
-  const templatesListHTML = Object.values(templates).map(t => `
-    <div class="bg-slate-700 p-4 rounded mb-3">
-      <p class="font-bold">${t.name}</p>
-      <p class="text-slate-300 text-sm">${t.description}</p>
-      <div class="mt-2 flex gap-2">
-        <button onclick="applyTemplateToUser('${t.id}','${user.id}')" class="bg-green-600 px-3 py-1 rounded">Aplicar ao perfil</button>
-      </div>
-      <div class="mt-2 text-slate-300 text-sm">
-        ${Object.keys(t.sessions).map(k=>`<strong>${k} — ${t.sessions[k].name}</strong><br/>${t.sessions[k].exercises.map(e=>`• ${e.name} ${e.sets?(' — ' + e.sets + ' x ' + e.reps):''}`).join('<br/>')}<br/><br/>`).join('')}
-      </div>
-    </div>
-  `).join('');
-
-  const customPrograms = user.customPrograms || {};
-  const customHTML = Object.keys(customPrograms).length === 0 ? '<p class="text-slate-400">Nenhum programa salvo neste perfil.</p>' : Object.values(customPrograms).map(p => `
-    <div class="bg-slate-700 p-3 rounded mb-2">
-      <p class="font-bold">${p.name}</p><p class="text-slate-300 text-sm">${p.description || ''}</p>
-      <div class="mt-2 flex gap-2"><button onclick="alert('Abrir programa salvo: editar em future UI')" class="bg-indigo-600 px-3 py-1 rounded">Ver</button><button onclick="removeUserProgram('${user.id}','${p.id}')" class="bg-red-500 px-3 py-1 rounded">Remover</button></div>
-    </div>
-  `).join('');
-
+  if (!user.workoutHistory) user.workoutHistory = [];
+  
+  // Filter workouts for the selected day
+  const selectedDayWorkouts = user.workoutHistory.filter(w => w.date === state.currentWorkoutDay);
+  
+  // Format date for display
+  const displayDate = new Date(state.currentWorkoutDay + 'T00:00:00');
+  const isToday = state.currentWorkoutDay === new Date().toISOString().split('T')[0];
+  const dateLabel = isToday ? 'Hoje' : displayDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' });
+  
+  // Group exercises by category
+  const categorizedExercises = {};
+  EXERCISE_LIBRARY.forEach(ex => {
+    if (!categorizedExercises[ex.category]) categorizedExercises[ex.category] = [];
+    categorizedExercises[ex.category].push(ex);
+  });
+  
   return `
-    <div class="grid md:grid-cols-2 gap-4 mb-6">
-      <div class="bg-slate-800 p-4 rounded">
-        <h3 class="font-bold mb-3">Templates de Treino (evidências)</h3>
-        ${templatesListHTML}
+    <!-- Day Navigation -->
+    <div class="bg-slate-800 p-4 rounded mb-6">
+      <div class="flex justify-between items-center">
+        <button onclick="goToPreviousWorkoutDay()" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded">← Dia Anterior</button>
+        <div class="text-center">
+          <p class="text-lg font-bold">${dateLabel}</p>
+          <p class="text-sm text-slate-300">${state.currentWorkoutDay}</p>
+        </div>
+        <button onclick="goToNextWorkoutDay()" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded">Próximo Dia →</button>
       </div>
-      <div class="bg-slate-800 p-4 rounded">
-        <h3 class="font-bold mb-3">Programas salvos no perfil (${Object.keys(customPrograms).length})</h3>
-        ${customHTML}
+      ${!isToday ? `<div class="mt-2 text-center"><button onclick="goToTodayWorkout()" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Ir para Hoje</button></div>` : ''}
+    </div>
+
+    <!-- Custom Workout Form -->
+    <div class="bg-slate-800 p-4 rounded mb-6">
+      <h3 class="font-bold text-xl mb-3">➕ Adicionar Exercício Personalizado</h3>
+      <form id="customWorkoutForm" class="space-y-3">
+        <div class="grid md:grid-cols-4 gap-3">
+          <input type="text" name="customExercise" placeholder="Nome do exercício" required class="px-3 py-2 rounded bg-slate-700 text-white" />
+          <input type="text" name="customSets" placeholder="Séries (ex: 3)" class="px-3 py-2 rounded bg-slate-700 text-white" />
+          <input type="text" name="customReps" placeholder="Repetições (ex: 12)" class="px-3 py-2 rounded bg-slate-700 text-white" />
+          <input type="text" name="customWeight" placeholder="Carga (kg)" class="px-3 py-2 rounded bg-slate-700 text-white" />
+        </div>
+        <button type="submit" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded font-semibold">Adicionar Exercício</button>
+      </form>
+      <p class="text-slate-300 text-sm mt-2">O exercício será registrado para ${dateLabel}.</p>
+    </div>
+
+    <!-- Exercise Library by Category -->
+    <div class="bg-slate-800 p-4 rounded mb-6">
+      <h3 class="font-bold text-xl mb-4">💪 Biblioteca de Exercícios</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        ${Object.keys(categorizedExercises).map(category => `
+          <div class="bg-slate-700 p-3 rounded">
+            <h4 class="font-semibold text-lg mb-2 text-purple-300">${category}</h4>
+            <div class="space-y-2">
+              ${categorizedExercises[category].map(ex => `
+                <div class="flex justify-between items-center bg-slate-800 p-2 rounded">
+                  <div>
+                    <p class="font-medium">${ex.name}</p>
+                    <p class="text-xs text-slate-400">${ex.equipment}</p>
+                  </div>
+                  <button data-exercise="${ex.name}" data-sets="" data-reps="" data-weight="" class="workout-register-btn bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Registrar</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
+
+    <!-- Workout Templates -->
     <div class="bg-slate-800 p-4 rounded mb-6">
-      <h3 class="font-bold">Observações práticas</h3>
-      <p class="text-slate-300 text-sm">Aplique o template desejado e o mesmo será salvo diretamente no perfil (IndexedDB). Os programas salvos nunca são excluídos sem mover para archive.</p>
+      <h3 class="font-bold text-xl mb-3">📋 Templates de Treino</h3>
+      <div class="grid md:grid-cols-3 gap-3">
+        ${Object.values(templates).map(t => `
+          <div class="bg-slate-700 p-3 rounded">
+            <p class="font-bold text-lg">${t.name}</p>
+            <p class="text-slate-300 text-sm mb-2">${t.description}</p>
+            <button onclick="applyTemplateToUser('${t.id}','${user.id}')" class="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-sm w-full">Aplicar Template</button>
+            <details class="mt-2">
+              <summary class="text-sm text-blue-300 cursor-pointer">Ver exercícios</summary>
+              <div class="mt-2 text-xs text-slate-300">
+                ${Object.keys(t.sessions).map(k=>`<strong>${k} — ${t.sessions[k].name}</strong><br/>${t.sessions[k].exercises.map(e=>`• ${e.name} ${e.sets?(' — ' + e.sets + ' x ' + e.reps):''}`).join('<br/>')}<br/><br/>`).join('')}
+              </div>
+            </details>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Workout History for Selected Day -->
+    <div class="bg-slate-800 p-4 rounded">
+      <h3 class="font-bold text-xl mb-3">📋 Histórico de ${dateLabel}</h3>
+      ${selectedDayWorkouts.length === 0 ? 
+        `<p class="text-slate-400">Nenhum treino registrado neste dia.</p>` :
+        `<div class="space-y-2">
+          ${selectedDayWorkouts.map(log => `
+            <div class="flex justify-between items-center bg-slate-700 p-3 rounded">
+              <div>
+                <p class="font-semibold">${log.exercise || log.workout}</p>
+                <p class="text-slate-300 text-xs">${log.time}${log.sets && log.sets !== '-' ? ` • ${log.sets}x${log.reps}` : ''}${log.weight && log.weight !== '-' ? ` • ${log.weight}kg` : ''}</p>
+              </div>
+              <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
+            </div>
+          `).join('')}
+        </div>`
+      }
     </div>
   `;
 }
