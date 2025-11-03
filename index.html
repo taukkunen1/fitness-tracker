@@ -158,7 +158,9 @@ let state = {
   activeUser: 'pedro',
   users: {},
   comparisons: [],
-  references: []
+  references: [],
+  currentDay: new Date().toISOString().split('T')[0], // For day-by-day meal navigation
+  customMeals: [] // User-defined meals with nutrition info
 };
 
 // Chart holder
@@ -414,10 +416,34 @@ function parseNumber(value) {
   const n = parseFloat(String(value).replace(/[^\d.-]/g, ''));
   return isNaN(n) ? 0 : n;
 }
+
+// Combined meal nutrition lookup: prioritize custom meals, then LiveUp marmitas
+function getMealNutritionByNameCombined(name) {
+  // First check custom meals
+  const customMeal = state.customMeals.find(m => m.name === name);
+  if (customMeal) {
+    return { 
+      kcal: parseNumber(customMeal.kcal), 
+      prot: parseNumber(customMeal.prot), 
+      fat: parseNumber(customMeal.fat) 
+    };
+  }
+  // Then check LiveUp marmitas
+  const liveUpMeal = livUpMarmitas.find(m => m.name === name);
+  if (liveUpMeal) {
+    return { 
+      kcal: parseNumber(liveUpMeal.kcal), 
+      prot: parseNumber(liveUpMeal.prot), 
+      fat: parseNumber(liveUpMeal.fat) 
+    };
+  }
+  // Default values if not found
+  return { kcal: 0, prot: 0, fat: 0 };
+}
+
+// Legacy function for backward compatibility
 function getMealNutritionByName(name) {
-  const meal = livUpMarmitas.find(m => m.name === name);
-  if (!meal) return { kcal: 0, prot: 0, fat: 0 };
-  return { kcal: parseNumber(meal.kcal), prot: parseNumber(meal.prot), fat: parseNumber(meal.fat) };
+  return getMealNutritionByNameCombined(name);
 }
 
 /* ----------------------------- Persistence: Save / Load ----------------------------- */
@@ -506,6 +532,40 @@ async function loadAllFromDB() {
   }
 }
 
+/* ----------------------------- Custom Meals Management -----------------------------
+   Load and save custom meals from/to IndexedDB settings store and localStorage fallback
+-------------------------------------------------------------------------------------------- */
+async function loadCustomMeals() {
+  try {
+    const customMealsData = await dbGet(STORE_SETTINGS, 'customMeals').catch(() => null);
+    if (customMealsData && customMealsData.value) {
+      state.customMeals = customMealsData.value;
+      return;
+    }
+  } catch (err) {
+    console.warn('Failed to load custom meals from IndexedDB', err);
+  }
+  
+  // Fallback to localStorage
+  const lsCustomMeals = loadLS('ft_custom_meals');
+  if (lsCustomMeals && Array.isArray(lsCustomMeals)) {
+    state.customMeals = lsCustomMeals;
+  } else {
+    state.customMeals = [];
+  }
+}
+
+async function saveCustomMeals() {
+  try {
+    await dbPut(STORE_SETTINGS, { key: 'customMeals', value: state.customMeals });
+  } catch (err) {
+    console.error('Failed to save custom meals to IndexedDB', err);
+  }
+  
+  // Also save to localStorage as fallback
+  saveLS('ft_custom_meals', state.customMeals);
+}
+
 /* ----------------------------- Soft-delete / Archive workflow -----------------------------
    Instead of permanently deleting, we move to 'archive' store with metadata:
      { id, originStore, originId, type, payload, deletedAt, deletedBy }
@@ -588,7 +648,14 @@ function handleDeleteWorkout(id) {
 function handleLogMeal(mealName) {
   const user = state.users[state.activeUser];
   if (!user) return alert('Nenhum usuário ativo');
-  const newLog = { id: Date.now(), date: new Date().toISOString().split('T')[0], time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), meal: mealName };
+  // Use currentDay for meal logging, make meal name safe for storage
+  const safeMealName = String(mealName); // Ensure it's a string, handles special characters
+  const newLog = { 
+    id: Date.now(), 
+    date: state.currentDay, // Use selected day instead of today
+    time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), 
+    meal: safeMealName 
+  };
   user.mealHistory.unshift(newLog);
   addOrUpdateUser(user);
 }
@@ -603,6 +670,87 @@ function handleDeleteMeal(id) {
     addOrUpdateUser(user);
     alert('✅ Registro de refeição movido para archive.');
   });
+}
+
+/* ----------------------------- Day navigation for meals ----------------------------- */
+function setCurrentDay(dateString) {
+  state.currentDay = dateString;
+  render();
+}
+
+function goToPreviousDay() {
+  const current = new Date(state.currentDay);
+  current.setDate(current.getDate() - 1);
+  state.currentDay = current.toISOString().split('T')[0];
+  render();
+}
+
+function goToNextDay() {
+  const current = new Date(state.currentDay);
+  current.setDate(current.getDate() + 1);
+  state.currentDay = current.toISOString().split('T')[0];
+  render();
+}
+
+function goToToday() {
+  state.currentDay = new Date().toISOString().split('T')[0];
+  render();
+}
+
+/* ----------------------------- Custom meal handlers ----------------------------- */
+function handleAddCustomMeal(e) {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const name = formData.get('customMealName');
+  const kcal = formData.get('customMealKcal');
+  const prot = formData.get('customMealProt');
+  const fat = formData.get('customMealFat');
+  const saveAsReusable = formData.get('saveAsReusable') === 'on';
+  
+  if (!name || !kcal) {
+    alert('Nome e calorias são obrigatórios');
+    return;
+  }
+  
+  // Check if already exists
+  const exists = state.customMeals.find(m => m.name === name);
+  if (exists && !confirm('Já existe uma refeição com este nome. Deseja substituir?')) {
+    return;
+  }
+  
+  const customMeal = {
+    id: `custom_meal_${Date.now()}`,
+    name: name.trim(),
+    kcal: parseFloat(kcal) || 0,
+    prot: parseFloat(prot) || 0,
+    fat: parseFloat(fat) || 0,
+    createdAt: new Date().toISOString(),
+    createdBy: state.activeUser
+  };
+  
+  if (saveAsReusable) {
+    // Remove existing if updating
+    state.customMeals = state.customMeals.filter(m => m.name !== name);
+    state.customMeals.push(customMeal);
+    saveCustomMeals();
+  }
+  
+  // Always log the meal to current day
+  handleLogMeal(name.trim());
+  
+  // Reset form
+  e.target.reset();
+  
+  if (saveAsReusable) {
+    alert('✅ Refeição personalizada salva e registrada!');
+  }
+}
+
+function handleDeleteCustomMeal(mealId) {
+  if (!confirm('Deseja excluir esta refeição personalizada?')) return;
+  state.customMeals = state.customMeals.filter(m => m.id !== mealId);
+  saveCustomMeals();
+  render();
 }
 
 /* ----------------------------- BMR calculation ----------------------------- */
@@ -820,6 +968,29 @@ function buildReferenceNotesForNutrition() {
   return `Referências: ${refs.slice(0,3).map(r => `${r.authors} ${r.year}`).join(' • ')}. ` + renderReferenceLinksHTML(refs);
 }
 
+/* ----------------------------- Event Delegation for Meal Buttons -----------------------------
+   This function attaches event listeners to meal registration buttons using event delegation.
+   This approach is more robust than inline onclick handlers and handles special characters properly.
+------------------------------------------------------------------------------------------------ */
+function attachMealButtons() {
+  // Remove any existing listeners to avoid duplicates
+  const mealButtons = document.querySelectorAll('.meal-register-btn');
+  mealButtons.forEach(btn => {
+    // Clone and replace to remove old listeners
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    
+    // Add new listener
+    newBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const mealName = this.getAttribute('data-meal-name');
+      if (mealName) {
+        handleLogMeal(mealName);
+      }
+    });
+  });
+}
+
 /* ----------------------------- RENDER (UI) -----------------------------
    The UI is intentionally verbose and explanatory to ensure clarity for you.
    Buttons that perform deletions will refer to archive workflow; nothing is removed
@@ -904,6 +1075,15 @@ function render() {
   // attach metric form listener if exists
   const metricsForm = document.getElementById('metricsForm');
   if (metricsForm) metricsForm.addEventListener('submit', handleAddMetrics);
+  
+  // attach custom meal form listener if in alimentacao tab
+  if (state.activeTab === 'alimentacao') {
+    const customMealForm = document.getElementById('customMealForm');
+    if (customMealForm) customMealForm.addEventListener('submit', handleAddCustomMeal);
+    
+    // attach meal buttons using event delegation
+    attachMealButtons();
+  }
 }
 
 /* ----------------------------- SMALL RENDER COMPONENTS ----------------------------- */
@@ -1001,10 +1181,90 @@ function renderNutricao(user) {
 }
 
 function renderAlimentacao(meals, totals) {
+  const currentUser = state.users[state.activeUser];
+  const mealHistory = currentUser.mealHistory || [];
+  
+  // Filter meals for the selected day
+  const selectedDayMeals = mealHistory.filter(m => m.date === state.currentDay);
+  
+  // Calculate totals for the selected day
+  const dayTotals = selectedDayMeals.reduce((acc, log) => {
+    const nut = getMealNutritionByNameCombined(log.meal);
+    acc.kcal += nut.kcal; 
+    acc.prot += nut.prot; 
+    acc.fat += nut.fat;
+    return acc;
+  }, { kcal: 0, prot: 0, fat: 0 });
+  
+  // Format date for display
+  const displayDate = new Date(state.currentDay + 'T00:00:00');
+  const isToday = state.currentDay === new Date().toISOString().split('T')[0];
+  const dateLabel = isToday ? 'Hoje' : displayDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' });
+  
   return `
+    <!-- Day Navigation -->
     <div class="bg-slate-800 p-4 rounded mb-6">
-      <h3 class="font-bold">Marmitas LiveUp (restauradas)</h3>
-      <div class="grid md:grid-cols-2 gap-3 mt-3">
+      <div class="flex justify-between items-center">
+        <button onclick="goToPreviousDay()" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded">← Dia Anterior</button>
+        <div class="text-center">
+          <p class="text-lg font-bold">${dateLabel}</p>
+          <p class="text-sm text-slate-300">${state.currentDay}</p>
+        </div>
+        <button onclick="goToNextDay()" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded">Próximo Dia →</button>
+      </div>
+      ${!isToday ? `<div class="mt-2 text-center"><button onclick="goToToday()" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Ir para Hoje</button></div>` : ''}
+    </div>
+
+    <!-- Day Totals -->
+    <div class="bg-gradient-to-r from-green-600 to-green-800 p-4 rounded mb-6">
+      <h4 class="font-bold text-lg">Totais de ${dateLabel}</h4>
+      <p class="text-white text-xl">${Math.round(dayTotals.kcal)} kcal • ${Math.round(dayTotals.prot)} g proteína • ${Math.round(dayTotals.fat)} g gord.</p>
+    </div>
+
+    <!-- Custom Meal Form -->
+    <div class="bg-slate-800 p-4 rounded mb-6">
+      <h3 class="font-bold mb-3">➕ Adicionar Refeição Personalizada</h3>
+      <form id="customMealForm" class="grid md:grid-cols-5 gap-2">
+        <input type="text" name="customMealName" placeholder="Nome da refeição" required class="px-3 py-2 rounded bg-slate-700 text-white" />
+        <input type="number" name="customMealKcal" step="0.1" placeholder="Calorias (kcal)" required class="px-3 py-2 rounded bg-slate-700 text-white" />
+        <input type="number" name="customMealProt" step="0.1" placeholder="Proteína (g)" class="px-3 py-2 rounded bg-slate-700 text-white" />
+        <input type="number" name="customMealFat" step="0.1" placeholder="Gordura (g)" class="px-3 py-2 rounded bg-slate-700 text-white" />
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" name="saveAsReusable" class="rounded" />
+            Salvar como reutilizável
+          </label>
+          <button type="submit" class="bg-green-600 hover:bg-green-500 px-3 py-2 rounded font-semibold">Adicionar</button>
+        </div>
+      </form>
+      <p class="text-slate-400 text-xs mt-2">A refeição será registrada para ${dateLabel}. Marque "Salvar como reutilizável" para adicioná-la à lista abaixo.</p>
+    </div>
+
+    <!-- Custom Meals List -->
+    ${state.customMeals.length > 0 ? `
+    <div class="bg-slate-800 p-4 rounded mb-6">
+      <h3 class="font-bold mb-3">🍽️ Minhas Refeições Personalizadas</h3>
+      <div class="grid md:grid-cols-2 gap-3">
+        ${state.customMeals.map(m => `
+          <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
+            <div>
+              <p class="font-semibold">${m.name}</p>
+              <p class="text-slate-300 text-xs">${m.kcal} kcal • ${m.prot}g prot • ${m.fat}g gord</p>
+            </div>
+            <div class="flex gap-2">
+              <button data-meal-name="${m.name.replace(/"/g, '&quot;')}" class="meal-register-btn bg-orange-500 hover:bg-orange-400 px-3 py-1 rounded">Registrar</button>
+              <button onclick="handleDeleteCustomMeal('${m.id}')" class="text-red-400 hover:text-red-300 px-2">🗑️</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    ` : ''}
+
+    <!-- LiveUp Marmitas -->
+    <div class="bg-slate-800 p-4 rounded mb-6">
+      <h3 class="font-bold mb-3">🍱 Marmitas LiveUp (Disponíveis)</h3>
+      <div class="grid md:grid-cols-2 gap-3">
         ${livUpMarmitas.map(m => `
           <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
             <div>
@@ -1012,16 +1272,33 @@ function renderAlimentacao(meals, totals) {
               <p class="text-slate-300 text-xs">${m.category} • ${m.size}${m.kcal ? ' • ' + m.kcal + ' kcal' : ''}${m.notes ? ' • ' + m.notes : ''}</p>
             </div>
             <div>
-              <button onclick="handleLogMeal('${m.name.replace(/'/g, "\\'")}')" class="bg-orange-500 px-3 py-1 rounded">Registrar</button>
+              <button data-meal-name="${m.name.replace(/"/g, '&quot;')}" class="meal-register-btn bg-orange-500 hover:bg-orange-400 px-3 py-1 rounded">Registrar</button>
             </div>
           </div>
         `).join('')}
       </div>
+    </div>
 
-      <div class="mt-4">
-        <h4 class="font-bold">Totais hoje</h4>
-        <p class="text-slate-300">${totals.kcal} kcal • ${totals.prot} g proteína • ${totals.fat} g gord.</p>
-      </div>
+    <!-- Meal History for Selected Day -->
+    <div class="bg-slate-800 p-4 rounded">
+      <h3 class="font-bold mb-3">📋 Histórico de ${dateLabel}</h3>
+      ${selectedDayMeals.length === 0 ? 
+        '<p class="text-slate-400">Nenhuma refeição registrada neste dia.</p>' :
+        `<div class="space-y-2">
+          ${selectedDayMeals.map(log => {
+            const nut = getMealNutritionByNameCombined(log.meal);
+            return `
+              <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
+                <div>
+                  <p class="font-semibold">${log.meal}</p>
+                  <p class="text-slate-300 text-xs">${log.time} • ${nut.kcal} kcal • ${nut.prot}g prot • ${nut.fat}g gord</p>
+                </div>
+                <button onclick="handleDeleteMeal(${log.id})" class="text-red-400 hover:text-red-300">🗑️</button>
+              </div>
+            `;
+          }).join('')}
+        </div>`
+      }
     </div>
   `;
 }
@@ -1157,6 +1434,8 @@ window.addEventListener('beforeunload', () => { try { saveAllToDB(); } catch (e)
 
 (async function initApp() {
   await loadAllFromDB();
+  await loadCustomMeals(); // Load custom meals from IndexedDB/localStorage
+  
   // Ensure default users exist (do not overwrite)
   if (!state.users.pedro) state.users.pedro = initialUsers.pedro;
   if (!state.users.valentina) state.users.valentina = initialUsers.valentina;
