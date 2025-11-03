@@ -973,21 +973,16 @@ function buildReferenceNotesForNutrition() {
    This approach is more robust than inline onclick handlers and handles special characters properly.
 ------------------------------------------------------------------------------------------------ */
 function attachMealButtons() {
-  // Remove any existing listeners to avoid duplicates
   const mealButtons = document.querySelectorAll('.meal-register-btn');
   mealButtons.forEach(btn => {
-    // Clone and replace to remove old listeners
-    const newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
-    
-    // Add new listener
-    newBtn.addEventListener('click', function(e) {
+    // Remove old listener if exists by replacing with a new one
+    btn.onclick = function(e) {
       e.preventDefault();
       const mealName = this.getAttribute('data-meal-name');
       if (mealName) {
         handleLogMeal(mealName);
       }
-    });
+    };
   });
 }
 
