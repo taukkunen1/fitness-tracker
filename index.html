@@ -1148,6 +1148,19 @@ function attachMealButtons() {
   });
 }
 
+function attachMealDeleteButtons() {
+  const deleteButtons = document.querySelectorAll('.meal-delete-btn');
+  deleteButtons.forEach(btn => {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      const mealId = parseInt(this.getAttribute('data-meal-id'));
+      if (mealId) {
+        handleDeleteMeal(mealId);
+      }
+    };
+  });
+}
+
 /* ----------------------------- RENDER (UI) -----------------------------
    The UI is intentionally verbose and explanatory to ensure clarity for you.
    Buttons that perform deletions will refer to archive workflow; nothing is removed
@@ -1166,15 +1179,6 @@ function render() {
   const mealHistory = currentUser.mealHistory || [];
   const bodyMetrics = currentUser.bodyMetrics || [];
   const latestMetrics = bodyMetrics[bodyMetrics.length - 1] || { weight: 0, bodyFat: 0, muscleMass: 0, bmi: 0, bmr: 0, waterPercent: 0, waterWeight: 0, muscleSize: 0 };
-
-  // compute today's totals
-  const today = new Date().toISOString().split('T')[0];
-  const todaysMeals = mealHistory.filter(m => m.date === today);
-  const totals = todaysMeals.reduce((acc, log) => {
-    const nut = getMealNutritionByName(log.meal);
-    acc.kcal += nut.kcal; acc.prot += nut.prot; acc.fat += nut.fat;
-    return acc;
-  }, { kcal: 0, prot: 0, fat: 0 });
 
   app.innerHTML = `
     <header class="bg-black/40 backdrop-blur-lg border-b border-purple-500/30 sticky top-0 z-50">
@@ -1210,7 +1214,7 @@ function render() {
         ${state.activeTab === 'dashboard' ? renderDashboard(currentUser, latestMetrics) : ''}
         ${state.activeTab === 'treino' ? renderTreino(currentUser) : ''}
         ${state.activeTab === 'nutricao' ? renderNutricao(currentUser) : ''}
-        ${state.activeTab === 'alimentacao' ? renderAlimentacao(mealHistory, totals) : ''}
+        ${state.activeTab === 'alimentacao' ? renderAlimentacao() : ''}
         ${state.activeTab === 'evolucao' ? renderEvolucao(bodyMetrics, currentUser) : ''}
         ${state.activeTab === 'comparacao' ? renderComparacao() : ''}
         ${state.activeTab === 'ciencia' ? renderCiencia() : ''}
@@ -1240,6 +1244,9 @@ function render() {
     
     // attach meal buttons using event delegation
     attachMealButtons();
+    
+    // attach delete buttons using event delegation
+    attachMealDeleteButtons();
   }
 }
 
@@ -1337,7 +1344,7 @@ function renderNutricao(user) {
   `;
 }
 
-function renderAlimentacao(meals, totals) {
+function renderAlimentacao() {
   const currentUser = state.users[state.activeUser];
   const mealHistory = currentUser.mealHistory || [];
   
@@ -1450,7 +1457,7 @@ function renderAlimentacao(meals, totals) {
                   <p class="font-semibold">${log.meal}</p>
                   <p class="text-slate-300 text-xs">${log.time} • ${nut.kcal} kcal • ${nut.prot}g prot • ${nut.fat}g gord</p>
                 </div>
-                <button onclick="handleDeleteMeal(${log.id})" class="text-red-400 hover:text-red-300">🗑️</button>
+                <button data-meal-id="${log.id}" class="meal-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
               </div>
             `;
           }).join('')}
