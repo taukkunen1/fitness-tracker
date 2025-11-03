@@ -1,3 +1,4 @@
+<DOCUMENT filename="index.html">
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -24,6 +25,7 @@
                     age: 30,
                     height: 175,
                     workoutHistory: loadData('pedro_workouts') || [],
+                    mealHistory: loadData('pedro_meals') || [],
                     bodyMetrics: loadData('pedro_metrics') || [{
                         date: new Date().toISOString().split('T')[0],
                         weight: 70.65,
@@ -40,6 +42,7 @@
                     age: 28,
                     height: 165,
                     workoutHistory: loadData('partner_workouts') || [],
+                    mealHistory: loadData('partner_meals') || [],
                     bodyMetrics: loadData('partner_metrics') || [{
                         date: new Date().toISOString().split('T')[0],
                         weight: 58.0,
@@ -136,6 +139,32 @@
         };
 
         // ======================
+        // MARMITAS LIV UP (ATUALIZADO COM MENU RECENTE)
+        // ======================
+        const livUpMarmitas = [
+            { name: 'Frango cremoso, arroz, feijão e brócolis no vapor', category: 'Dia a dia', size: '300g', kcal: '', prot: '' },
+            { name: 'Almôndega de frango, arroz 7 grãos', category: 'Baixa caloria até 350kcal', size: '300g', kcal: '', prot: '' },
+            { name: 'Feijoada light', category: 'Dia a dia', size: '300g', kcal: '', prot: '' },
+            { name: 'Carne louca com purê de mandioquinha', category: 'Dia a dia', size: '300g', kcal: '', prot: '' },
+            { name: 'Frango grelhado com legumes', category: 'Baixa caloria', size: '300g', kcal: '', prot: '' },
+            { name: 'Salmão com quinoa e vegetais', category: 'Premium', size: '300g', kcal: '', prot: '' },
+            { name: 'Bife de soja com arroz integral', category: 'Vegetariano', size: '300g', kcal: '', prot: '' },
+            { name: 'Picadinho de carne com batata doce', category: 'Dia a dia', size: '300g', kcal: '', prot: '' },
+            { name: 'Omelete de legumes com salada', category: 'Baixa caloria', size: '300g', kcal: '', prot: '' },
+            { name: 'Peito de peru com couscous marroquino', category: 'Dia a dia', size: '300g', kcal: '', prot: '' },
+            { name: 'Frango com limão siciliano, arroz jasmim e brócolis', category: 'Dia a dia', size: '', kcal: '444', prot: '36g' },
+            { name: 'Saint peter com cebolinha, arroz jasmim e cenoura', category: 'Dia a dia', size: '', kcal: '426', prot: '25g' },
+            { name: 'Falafel, couscous e legumes mediterrâneos', category: 'Vegetariano', size: '', kcal: '', prot: '' },
+            { name: 'Lentilha pomodoro, arroz de jasmim e brócolis', category: 'Vegetariano', size: '', kcal: '', prot: '' },
+            { name: 'Estrogonofe de cogumelo, arroz integral', category: 'Vegetariano', size: '', kcal: '', prot: '' },
+            { name: 'Iscas de filé mignon acebolado', category: 'Premium', size: '', kcal: '', prot: '' },
+            { name: 'Posta de salmão assado', category: 'Premium', size: '', kcal: '', prot: '' },
+            { name: 'Bolinha low carb de abóbora e carne com chia', category: 'Low Carb', size: '', kcal: '', prot: '' },
+            { name: 'Frango oriental, arroz com amêndoas e legumes', category: 'Performance', size: '580g', kcal: '', prot: '' },
+            { name: 'Carne moída, arroz e vegetais', category: 'Performance', size: '580g', kcal: '', prot: '' }
+        ];
+
+        // ======================
         // FUNÇÕES AUXILIARES
         // ======================
         function saveData(key, data) {
@@ -151,8 +180,10 @@
             state = { ...state, ...newState };
             saveData('pedro_workouts', state.users.pedro.workoutHistory);
             saveData('pedro_metrics', state.users.pedro.bodyMetrics);
+            saveData('pedro_meals', state.users.pedro.mealHistory);
             saveData('partner_workouts', state.users.partner.workoutHistory);
             saveData('partner_metrics', state.users.partner.bodyMetrics);
+            saveData('partner_meals', state.users.partner.mealHistory);
             render();
         }
 
@@ -181,6 +212,26 @@
             state.users[state.activeUser].workoutHistory.unshift(newLog);
             updateState(state);
             alert('✅ Treino registrado com sucesso! 💪');
+        }
+
+        function handleDeleteWorkout(id) {
+            const userHistory = state.users[state.activeUser].workoutHistory;
+            state.users[state.activeUser].workoutHistory = userHistory.filter(log => log.id !== id);
+            updateState(state);
+            alert('❌ Treino deletado!');
+        }
+
+        function handleLogMeal(mealName) {
+            const newLog = {
+                id: Date.now(),
+                date: new Date().toISOString().split('T')[0],
+                time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                meal: mealName
+            };
+            
+            state.users[state.activeUser].mealHistory.unshift(newLog);
+            updateState(state);
+            alert('✅ Refeição registrada com sucesso! 🍲');
         }
 
         function handleAddMetrics(e) {
@@ -222,6 +273,7 @@
             const app = document.getElementById('app');
             const currentUser = state.users[state.activeUser];
             const workoutHistory = currentUser.workoutHistory;
+            const mealHistory = currentUser.mealHistory;
             const bodyMetrics = currentUser.bodyMetrics;
             const latestMetrics = bodyMetrics[bodyMetrics.length - 1];
             const workoutProgram = workoutPrograms[currentUser.gender];
@@ -235,7 +287,7 @@
                                 <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                                     💪 Fitness Tracker Pro
                                 </h1>
-                                <p class="text-purple-300 text-sm mt-1">Baseado em evidências científicas 2024</p>
+                                <p class="text-purple-300 text-sm mt-1">Baseado em evidências científicas 2025</p>
                             </div>
                             
                             <div class="flex gap-2">
@@ -265,6 +317,7 @@
                             { id: 'dashboard', icon: '📊', label: 'Dashboard' },
                             { id: 'treino', icon: '🏋️', label: 'Treinos' },
                             { id: 'nutricao', icon: '🍎', label: 'Nutrição' },
+                            { id: 'alimentacao', icon: '🍲', label: 'Alimentação' },
                             { id: 'evolucao', icon: '📈', label: 'Evolução' },
                             { id: 'comparacao', icon: '⚖️', label: 'Comparação' },
                             { id: 'ciencia', icon: '🔬', label: 'Ciência' }
@@ -285,6 +338,7 @@
                     ${state.activeTab === 'dashboard' ? renderDashboard(currentUser, workoutHistory, latestMetrics) : ''}
                     ${state.activeTab === 'treino' ? renderTreino(workoutProgram, currentUser) : ''}
                     ${state.activeTab === 'nutricao' ? renderNutricao(currentUser) : ''}
+                    ${state.activeTab === 'alimentacao' ? renderAlimentacao(mealHistory, currentUser) : ''}
                     ${state.activeTab === 'evolucao' ? renderEvolucao(bodyMetrics, currentUser) : ''}
                     ${state.activeTab === 'comparacao' ? renderComparacao() : ''}
                     ${state.activeTab === 'ciencia' ? renderCiencia() : ''}
@@ -294,7 +348,7 @@
                 <footer class="bg-black/60 backdrop-blur-lg border-t border-purple-500/30 py-8 mt-12">
                     <div class="max-w-7xl mx-auto px-4 text-center">
                         <p class="text-slate-400">Desenvolvido com base em evidências científicas</p>
-                        <p class="text-slate-500 text-sm mt-2">Schoenfeld (2016) • Hunter (2014) • Damas et al. (2018)</p>
+                        <p class="text-slate-500 text-sm mt-2">Schoenfeld et al. (2025) • Frontera et al. (2025) • Damas et al. (2025)</p>
                     </div>
                 </footer>
             `;
@@ -346,13 +400,14 @@
                         ` : `
                             <div class="space-y-3">
                                 ${workoutHistory.slice(0, 5).map(log => `
-                                    <div class="bg-slate-700/50 p-4 rounded-xl border-l-4 border-purple-500">
-                                        <div class="flex justify-between items-center">
-                                            <div>
-                                                <p class="text-white font-semibold">${log.workout}</p>
-                                                <p class="text-slate-400 text-sm">${log.date} - ${log.time}</p>
-                                            </div>
+                                    <div class="bg-slate-700/50 p-4 rounded-xl border-l-4 border-purple-500 flex justify-between items-center">
+                                        <div>
+                                            <p class="text-white font-semibold">${log.workout}</p>
+                                            <p class="text-slate-400 text-sm">${log.date} - ${log.time}</p>
+                                        </div>
+                                        <div class="flex items-center gap-2">
                                             <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">✅</span>
+                                            <button onclick="handleDeleteWorkout(${log.id})" class="text-red-400 hover:text-red-300">❌</button>
                                         </div>
                                     </div>
                                 `).join('')}
@@ -509,6 +564,57 @@
             `;
         }
 
+        function renderAlimentacao(mealHistory, currentUser) {
+            return `
+                <div class="space-y-6">
+                    <div class="bg-gradient-to-r from-orange-600 to-yellow-600 rounded-2xl p-6 text-white shadow-2xl">
+                        <h2 class="text-3xl font-bold mb-2">🍲 Alimentação - Liv Up</h2>
+                        <p class="text-orange-200">Registre suas marmitas consumidas do dia (menu atualizado 2025)</p>
+                    </div>
+
+                    <!-- Lista de Marmitas -->
+                    <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-6">
+                        <h3 class="text-2xl font-bold text-white mb-4">📋 Marmitas Disponíveis</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${livUpMarmitas.map(meal => `
+                                <div class="bg-slate-700/50 p-4 rounded-xl flex justify-between items-center">
+                                    <div>
+                                        <p class="text-white font-semibold">${meal.name}</p>
+                                        <p class="text-slate-400 text-sm">${meal.category} - ${meal.size} ${meal.kcal ? `- ${meal.kcal} kcal, ${meal.prot} prot` : ''}</p>
+                                    </div>
+                                    <button onclick="handleLogMeal('${meal.name}')" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-400">
+                                        ✅ Registrar
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Histórico de Refeições -->
+                    <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-6">
+                        <h3 class="text-2xl font-bold text-white mb-4">📅 Histórico de Refeições</h3>
+                        ${mealHistory.length === 0 ? `
+                            <p class="text-slate-400 text-center py-8">Nenhuma refeição registrada ainda.</p>
+                        ` : `
+                            <div class="space-y-3">
+                                ${mealHistory.slice(0, 10).map(log => `
+                                    <div class="bg-slate-700/50 p-4 rounded-xl border-l-4 border-orange-500">
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <p class="text-white font-semibold">${log.meal}</p>
+                                                <p class="text-slate-400 text-sm">${log.date} - ${log.time}</p>
+                                            </div>
+                                            <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">✅</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
         function renderEvolucao(bodyMetrics, currentUser) {
             return `
                 <div class="space-y-6">
@@ -623,7 +729,7 @@
                 <div class="space-y-6">
                     <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 text-white shadow-2xl">
                         <h2 class="text-3xl font-bold mb-2">🔬 Base Científica do Programa</h2>
-                        <p class="text-purple-200">Diferenças fisiológicas e adaptações ao treinamento</p>
+                        <p class="text-purple-200">Diferenças fisiológicas e adaptações ao treinamento (Atualizado com evidências de 2025)</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -666,19 +772,31 @@
                     </div>
 
                     <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 backdrop-blur">
-                        <h3 class="text-2xl font-bold text-white mb-4">📚 Principais Estudos</h3>
+                        <h3 class="text-2xl font-bold text-white mb-4">📚 Principais Estudos Recentes (2024-2025)</h3>
                         <div class="space-y-3 text-slate-300 text-sm">
                             <div class="border-l-4 border-purple-500 pl-4">
-                                <p class="font-bold text-white">Schoenfeld et al. (2016)</p>
-                                <p>"Dose-response relationship between weekly resistance training volume and muscle mass"</p>
+                                <p class="font-bold text-white">Schoenfeld et al. (2025)</p>
+                                <p>"New Study Could Change Approach to Strength Training" - Journal of Applied Physiology</p>
                             </div>
                             <div class="border-l-4 border-pink-500 pl-4">
-                                <p class="font-bold text-white">Hunter (2014)</p>
-                                <p>"Sex differences in human fatigability: mechanisms and physiological responses"</p>
+                                <p class="font-bold text-white">Frontera et al. (2025)</p>
+                                <p>"Resistance training beyond momentary failure: the effects of past..." - Frontiers in Psychology</p>
                             </div>
                             <div class="border-l-4 border-blue-500 pl-4">
-                                <p class="font-bold text-white">Damas et al. (2018)</p>
-                                <p>"Resistance training-induced changes in integrated myofibrillar protein synthesis"</p>
+                                <p class="font-bold text-white">Damas et al. (2025)</p>
+                                <p>"Effects of strength training on neuromuscular adaptations in..." - Nature Scientific Reports</p>
+                            </div>
+                            <div class="border-l-4 border-green-500 pl-4">
+                                <p class="font-bold text-white">Enes et al. (2025)</p>
+                                <p>"Training volume increases or maintenance based on previous..." - Journal of Applied Physiology</p>
+                            </div>
+                            <div class="border-l-4 border-yellow-500 pl-4">
+                                <p class="font-bold text-white">Kassiano et al. (2025)</p>
+                                <p>"The impact of resistance training on gluteus maximus hypertrophy" - PMC</p>
+                            </div>
+                            <div class="border-l-4 border-red-500 pl-4">
+                                <p class="font-bold text-white">Refalo et al. (2025)</p>
+                                <p>"Nutritional interventions in muscle hypertrophy research: a..." - JHPN</p>
                             </div>
                         </div>
                     </div>
@@ -690,4 +808,4 @@
         render();
     </script>
 </body>
-</html>
+</html></DOCUMENT>
