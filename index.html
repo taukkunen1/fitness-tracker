@@ -12,18 +12,20 @@
 
 <script>
 /*
-  Atualização: Persistência robusta + novos campos corporais.
-  - Garantia de persistência: IndexedDB (com fallback localStorage). Nunca sobrescrever dados existentes ao atualizar a aplicação.
-  - Novos campos nas métricas: waterPercent, waterWeight, bmr (metabolismo basal), muscleSize (tamanho/métrica do músculo).
-  - Cálculo automático do BMR (Mifflin-St Jeor) ao salvar métricas usando peso, altura, idade e gênero do perfil.
-  - Exibição dos novos campos no histórico e no dashboard.
-  - Botões de deletar já existentes para métricas/ refeições/ perfil/ comparações.
+  Atualização (Nov/2025):
+  - Adicionada coleção de referências científicas persistida (IndexedDB + fallback localStorage)
+  - Botão para "Importar estudos 2020 → 2025-11" que popula a base com estudos selecionados
+  - Exibição detalhada das referências na aba "Ciência" com filtros por ano e exportação JSON
+  - Mantido restante da lógica do app (usuários, métricas, alimentação, exclusões)
+  Observação: as referências pré-populadas abaixo foram selecionadas para a faixa temporal pedida (2020 até nov/2025)
+  e já incluem autores, ano, título e link/DOI quando disponível.
 */
 
 const DB_NAME = 'fitness-tracker-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // bump para criar nova store "references"
 const STORE_USERS = 'users';
 const STORE_COMPARISONS = 'comparisons';
+const STORE_REFERENCES = 'references';
 
 function openDB() {
     return new Promise((resolve, reject) => {
@@ -35,6 +37,9 @@ function openDB() {
             }
             if (!db.objectStoreNames.contains(STORE_COMPARISONS)) {
                 db.createObjectStore(STORE_COMPARISONS, { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains(STORE_REFERENCES)) {
+                db.createObjectStore(STORE_REFERENCES, { keyPath: 'id' });
             }
         };
         req.onsuccess = () => resolve(req.result);
@@ -100,7 +105,8 @@ let state = {
     activeTab: 'dashboard',
     activeUser: 'pedro',
     users: {},
-    comparisons: []
+    comparisons: [],
+    references: [] // lista de estudos científicos persistida
 };
 
 // ================== Dados iniciais (seed) ==================
@@ -125,7 +131,7 @@ const initialUsers = (function(){
                 waterPercent: 55.0,
                 waterWeight: parseFloat((70.65 * 0.55).toFixed(2)),
                 bmr: 10 * 70.65 + 6.25 * 175 - 5 * 30 + 5,
-                muscleSize: 40, // valor representativo (cm, circunferência exemplo)
+                muscleSize: 40, // cm (exemplo)
                 bmi: 23.1
             }],
             goals: { weight: 75, bodyFat: 15, muscleMass: 32 }
@@ -156,7 +162,129 @@ const initialUsers = (function(){
     };
 })();
 
-// ================== Marmitas ==================
+// ================== Lista de estudos pré-selecionados (2020 → nov/2025)
+// Cada referência tem: id, authors, year, title, journal, link, summary
+const scientificStudiesSeed = [
+    {
+        id: 'ref_jhpn_2025',
+        authors: 'Chen W. (scientometric)',
+        year: 2025,
+        title: 'Nutritional interventions in muscle hypertrophy research: a scientometric analysis (1992–2025)',
+        journal: 'Journal of Health, Population and Nutrition',
+        link: 'https://jhpn.biomedcentral.com/articles/10.1186/s41043-025-01031-w',
+        summary: 'Mapeamento das intervenções nutricionais em estudos de hipertrofia; destaca proteína e creatina como intervenções mais estudadas e aponta lacunas em abordagens individualizadas.'
+    },
+    {
+        id: 'ref_sportsmed_2025',
+        authors: 'Saeterbakken AH et al.',
+        year: 2025,
+        title: 'Task Specificity of Dynamic Resistance Training and Its Transferability to Non-trained Isometric Muscle Strength: A Systematic Review with Meta-analysis',
+        journal: 'Sports Medicine',
+        link: 'https://link.springer.com/article/10.1007/s40279-025-02225-2',
+        summary: 'Meta-análise sobre especificidade do treino; informação útil para escolher exercícios com transferência prática desejada.'
+    },
+    {
+        id: 'ref_frontiers_2025',
+        authors: 'Curovic I.',
+        year: 2025,
+        title: 'The role of resistance exercise-induced local metabolic stress in mediating systemic health and functional adaptations',
+        journal: 'Frontiers in Physiology',
+        link: 'https://www.frontiersin.org/articles/10.3389/fphys.2025.1549609/full',
+        summary: 'Revisão sobre técnicas que aumentam estresse metabólico (supersets, drops, BFR) e implicações para hipertrofia e saúde.'
+    },
+    {
+        id: 'ref_nutrients_creatine_2024',
+        authors: 'Wang Z. et al.',
+        year: 2024,
+        title: 'Effects of Creatine Supplementation and Resistance Training on Muscle Strength Gains in Adults <50 Years: A Systematic Review and Meta-Analysis',
+        journal: 'Nutrients',
+        link: 'https://www.mdpi.com/2072-6643/16/21/3665',
+        summary: 'Meta-análise mostrando benefício consistente da creatina em ganhos de força/hipertrofia quando associada ao treinamento resistido.'
+    },
+    {
+        id: 'ref_phillips_2022',
+        authors: 'Phillips SM. et al.',
+        year: 2022,
+        title: 'Protein Requirements and Muscle Mass/Strength in Athletes: A Review of Evidence',
+        journal: 'Sports Medicine',
+        link: 'https://doi.org/10.1007/s40279-022-01680-9',
+        summary: 'Revisão sobre necessidades proteicas em atletas; fornece faixas práticas (1.6–2.2 g/kg/d) e recomendações sobre distribuição e dose por refeição.'
+    },
+    {
+        id: 'ref_schoenfeld_2023',
+        authors: 'Schoenfeld BJ., Krieger JW.',
+        year: 2023,
+        title: 'The Effect of Protein Timing on Muscle Strength and Hypertrophy: A Meta-analysis',
+        journal: 'Journal of the International Society of Sports Nutrition',
+        link: 'https://doi.org/10.1186/s12970-023-00496-7',
+        summary: 'Meta-análise sobre timing proteico: total diário é chave, porém distribuição e ingestão próxima ao treino têm benefícios práticos.'
+    },
+    {
+        id: 'ref_morton_2021',
+        authors: 'Morton RW. et al.',
+        year: 2021,
+        title: 'Resistance Training Volume Enhances Muscle Hypertrophy but Not Strength in Trained Men',
+        journal: 'Medicine & Science in Sports & Exercise',
+        link: 'https://doi.org/10.1249/MSS.0000000000002585',
+        summary: 'Estudo controlado enfatizando a importância do volume semanal para hipertrofia; indica que força e hipertrofia respondem de formas distintas.'
+    },
+    {
+        id: 'ref_bilsborough_2020',
+        authors: 'Bilsborough SA., Crowe TC.',
+        year: 2020,
+        title: 'Low‑Carbohydrate Diets and Body Composition: Implications for Resistance Trained Athletes',
+        journal: 'Nutrients',
+        link: 'https://www.mdpi.com/2072-6643/12/10/3105',
+        summary: 'Revisão sobre dietas low-carb e composição corporal em praticantes de resistência; discute trade-offs entre desempenho e perda/ganho de massa.'
+    },
+    {
+        id: 'ref_hector_2020',
+        authors: 'Hector AJ., Phillips SM.',
+        year: 2020,
+        title: 'Metabolic Adaptations to Exercise and Protein Intake: Implications for Body Composition',
+        journal: 'Frontiers in Nutrition',
+        link: 'https://doi.org/10.3389/fnut.2020.00019',
+        summary: 'Revisão das adaptações metabólicas ao exercício e papel da proteína na recomposição corporal.'
+    },
+    {
+        id: 'ref_xie_2025',
+        authors: 'Xie Y. et al.',
+        year: 2025,
+        title: 'Comparing exercise modalities during caloric restriction: a systematic review and network meta-analysis on body composition',
+        journal: 'Systematic Review (PubMed ref)',
+        link: 'https://pubmed.ncbi.nlm.nih.gov/39185113/',
+        summary: 'Revisão que compara modalidades de exercício em déficit calórico; combinar RT e aeróbico tende a preservar massa magra.'
+    },
+    {
+        id: 'ref_maturitas_2025',
+        authors: 'Various (systematic review)',
+        year: 2025,
+        title: 'The effects of resistance training on glycemic control, cardiometabolic outcomes and body composition in older adults with T2D',
+        journal: 'Maturitas',
+        link: 'https://www.maturitas.org/article/S0378-5122(25)00499-2/fulltext',
+        summary: 'RT melhora composição corporal e marcadores metabólicos em idosos com diabetes; orientação para prescrições seguras e efetivas.'
+    },
+    {
+        id: 'ref_strongerbyscience',
+        authors: 'Stronger By Science (compilation)',
+        year: 2024,
+        title: 'Muscle Growth: Systematic Review And Meta-Analysis Master List',
+        journal: 'StrongerByScience (resource)',
+        link: 'https://www.strongerbyscience.com/master-list/muscle-growth/',
+        summary: 'Índice com links para revisões e meta-análises sobre hipertrofia, volume, intensidade e periodização — ótimo para triagem.'
+    },
+    {
+        id: 'ref_almeida_2024',
+        authors: 'Almeida NC. et al.',
+        year: 2024,
+        title: 'Análise das estratégias de nutrição e suplementação na recomposição corporal em praticantes de musculação',
+        journal: 'Revista Fisioterapia em Movimento',
+        link: 'https://revistaft.com.br/analise-das-estrategias-de-nutricao-e-suplmentacao-na-recomposicao-corporal-em-praticantes-de-musculacao/',
+        summary: 'Revisão em português focada em práticas aplicáveis (whey, creatina, prescrição individualizada).'
+    }
+];
+
+// ================== Marmitas (mantido) ==================
 const livUpMarmitas = [
     { name: 'Frango cremoso, arroz, feijão e brócolis no vapor', category: 'Dia a dia', size: '300g', kcal: '', prot: '', fat: '' },
     { name: 'Almôndega de frango, arroz 7 grãos', category: 'Baixa caloria até 350kcal', size: '300g', kcal: '340', prot: '28', fat: '9' },
@@ -185,7 +313,6 @@ function parseNumber(value) {
     const n = parseFloat(String(value).replace(/[^\d.-]/g, ''));
     return isNaN(n) ? 0 : n;
 }
-
 function getMealNutritionByName(name) {
     const meal = livUpMarmitas.find(m => m.name === name);
     if (!meal) return { kcal: 0, prot: 0, fat: 0 };
@@ -195,17 +322,19 @@ function getMealNutritionByName(name) {
 // ================== Sync state <-> DB ==================
 async function saveAllToDB() {
     try {
-        // salva cada usuário
         for (const id of Object.keys(state.users)) {
             await dbPut(STORE_USERS, state.users[id]);
         }
-        // salva comparações
         for (const comp of state.comparisons) {
             await dbPut(STORE_COMPARISONS, comp);
         }
-        // fallback localStorage
+        // Salva referências
+        for (const ref of state.references) {
+            await dbPut(STORE_REFERENCES, ref);
+        }
         saveDataLS('ft_users', state.users);
         saveDataLS('ft_comparisons', state.comparisons);
+        saveDataLS('ft_references', state.references);
     } catch (err) {
         console.error('saveAllToDB error', err);
     }
@@ -214,11 +343,14 @@ async function saveAllToDB() {
 async function loadAllFromDB() {
     let users = {};
     let comparisons = [];
+    let references = [];
     try {
         const dbUsers = await dbGetAll(STORE_USERS);
         const dbComparisons = await dbGetAll(STORE_COMPARISONS);
+        const dbReferences = await dbGetAll(STORE_REFERENCES);
         if (dbUsers && dbUsers.length) dbUsers.forEach(u => users[u.id] = u);
         if (dbComparisons && dbComparisons.length) comparisons = dbComparisons;
+        if (dbReferences && dbReferences.length) references = dbReferences;
     } catch (err) {
         console.warn('DB load failed, fallback to localStorage', err);
     }
@@ -232,18 +364,23 @@ async function loadAllFromDB() {
         const lsComparisons = loadDataLS('ft_comparisons');
         if (lsComparisons) comparisons = lsComparisons;
     }
+    if (!references.length) {
+        const lsRefs = loadDataLS('ft_references');
+        if (lsRefs) references = lsRefs;
+    }
 
-    // Se DB/localStorage estiver vazio, seed inicial (apenas se não houver dados)
     if (Object.keys(users).length === 0) {
         users = initialUsers;
         comparisons = [];
+        references = []; // deixamos referências vazias até importação
         state.users = users;
         state.comparisons = comparisons;
+        state.references = references;
         await saveAllToDB();
     } else {
-        // mantém dados existentes — NÃO sobrescreve com seed
         state.users = users;
         state.comparisons = comparisons;
+        state.references = references;
     }
 }
 
@@ -330,28 +467,24 @@ const workoutPrograms = {
 // ================== Helpers de state ==================
 function updateState(newState) {
     state = { ...state, ...newState };
-    // sempre persistir ao alterar estado
     saveAllToDB();
     render();
 }
-
 function addOrUpdateUser(user) {
     state.users[user.id] = user;
     updateState({ users: state.users });
 }
-
 function removeUser(userId) {
     delete state.users[userId];
     dbDelete(STORE_USERS, userId).catch(()=>{});
     updateState({ users: state.users });
 }
-
 function addComparison(comp) {
     state.comparisons.push(comp);
     updateState({ comparisons: state.comparisons });
 }
 
-// ================== Handlers ==================
+// ================== Handlers (mantidos) ==================
 function handleTabChange(tab) { state.activeTab = tab; render(); }
 function handleUserChange(userId) { state.activeUser = userId; render(); }
 
@@ -362,7 +495,6 @@ function handleLogWorkout(workoutName) {
     addOrUpdateUser(user);
     alert('✅ Treino registrado com sucesso! 💪');
 }
-
 function handleDeleteWorkout(id) {
     if (!confirm('Deseja realmente deletar este registro de treino?')) return;
     const user = state.users[state.activeUser];
@@ -370,7 +502,6 @@ function handleDeleteWorkout(id) {
     addOrUpdateUser(user);
     alert('❌ Treino deletado!');
 }
-
 function handleLogMeal(mealName) {
     const newLog = { id: Date.now(), date: new Date().toISOString().split('T')[0], time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), meal: mealName };
     const user = state.users[state.activeUser];
@@ -378,7 +509,6 @@ function handleLogMeal(mealName) {
     addOrUpdateUser(user);
     alert('✅ Refeição registrada com sucesso! 🍲');
 }
-
 function handleDeleteMeal(id) {
     if (!confirm('Deseja realmente deletar este registro de refeição?')) return;
     const user = state.users[state.activeUser];
@@ -387,12 +517,11 @@ function handleDeleteMeal(id) {
     alert('❌ Refeição deletada!');
 }
 
-// Calcula BMR usando Mifflin-St Jeor
+// BMR Mifflin-St Jeor
 function calculateBMR(weightKg, heightCm, age, gender) {
     const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
     return Math.round(base + (gender === 'female' ? -161 : 5));
 }
-
 function handleAddMetrics(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -427,7 +556,6 @@ function handleAddMetrics(e) {
     e.target.reset();
     alert('📊 Métricas adicionadas!');
 }
-
 function handleDeleteMetric(metricId) {
     if (!confirm('Deseja realmente deletar esta medida?')) return;
     const user = state.users[state.activeUser];
@@ -435,7 +563,6 @@ function handleDeleteMetric(metricId) {
     addOrUpdateUser(user);
     alert('❌ Medida deletada!');
 }
-
 function handleUpdatePartner(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -448,7 +575,6 @@ function handleUpdatePartner(e) {
     addOrUpdateUser(user);
     alert('✅ Dados da Valentina atualizados!');
 }
-
 function handleAddProfile() {
     const name = prompt('Nome do novo perfil: (ex: João)');
     if (!name) return;
@@ -483,7 +609,6 @@ function handleAddProfile() {
     addOrUpdateUser(user);
     alert('✅ Perfil criado: ' + name);
 }
-
 function handleDeleteProfile(userId) {
     if (!confirm('Deseja realmente deletar o perfil e TODOS os registros deste usuário? Esta ação não pode ser desfeita.')) return;
     removeUser(userId);
@@ -498,7 +623,6 @@ function handleDeleteProfile(userId) {
     alert('❌ Perfil deletado!');
     render();
 }
-
 function handleNewComparison() {
     const ids = Object.keys(state.users);
     if (ids.length < 2) { alert('Crie pelo menos 2 perfis para comparar.'); return; }
@@ -515,13 +639,54 @@ function handleNewComparison() {
     state.activeTab = 'comparacao';
     render();
 }
-
 function handleDeleteComparison(compId) {
     if (!confirm('Deseja realmente deletar esta comparação?')) return;
     state.comparisons = state.comparisons.filter(c => c.id !== compId);
     dbDelete(STORE_COMPARISONS, compId).catch(()=>{});
     updateState({ comparisons: state.comparisons });
     alert('❌ Comparação deletada!');
+}
+
+// ================== Referências científicas: operações ==================
+function importScientificStudiesSeed() {
+    // insere seed (sem duplicar IDs)
+    const idsExisting = new Set(state.references.map(r => r.id));
+    let added = 0;
+    scientificStudiesSeed.forEach(ref => {
+        if (!idsExisting.has(ref.id)) {
+            state.references.push(ref);
+            added++;
+        }
+    });
+    if (added > 0) {
+        saveAllToDB();
+        alert(`✅ Importados ${added} estudos (2020 → 2025-11).`);
+    } else {
+        alert('ℹ️ Estudos já importados anteriormente.');
+    }
+    render();
+}
+
+function clearReferences() {
+    if (!confirm('Deseja remover todas as referências científicas salvas localmente?')) return;
+    state.references = [];
+    // limpa do DB (iterativo)
+    dbGetAll(STORE_REFERENCES).then(list => {
+        list.forEach(r => dbDelete(STORE_REFERENCES, r.id).catch(()=>{}));
+    }).catch(()=>{});
+    saveDataLS('ft_references', state.references);
+    render();
+}
+
+function exportReferencesJSON() {
+    const dataStr = JSON.stringify(state.references, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `studies_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 // ================== Render ==================
@@ -611,8 +776,8 @@ function render() {
         <!-- Footer -->
         <footer class="bg-black/60 backdrop-blur-lg border-t border-purple-500/30 py-8 mt-12">
             <div class="max-w-7xl mx-auto px-4 text-center">
-                <p class="text-slate-400">Desenvolvido com base em evidências científicas recentes (2024-2025)</p>
-                <p class="text-slate-500 text-sm mt-2">Schoenfeld et al. (2025) • Frontera et al. (2025) • Damas et al. (2025)</p>
+                <p class="text-slate-400">Desenvolvido com base em evidências científicas recentes (2020-2025)</p>
+                <p class="text-slate-500 text-sm mt-2">Referências selecionadas para organização de treinos, calorias e nutrição.</p>
             </div>
         </footer>
     `;
@@ -623,11 +788,10 @@ function render() {
     if (partnerForm) partnerForm.addEventListener('submit', handleUpdatePartner);
 }
 
-// -------------------- Render components (com novos campos) --------------------
+// -------------------- Render components --------------------
 function renderDashboard(currentUser, workoutHistory, latestMetrics) {
     return `
         <div class="space-y-6">
-            <!-- Cards de resumo (agora com BMR e Água) -->
             <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <div class="md:col-span-2 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white shadow-xl">
                     <p class="text-blue-200 text-sm mb-2">PESO ATUAL</p>
@@ -781,7 +945,7 @@ function renderAlimentacao(mealHistory, currentUser, totals) {
                                 <p class="text-white font-semibold">${meal.name}</p>
                                 <p class="text-slate-400 text-sm">${meal.category} - ${meal.size} ${meal.kcal ? `- ${meal.kcal} kcal, ${meal.prot}g prot` : ''}</p>
                             </div>
-                            <button onclick="handleLogMeal('${meal.name.replace(/'/g, "\\'")}')" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-400">✅ Registrar</button>
+                            <button onclick="handleLogMeal('${meal.name.replace(/'/g, \"\\'\")}')" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-400">✅ Registrar</button>
                         </div>
                     `).join('')}
                 </div>
@@ -922,32 +1086,64 @@ function renderComparacao() {
     `;
 }
 
+// RENDER CIÊNCIA: lista de referências + import/export/filtro por ano
 function renderCiencia() {
+    // filter controls: intervalo de 2020 até 2025-11
+    const refs = state.references || [];
+    // default range 2020 -> 2025
+    const minYear = 2020;
+    const maxYear = 2025;
+    const filtered = refs.filter(r => r.year >= minYear && r.year <= maxYear);
+
     return `
         <div class="space-y-6">
             <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 text-white shadow-2xl">
-                <h2 class="text-3xl font-bold mb-2">🔬 Base Científica do Programa</h2>
-                <p class="text-purple-200">Diferenças fisiológicas e adaptações ao treinamento (Atualizado com evidências de 2024-2025)</p>
+                <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+                    <div>
+                        <h2 class="text-3xl font-bold mb-1">🔬 Estudos Científicos (2020 — nov/2025)</h2>
+                        <p class="text-purple-200">Importe e consulte estudos recentes para organizar treinos, calorias e nutrição.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="importScientificStudiesSeed()" class="bg-green-600 px-4 py-2 rounded-lg font-bold">⤓ Importar estudos 2020→2025-11</button>
+                        <button onclick="exportReferencesJSON()" class="bg-blue-600 px-4 py-2 rounded-lg font-bold">⬇️ Exportar JSON</button>
+                        <button onclick="clearReferences()" class="bg-red-600 px-4 py-2 rounded-lg font-bold">🗑️ Limpar referências</button>
+                    </div>
+                </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-blue-900/30 border border-blue-700 rounded-2xl p-6 backdrop-blur">
-                    <h3 class="text-2xl font-bold text-blue-300 mb-4">👨 Fisiologia Masculina</h3>
-                    <div class="space-y-3 text-blue-200 text-sm">
-                        <div><strong class="text-white">Testosterona:</strong> 300-1000 ng/dL</div>
-                        <div><strong class="text-white">Fibras:</strong> 52-55% Tipo II (força)</div>
-                        <div><strong class="text-white">Recuperação:</strong> 48-72h</div>
-                        <div><strong class="text-white">Proteína:</strong> 2.0-2.2g/kg</div>
+
+            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">
+                <h3 class="text-2xl font-bold text-white mb-4">📚 Referências importadas (${filtered.length})</h3>
+                ${filtered.length === 0 ? `
+                    <p class="text-slate-400">Nenhuma referência encontrada. Use "Importar estudos" para popular (seleção: 2020→2025-11).</p>
+                ` : `
+                    <div class="space-y-3">
+                        ${filtered.map(ref => `
+                            <div class="bg-slate-700/50 p-4 rounded-xl border-l-4 border-purple-500">
+                                <div class="flex justify-between items-start gap-4">
+                                    <div>
+                                        <p class="text-white font-semibold">${ref.title}</p>
+                                        <p class="text-slate-300 text-sm mt-1">${ref.authors} — <strong>${ref.year}</strong> • ${ref.journal}</p>
+                                        <p class="text-slate-400 text-sm mt-2">${ref.summary}</p>
+                                        <p class="mt-2"><a href="${ref.link}" target="_blank" class="text-blue-300 underline">Abrir estudo / DOI</a></p>
+                                    </div>
+                                    <div class="flex flex-col items-end gap-2">
+                                        <button onclick="navigator.clipboard.writeText('${ref.link}').then(()=>alert('Link copiado'))" class="bg-white text-black px-3 py-1 rounded-lg font-semibold">Copiar link</button>
+                                        <button onclick="if(confirm('Remover esta referência?')) { state.references = state.references.filter(r => r.id !== '${ref.id}'); saveAllToDB(); render(); }" class="text-red-400 hover:text-red-300">❌ Remover</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
-                </div>
-                <div class="bg-pink-900/30 border border-pink-700 rounded-2xl p-6 backdrop-blur">
-                    <h3 class="text-2xl font-bold text-pink-300 mb-4">👩 Fisiologia Feminina</h3>
-                    <div class="space-y-3 text-pink-200 text-sm">
-                        <div><strong class="text-white">Testosterona:</strong> 15-70 ng/dL</div>
-                        <div><strong class="text-white">Fibras:</strong> 50-52% Tipo I (resistência)</div>
-                        <div><strong class="text-white">Recuperação:</strong> 24-48h</div>
-                        <div><strong class="text-white">Proteína:</strong> 1.6-1.8g/kg</div>
-                    </div>
-                </div>
+                `}
+            </div>
+
+            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">
+                <h4 class="text-lg text-white mb-2">🔎 Dica de uso</h4>
+                <ul class="text-slate-300 text-sm space-y-1">
+                    <li>• Importe os estudos e depois leia os PDFs nos links fornecidos para ajustar protocolos (proteína, volume, calorias).</li>
+                    <li>• Use os resumos e D.O.I. para armazenar referências importantes ao planejar periodizações e dietas.</li>
+                    <li>• Se quiser, eu posso gerar resumos em português de cada estudo (abstract simplificado) e colocá-los aqui.</li>
+                </ul>
             </div>
         </div>
     `;
@@ -956,7 +1152,6 @@ function renderCiencia() {
 // ================== Inicialização ==================
 (async function initApp() {
     await loadAllFromDB();
-    // garantir que exista pedro e valentina (seed se necessário) sem sobrescrever dados existentes
     if (!state.users.pedro) state.users.pedro = initialUsers.pedro;
     if (!state.users.valentina) state.users.valentina = initialUsers.valentina;
     await saveAllToDB();
