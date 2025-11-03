@@ -723,6 +723,35 @@ function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '') {
   render();
 }
 
+function handleEditWorkout(id) {
+  const user = state.users[state.activeUser];
+  if (!user.workoutHistory) user.workoutHistory = [];
+  const log = user.workoutHistory.find(l => l.id === id);
+  if (!log) return alert('Registro não encontrado');
+  
+  // Prompt for new values
+  const newSets = prompt(`Editar Séries\nExercício: ${log.exercise}\n\nSéries atuais: ${log.sets}`, log.sets === '-' ? '' : log.sets);
+  if (newSets === null) return; // User cancelled
+  
+  const newReps = prompt(`Editar Repetições\nExercício: ${log.exercise}\n\nRepetições atuais: ${log.reps}`, log.reps === '-' ? '' : log.reps);
+  if (newReps === null) return; // User cancelled
+  
+  const newWeight = prompt(`Editar Carga (kg)\nExercício: ${log.exercise}\n\nCarga atual: ${log.weight}`, log.weight === '-' ? '' : log.weight);
+  if (newWeight === null) return; // User cancelled
+  
+  // Update the workout log
+  log.sets = newSets || '-';
+  log.reps = newReps || '-';
+  log.weight = newWeight || '-';
+  
+  addOrUpdateUser(user);
+  
+  // Show success notification
+  const details = newSets && newReps ? ` (${newSets}x${newReps}${newWeight ? ' @ ' + newWeight + 'kg' : ''})` : '';
+  showNotification(`✅ Treino atualizado: ${log.exercise}${details}`, 'success');
+  render();
+}
+
 function handleDeleteWorkout(id) {
   if (!confirm('Deseja excluir este registro de treino? Ele será movido para o arquivo (archive) e poderá ser restaurado.')) return;
   const user = state.users[state.activeUser];
@@ -1539,11 +1568,14 @@ function renderTreino(user) {
         `<div class="space-y-2">
           ${selectedDayWorkouts.map(log => `
             <div class="flex justify-between items-center bg-slate-700 p-3 rounded">
-              <div>
+              <div class="flex-1">
                 <p class="font-semibold">${log.exercise || log.workout}</p>
                 <p class="text-slate-300 text-xs">${log.time}${log.sets && log.sets !== '-' ? ` • ${log.sets}x${log.reps}` : ''}${log.weight && log.weight !== '-' ? ` • ${log.weight}kg` : ''}</p>
               </div>
-              <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
+              <div class="flex gap-2">
+                <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300" title="Editar séries/reps/carga">✏️</button>
+                <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
+              </div>
             </div>
           `).join('')}
         </div>`
