@@ -1317,7 +1317,16 @@ let state = {
   currentDay: new Date().toISOString().split('T')[0], // For day-by-day meal navigation
   currentWorkoutDay: new Date().toISOString().split('T')[0], // For day-by-day workout navigation
   customMeals: [], // User-defined meals with nutrition info
-  progressPhotos: [] // Progress photos with date and metadata
+  progressPhotos: [], // Progress photos with date and metadata
+  currentMealComposition: { // For building composed meals
+    name: '',
+    components: [], // Array of { foodName, weight, prot, carb, fat, kcal }
+    totalProt: 0,
+    totalCarb: 0,
+    totalFat: 0,
+    totalKcal: 0,
+    totalWeight: 0
+  }
 };
 
 // Chart holder
@@ -2444,6 +2453,165 @@ function fillCalculatorExample(name, weight, prot, carb, fat) {
   document.getElementById('calcFoodName').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+/* ----------------------------- Meal Composition Functions ----------------------------- */
+
+// Reset meal composition
+function resetMealComposition() {
+  state.currentMealComposition = {
+    name: '',
+    components: [],
+    totalProt: 0,
+    totalCarb: 0,
+    totalFat: 0,
+    totalKcal: 0,
+    totalWeight: 0
+  };
+  render();
+}
+
+// Add component to meal composition
+function addComponentToMeal() {
+  const foodName = document.getElementById('calcFoodName').value;
+  const weight = parseFloat(document.getElementById('calcWeight').value);
+  const protPer100 = parseFloat(document.getElementById('calcProtPer100').value) || 0;
+  const carbPer100 = parseFloat(document.getElementById('calcCarbPer100').value) || 0;
+  const fatPer100 = parseFloat(document.getElementById('calcFatPer100').value) || 0;
+  
+  if (!foodName || !weight || weight <= 0) {
+    alert('Por favor, preencha o nome do alimento e um peso válido');
+    return;
+  }
+  
+  // Calculate multiplier (weight / 100)
+  const multiplier = weight / 100;
+  
+  // Calculate macros for the given weight
+  const prot = parseFloat((protPer100 * multiplier).toFixed(1));
+  const carb = parseFloat((carbPer100 * multiplier).toFixed(1));
+  const fat = parseFloat((fatPer100 * multiplier).toFixed(1));
+  const kcal = parseFloat((prot * 4 + carb * 4 + fat * 9).toFixed(1));
+  
+  // Add component
+  const component = {
+    id: Date.now(),
+    foodName: foodName.trim(),
+    weight: weight,
+    prot: prot,
+    carb: carb,
+    fat: fat,
+    kcal: kcal
+  };
+  
+  state.currentMealComposition.components.push(component);
+  
+  // Update totals
+  updateMealCompositionTotals();
+  
+  // Clear calculator inputs for next component
+  document.getElementById('calcFoodName').value = '';
+  document.getElementById('calcWeight').value = '';
+  document.getElementById('calcProtPer100').value = '';
+  document.getElementById('calcCarbPer100').value = '';
+  document.getElementById('calcFatPer100').value = '';
+  document.getElementById('calcResults').classList.add('hidden');
+  
+  showNotification(`✅ Componente adicionado: ${weight}g de ${foodName}`, 'success');
+  render();
+}
+
+// Remove component from meal composition
+function removeComponentFromMeal(componentId) {
+  state.currentMealComposition.components = state.currentMealComposition.components.filter(c => c.id !== componentId);
+  updateMealCompositionTotals();
+  render();
+}
+
+// Update meal composition totals
+function updateMealCompositionTotals() {
+  const totals = state.currentMealComposition.components.reduce((acc, comp) => {
+    acc.prot += comp.prot;
+    acc.carb += comp.carb;
+    acc.fat += comp.fat;
+    acc.kcal += comp.kcal;
+    acc.weight += comp.weight;
+    return acc;
+  }, { prot: 0, carb: 0, fat: 0, kcal: 0, weight: 0 });
+  
+  state.currentMealComposition.totalProt = parseFloat(totals.prot.toFixed(1));
+  state.currentMealComposition.totalCarb = parseFloat(totals.carb.toFixed(1));
+  state.currentMealComposition.totalFat = parseFloat(totals.fat.toFixed(1));
+  state.currentMealComposition.totalKcal = parseFloat(totals.kcal.toFixed(1));
+  state.currentMealComposition.totalWeight = parseFloat(totals.weight.toFixed(1));
+}
+
+// Save composed meal to history
+function saveComposedMeal() {
+  if (state.currentMealComposition.components.length === 0) {
+    alert('Adicione pelo menos um componente à refeição');
+    return;
+  }
+  
+  const mealName = prompt('Digite um nome para esta refeição composta:', state.currentMealComposition.name || 'Refeição Personalizada');
+  if (!mealName) return;
+  
+  state.currentMealComposition.name = mealName.trim();
+  
+  const user = state.users[state.activeUser];
+  const now = new Date();
+  const time = now.toTimeString().slice(0, 5);
+  
+  // Create a meal log entry with composition details
+  const composedMealLog = {
+    id: Date.now(),
+    date: state.currentDay,
+    time: time,
+    meal: state.currentMealComposition.name,
+    isComposed: true,
+    components: state.currentMealComposition.components,
+    totalProt: state.currentMealComposition.totalProt,
+    totalCarb: state.currentMealComposition.totalCarb,
+    totalFat: state.currentMealComposition.totalFat,
+    totalKcal: state.currentMealComposition.totalKcal,
+    totalWeight: state.currentMealComposition.totalWeight
+  };
+  
+  user.mealHistory.unshift(composedMealLog);
+  
+  saveAllToDB();
+  showNotification(`✅ Refeição "${mealName}" salva no histórico!`, 'success');
+  
+  // Ask if user wants to save as reusable template
+  if (confirm('Deseja salvar esta refeição como modelo reutilizável?')) {
+    saveComposedMealAsTemplate();
+  }
+  
+  // Reset composition
+  resetMealComposition();
+}
+
+// Save composed meal as reusable template
+function saveComposedMealAsTemplate() {
+  const customMeal = {
+    id: `custom_meal_${Date.now()}`,
+    name: state.currentMealComposition.name,
+    kcal: state.currentMealComposition.totalKcal,
+    prot: state.currentMealComposition.totalProt,
+    carb: state.currentMealComposition.totalCarb,
+    fat: state.currentMealComposition.totalFat,
+    isComposed: true,
+    components: state.currentMealComposition.components,
+    createdAt: new Date().toISOString(),
+    createdBy: state.activeUser
+  };
+  
+  // Remove existing if updating
+  state.customMeals = state.customMeals.filter(m => m.name !== customMeal.name);
+  state.customMeals.push(customMeal);
+  saveCustomMeals();
+  
+  showNotification('✅ Refeição salva como modelo reutilizável!', 'success');
+}
+
 /* ----------------------------- Custom workout handler ----------------------------- */
 function handleAddCustomWorkout(e) {
   e.preventDefault();
@@ -3463,12 +3631,22 @@ function renderAlimentacao() {
   
   // Calculate totals for the selected day
   const dayTotals = selectedDayMeals.reduce((acc, log) => {
-    const nut = getMealNutritionByNameCombined(log.meal);
-    acc.kcal += nut.kcal; 
-    acc.prot += nut.prot; 
-    acc.fat += nut.fat;
+    // Check if it's a composed meal with stored totals
+    if (log.isComposed && log.totalKcal !== undefined) {
+      acc.kcal += log.totalKcal;
+      acc.prot += log.totalProt || 0;
+      acc.carb += log.totalCarb || 0;
+      acc.fat += log.totalFat || 0;
+    } else {
+      // Regular meal - look up nutrition
+      const nut = getMealNutritionByNameCombined(log.meal);
+      acc.kcal += nut.kcal;
+      acc.prot += nut.prot;
+      acc.carb += nut.carb || 0;
+      acc.fat += nut.fat;
+    }
     return acc;
-  }, { kcal: 0, prot: 0, fat: 0 });
+  }, { kcal: 0, prot: 0, carb: 0, fat: 0 });
   
   // Format date for display
   const displayDate = new Date(state.currentDay + 'T00:00:00');
@@ -3492,7 +3670,7 @@ function renderAlimentacao() {
     <!-- Day Totals -->
     <div class="bg-gradient-to-r from-green-600 to-green-800 p-4 rounded mb-6">
       <h4 class="font-bold text-lg">Totais de ${dateLabel}</h4>
-      <p class="text-white text-xl">${Math.round(dayTotals.kcal)} kcal • ${Math.round(dayTotals.prot)} g proteína • ${Math.round(dayTotals.fat)} g gord.</p>
+      <p class="text-white text-xl">${Math.round(dayTotals.kcal)} kcal • ${Math.round(dayTotals.prot)}g prot • ${Math.round(dayTotals.carb)}g carb • ${Math.round(dayTotals.fat)}g gord</p>
     </div>
 
     <!-- Nutrition Calculator & Guide -->
@@ -3594,9 +3772,76 @@ function renderAlimentacao() {
                 <p class="text-xs text-cyan-300">calorias totais</p>
               </div>
             </div>
+            <!-- Add to Meal Composition Button -->
+            <div class="mt-4 text-center">
+              <button onclick="addComponentToMeal()" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-lg font-semibold text-white">
+                ➕ Adicionar à Refeição Composta
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Meal Composition Builder -->
+      ${state.currentMealComposition.components.length > 0 ? `
+      <div class="bg-gradient-to-r from-purple-900 to-indigo-900 p-5 rounded-lg mb-4 border-2 border-purple-500">
+        <div class="flex justify-between items-center mb-4">
+          <h4 class="font-semibold text-lg text-purple-200">🍽️ Refeição Composta em Construção</h4>
+          <button onclick="resetMealComposition()" class="text-red-400 hover:text-red-300 text-sm">
+            🗑️ Limpar
+          </button>
+        </div>
+        
+        <!-- Components List -->
+        <div class="space-y-2 mb-4">
+          ${state.currentMealComposition.components.map((comp, idx) => `
+            <div class="bg-slate-800 p-3 rounded flex justify-between items-center">
+              <div class="flex-1">
+                <p class="font-semibold text-white">${comp.foodName}</p>
+                <p class="text-xs text-slate-300">${comp.weight}g • ${comp.prot}g prot • ${comp.carb}g carb • ${comp.fat}g gord • ${comp.kcal} kcal</p>
+              </div>
+              <button onclick="removeComponentFromMeal(${comp.id})" class="text-red-400 hover:text-red-300 ml-2" title="Remover componente">
+                ✖
+              </button>
+            </div>
+          `).join('')}
+        </div>
+        
+        <!-- Totals -->
+        <div class="bg-gradient-to-r from-green-700 to-emerald-800 p-4 rounded-lg border-2 border-green-500">
+          <h5 class="font-bold text-lg mb-3 text-center text-white">📊 Totais da Refeição</h5>
+          <div class="grid grid-cols-5 gap-2 text-center">
+            <div class="bg-white/10 backdrop-blur p-2 rounded">
+              <p class="text-xs text-slate-300 mb-1">Peso Total</p>
+              <p class="text-xl font-bold text-white">${state.currentMealComposition.totalWeight}g</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur p-2 rounded">
+              <p class="text-xs text-green-200 mb-1">Proteína</p>
+              <p class="text-xl font-bold text-green-300">${state.currentMealComposition.totalProt}g</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur p-2 rounded">
+              <p class="text-xs text-orange-200 mb-1">Carboidrato</p>
+              <p class="text-xl font-bold text-orange-300">${state.currentMealComposition.totalCarb}g</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur p-2 rounded">
+              <p class="text-xs text-yellow-200 mb-1">Gordura</p>
+              <p class="text-xl font-bold text-yellow-300">${state.currentMealComposition.totalFat}g</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur p-2 rounded">
+              <p class="text-xs text-cyan-200 mb-1">Calorias</p>
+              <p class="text-xl font-bold text-cyan-300">${state.currentMealComposition.totalKcal}</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Save Button -->
+        <div class="mt-4 text-center">
+          <button onclick="saveComposedMeal()" class="bg-green-600 hover:bg-green-500 px-8 py-3 rounded-lg font-bold text-lg text-white">
+            💾 Salvar Refeição Composta no Histórico
+          </button>
+        </div>
+      </div>
+      ` : ''}
 
       <!-- Examples Section -->
       <div class="bg-slate-800 p-5 rounded-lg">
@@ -3736,16 +3981,48 @@ function renderAlimentacao() {
         '<p class="text-slate-400">Nenhuma refeição registrada neste dia.</p>' :
         `<div class="space-y-2">
           ${selectedDayMeals.map(log => {
-            const nut = getMealNutritionByNameCombined(log.meal);
-            return `
-              <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
-                <div>
-                  <p class="font-semibold">${log.meal}</p>
-                  <p class="text-slate-300 text-xs">${log.time} • ${nut.kcal} kcal • ${nut.prot}g prot • ${nut.fat}g gord</p>
+            // Check if it's a composed meal
+            if (log.isComposed && log.components) {
+              return `
+                <div class="bg-slate-700 p-3 rounded border-l-4 border-purple-500">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="flex-1">
+                      <p class="font-semibold text-purple-300">🍽️ ${log.meal}</p>
+                      <p class="text-slate-400 text-xs mb-2">${log.time} • Refeição Composta</p>
+                      
+                      <!-- Components -->
+                      <div class="bg-slate-800 p-2 rounded mb-2 space-y-1">
+                        <p class="text-xs font-semibold text-slate-300 mb-1">Componentes:</p>
+                        ${log.components.map(comp => `
+                          <p class="text-xs text-slate-400">• ${comp.weight}g ${comp.foodName} (${comp.prot}g P, ${comp.carb}g C, ${comp.fat}g G, ${comp.kcal} kcal)</p>
+                        `).join('')}
+                      </div>
+                      
+                      <!-- Totals -->
+                      <div class="bg-gradient-to-r from-purple-800 to-indigo-800 p-2 rounded">
+                        <p class="text-xs font-bold text-purple-200 mb-1">Totais:</p>
+                        <p class="text-sm text-white">
+                          ${log.totalWeight}g • ${log.totalKcal} kcal • ${log.totalProt}g prot • ${log.totalCarb}g carb • ${log.totalFat}g gord
+                        </p>
+                      </div>
+                    </div>
+                    <button data-meal-id="${log.id}" class="meal-delete-btn text-red-400 hover:text-red-300 ml-2" title="Excluir registro">🗑️</button>
+                  </div>
                 </div>
-                <button data-meal-id="${log.id}" class="meal-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
-              </div>
-            `;
+              `;
+            } else {
+              // Regular meal
+              const nut = getMealNutritionByNameCombined(log.meal);
+              return `
+                <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
+                  <div>
+                    <p class="font-semibold">${log.meal}</p>
+                    <p class="text-slate-300 text-xs">${log.time} • ${nut.kcal} kcal • ${nut.prot}g prot • ${nut.fat}g gord</p>
+                  </div>
+                  <button data-meal-id="${log.id}" class="meal-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
+                </div>
+              `;
+            }
           }).join('')}
         </div>`
       }
