@@ -698,7 +698,7 @@ function removeUserPermanentlyFromArchive(archiveId) {
 }
 
 /* ----------------------------- Handlers (workout / meal / metrics) ----------------------------- */
-function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '') {
+function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '', category = '') {
   const user = state.users[state.activeUser];
   if (!user) return alert('Nenhum usuário ativo');
   
@@ -707,6 +707,7 @@ function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '') {
     date: state.currentWorkoutDay, // Use selected day instead of today
     time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     exercise: exerciseName,
+    category: category || '',
     sets: sets || '-',
     reps: reps || '-',
     weight: weight || '-',
@@ -1308,11 +1309,20 @@ function attachWorkoutButtons() {
     btn.onclick = function(e) {
       e.preventDefault();
       const exercise = this.getAttribute('data-exercise');
-      const sets = this.getAttribute('data-sets');
-      const reps = this.getAttribute('data-reps');
-      const weight = this.getAttribute('data-weight');
+      const category = this.getAttribute('data-category');
+      
+      // Prompt for sets, reps, and weight
+      const sets = prompt(`Registrar: ${exercise}\n\nQuantas séries você fez?`, '3');
+      if (sets === null) return; // User cancelled
+      
+      const reps = prompt(`Registrar: ${exercise}\n\nQuantas repetições por série?`, '12');
+      if (reps === null) return; // User cancelled
+      
+      const weight = prompt(`Registrar: ${exercise}\n\nQual carga você usou? (kg)\nDeixe em branco se não aplicável`, '');
+      if (weight === null) return; // User cancelled
+      
       if (exercise) {
-        handleLogWorkout(exercise, sets, reps, weight);
+        handleLogWorkout(exercise, sets, reps, weight, category);
       }
     };
   });
@@ -1531,7 +1541,7 @@ function renderTreino(user) {
                     <p class="font-medium">${ex.name}</p>
                     <p class="text-xs text-slate-400">${ex.equipment}</p>
                   </div>
-                  <button data-exercise="${ex.name}" data-sets="" data-reps="" data-weight="" class="workout-register-btn bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Registrar</button>
+                  <button data-exercise="${ex.name}" data-category="${category}" class="workout-register-btn bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Registrar</button>
                 </div>
               `).join('')}
             </div>
@@ -1570,7 +1580,7 @@ function renderTreino(user) {
             <div class="flex justify-between items-center bg-slate-700 p-3 rounded">
               <div class="flex-1">
                 <p class="font-semibold">${log.exercise || log.workout}</p>
-                <p class="text-slate-300 text-xs">${log.time}${log.sets && log.sets !== '-' ? ` • ${log.sets}x${log.reps}` : ''}${log.weight && log.weight !== '-' ? ` • ${log.weight}kg` : ''}</p>
+                <p class="text-slate-300 text-xs">${log.category ? `${log.category} • ` : ''}${log.time}${log.sets && log.sets !== '-' ? ` • ${log.sets}x${log.reps}` : ''}${log.weight && log.weight !== '-' ? ` • ${log.weight}kg` : ''}</p>
               </div>
               <div class="flex gap-2">
                 <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300" title="Editar séries/reps/carga">✏️</button>
@@ -1584,20 +1594,338 @@ function renderTreino(user) {
   `;
 }
 
+/* ----------------------------- Nutrition Database with Scientific Basis -----------------------------
+   Daily recommended amounts for healthy muscle gain and body composition based on:
+   - Phillips SM. et al. 2022 (Protein requirements 1.6-2.2 g/kg/d)
+   - Schoenfeld BJ. 2023 (Protein timing and distribution)
+   - Wang Z. et al. 2024 (Creatine supplementation)
+   - Position of the Academy of Nutrition and Dietetics (protein and carbs for athletes)
+   
+   Recommendations are tailored to:
+   - Basal Metabolic Rate (BMR) 
+   - Total Daily Energy Expenditure (TDEE)
+   - Body composition goals (muscle gain, fat loss, or maintenance)
+   - Gender-specific needs
+---------------------------------------------------------------------------------------------------- */
+
+function calculateNutritionRecommendations(user) {
+  const latestMetrics = user.bodyMetrics && user.bodyMetrics.length > 0 
+    ? user.bodyMetrics[user.bodyMetrics.length - 1] 
+    : { weight: 70, bmr: 1600, tdee: 2200 };
+  
+  const weight = latestMetrics.weight || 70;
+  const bmr = latestMetrics.bmr || calculateBMR(weight, user.height, user.age, user.gender);
+  const tdee = latestMetrics.tdee || (bmr * 1.55); // Moderate activity level
+  const goals = user.goals || { weight: weight + 5, muscleMass: (latestMetrics.muscleMass || 25) + 3 };
+  
+  // Determine if bulking, cutting, or maintaining
+  const isGaining = goals.weight > weight;
+  const calorieAdjustment = isGaining ? (user.gender === 'male' ? 400 : 300) : -300;
+  const targetCalories = Math.round(tdee + calorieAdjustment);
+  
+  // Protein: 1.8-2.2 g/kg for muscle gain (Phillips 2022)
+  const proteinGramsPerKg = isGaining ? 2.0 : 1.8;
+  const proteinGrams = Math.round(weight * proteinGramsPerKg);
+  const proteinCalories = proteinGrams * 4;
+  
+  // Fat: 0.8-1.0 g/kg for hormonal health
+  const fatGramsPerKg = 0.9;
+  const fatGrams = Math.round(weight * fatGramsPerKg);
+  const fatCalories = fatGrams * 9;
+  
+  // Carbs: remaining calories
+  const carbCalories = targetCalories - proteinCalories - fatCalories;
+  const carbGrams = Math.round(carbCalories / 4);
+  
+  // Food recommendations based on macros
+  // Protein sources (all values per 100g unless specified)
+  const foods = {
+    // Protein sources
+    chicken: {
+      name: 'Frango (peito)',
+      portion: Math.round(proteinGrams * 0.4 / 0.31), // 40% of protein from chicken (31g protein per 100g)
+      unit: 'g',
+      macro: 'Proteína',
+      perDay: 'daily',
+      protein: 31,
+      carbs: 0,
+      fat: 3.6,
+      kcal: 165,
+      note: 'Fonte magra de proteína de alta qualidade'
+    },
+    eggs: {
+      name: 'Ovos',
+      portion: Math.round(proteinGrams * 0.25 / 6.3), // 25% of protein from eggs (6.3g per egg)
+      unit: 'unidades',
+      macro: 'Proteína',
+      perDay: 'daily',
+      protein: 6.3,
+      carbs: 0.6,
+      fat: 5,
+      kcal: 72,
+      note: 'Proteína completa com todos aminoácidos essenciais'
+    },
+    whey: {
+      name: 'Whey Protein',
+      portion: Math.round(proteinGrams * 0.25 / 25), // 25% of protein from whey (25g per scoop)
+      unit: 'scoop (30g)',
+      macro: 'Proteína',
+      perDay: 'daily',
+      protein: 25,
+      carbs: 3,
+      fat: 1.5,
+      kcal: 120,
+      note: 'Suplemento pós-treino para síntese proteica rápida'
+    },
+    
+    // Carb sources
+    bread: {
+      name: 'Pão integral',
+      portion: Math.round(carbGrams * 0.15 / 49), // 15% of carbs from bread (49g carbs per 100g)
+      unit: 'fatias (25g cada)',
+      macro: 'Carboidrato',
+      perDay: 'daily',
+      protein: 9,
+      carbs: 49,
+      fat: 3.5,
+      kcal: 265,
+      note: 'Fonte de carboidratos complexos e fibras'
+    },
+    rice: {
+      name: 'Arroz integral',
+      portion: Math.round(carbGrams * 0.35 / 23), // 35% of carbs from rice (23g per 100g cooked)
+      unit: 'g (cozido)',
+      macro: 'Carboidrato',
+      perDay: 'daily',
+      protein: 2.6,
+      carbs: 23,
+      fat: 0.9,
+      kcal: 111,
+      note: 'Energia sustentada para treinos'
+    },
+    sweetPotato: {
+      name: 'Batata doce',
+      portion: Math.round(carbGrams * 0.25 / 20), // 25% of carbs from sweet potato (20g per 100g)
+      unit: 'g',
+      macro: 'Carboidrato',
+      perDay: 'daily',
+      protein: 1.6,
+      carbs: 20,
+      fat: 0.1,
+      kcal: 86,
+      note: 'Carboidrato de baixo índice glicêmico'
+    },
+    
+    // Fat sources
+    peanutButter: {
+      name: 'Pasta de amendoim',
+      portion: Math.round(fatGrams * 0.3 / 50 * 100), // 30% of fat from PB (50g fat per 100g)
+      unit: 'g',
+      macro: 'Gordura',
+      perDay: 'daily',
+      protein: 25,
+      carbs: 20,
+      fat: 50,
+      kcal: 588,
+      note: 'Gorduras saudáveis e proteína adicional'
+    },
+    avocado: {
+      name: 'Abacate',
+      portion: Math.round(fatGrams * 0.2 / 15), // 20% of fat from avocado (15g per 100g)
+      unit: 'g',
+      macro: 'Gordura',
+      perDay: 'daily',
+      protein: 2,
+      carbs: 9,
+      fat: 15,
+      kcal: 160,
+      note: 'Gorduras monoinsaturadas e fibras'
+    },
+    
+    // Supplements
+    creatine: {
+      name: 'Creatina',
+      portion: 5,
+      unit: 'g',
+      macro: 'Suplemento',
+      perDay: 'daily',
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      kcal: 0,
+      note: 'Melhora força e ganho de massa muscular (Wang 2024)'
+    }
+  };
+  
+  return {
+    targetCalories,
+    bmr,
+    tdee,
+    proteinGrams,
+    carbGrams,
+    fatGrams,
+    foods,
+    isGaining
+  };
+}
+
+function renderNutritionRecommendations(user) {
+  const nutrition = calculateNutritionRecommendations(user);
+  const foods = nutrition.foods;
+  
+  return `
+    <div class="bg-gradient-to-r from-green-700 to-emerald-800 p-6 rounded-xl mb-6">
+      <h4 class="font-bold text-xl mb-4">🎯 Metas Nutricionais Personalizadas</h4>
+      <div class="grid md:grid-cols-4 gap-4">
+        <div class="bg-white/10 backdrop-blur p-4 rounded-lg">
+          <p class="text-sm text-green-100 mb-1">TMB (Basal)</p>
+          <p class="text-3xl font-bold">${nutrition.bmr}</p>
+          <p class="text-xs text-green-200">kcal/dia</p>
+        </div>
+        <div class="bg-white/10 backdrop-blur p-4 rounded-lg">
+          <p class="text-sm text-green-100 mb-1">TDEE (Total)</p>
+          <p class="text-3xl font-bold">${Math.round(nutrition.tdee)}</p>
+          <p class="text-xs text-green-200">kcal/dia</p>
+        </div>
+        <div class="bg-white/10 backdrop-blur p-4 rounded-lg">
+          <p class="text-sm text-green-100 mb-1">Meta Calórica</p>
+          <p class="text-3xl font-bold">${nutrition.targetCalories}</p>
+          <p class="text-xs text-green-200">${nutrition.isGaining ? 'Ganho' : 'Perda'}</p>
+        </div>
+        <div class="bg-white/10 backdrop-blur p-4 rounded-lg">
+          <p class="text-sm text-green-100 mb-1">Macros</p>
+          <p class="text-lg font-bold">${nutrition.proteinGrams}P</p>
+          <p class="text-lg font-bold">${nutrition.carbGrams}C • ${nutrition.fatGrams}G</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-slate-800 p-6 rounded-xl mb-6">
+      <h4 class="font-bold text-xl mb-4">🍗 Base de Alimentação Diária Recomendada</h4>
+      <p class="text-slate-300 text-sm mb-4">Quantidades calculadas com base no seu metabolismo basal (${nutrition.bmr} kcal), TDEE (${Math.round(nutrition.tdee)} kcal) e metas de composição corporal. Baseado em estudos científicos (Phillips 2022, Schoenfeld 2023, Wang 2024).</p>
+      
+      <!-- Protein Sources -->
+      <div class="mb-6">
+        <h5 class="font-semibold text-lg text-blue-300 mb-3">💪 Fontes de Proteína (Meta: ${nutrition.proteinGrams}g/dia)</h5>
+        <div class="grid md:grid-cols-3 gap-4">
+          ${[foods.chicken, foods.eggs, foods.whey].map(food => `
+            <div class="bg-slate-700 p-4 rounded-lg">
+              <div class="flex justify-between items-start mb-2">
+                <p class="font-bold text-lg">${food.name}</p>
+                <span class="bg-blue-600 px-2 py-1 rounded text-xs">${food.macro}</span>
+              </div>
+              <p class="text-3xl font-bold text-blue-400 mb-2">${food.portion}</p>
+              <p class="text-sm text-slate-300 mb-3">${food.unit} por dia</p>
+              <div class="text-xs text-slate-400 space-y-1">
+                ${food.protein ? `<p>Proteína: ~${Math.round(food.portion * food.protein / (food.unit === 'unidades' ? 1 : food.unit === 'scoop (30g)' ? 1 : 100))}g</p>` : ''}
+                ${food.kcal ? `<p>Calorias: ~${Math.round(food.portion * food.kcal / (food.unit === 'unidades' ? 1 : food.unit === 'scoop (30g)' ? 1 : 100))}kcal</p>` : ''}
+              </div>
+              <p class="text-xs text-green-300 mt-3">${food.note}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Carb Sources -->
+      <div class="mb-6">
+        <h5 class="font-semibold text-lg text-orange-300 mb-3">🌾 Fontes de Carboidratos (Meta: ${nutrition.carbGrams}g/dia)</h5>
+        <div class="grid md:grid-cols-3 gap-4">
+          ${[foods.bread, foods.rice, foods.sweetPotato].map(food => `
+            <div class="bg-slate-700 p-4 rounded-lg">
+              <div class="flex justify-between items-start mb-2">
+                <p class="font-bold text-lg">${food.name}</p>
+                <span class="bg-orange-600 px-2 py-1 rounded text-xs">${food.macro}</span>
+              </div>
+              <p class="text-3xl font-bold text-orange-400 mb-2">${food.portion}</p>
+              <p class="text-sm text-slate-300 mb-3">${food.unit} por dia</p>
+              <div class="text-xs text-slate-400 space-y-1">
+                ${food.carbs ? `<p>Carboidratos: ~${Math.round(food.portion * food.carbs / 100)}g</p>` : ''}
+                ${food.kcal ? `<p>Calorias: ~${Math.round(food.portion * food.kcal / 100)}kcal</p>` : ''}
+              </div>
+              <p class="text-xs text-green-300 mt-3">${food.note}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Fat Sources -->
+      <div class="mb-6">
+        <h5 class="font-semibold text-lg text-yellow-300 mb-3">🥑 Fontes de Gorduras Saudáveis (Meta: ${nutrition.fatGrams}g/dia)</h5>
+        <div class="grid md:grid-cols-2 gap-4">
+          ${[foods.peanutButter, foods.avocado].map(food => `
+            <div class="bg-slate-700 p-4 rounded-lg">
+              <div class="flex justify-between items-start mb-2">
+                <p class="font-bold text-lg">${food.name}</p>
+                <span class="bg-yellow-600 px-2 py-1 rounded text-xs">${food.macro}</span>
+              </div>
+              <p class="text-3xl font-bold text-yellow-400 mb-2">${food.portion}</p>
+              <p class="text-sm text-slate-300 mb-3">${food.unit} por dia</p>
+              <div class="text-xs text-slate-400 space-y-1">
+                ${food.fat ? `<p>Gorduras: ~${Math.round(food.portion * food.fat / 100)}g</p>` : ''}
+                ${food.kcal ? `<p>Calorias: ~${Math.round(food.portion * food.kcal / 100)}kcal</p>` : ''}
+              </div>
+              <p class="text-xs text-green-300 mt-3">${food.note}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Supplements -->
+      <div class="mb-6">
+        <h5 class="font-semibold text-lg text-purple-300 mb-3">💊 Suplementação Baseada em Evidências</h5>
+        <div class="grid md:grid-cols-2 gap-4">
+          ${[foods.creatine, foods.whey].map(food => `
+            <div class="bg-slate-700 p-4 rounded-lg border-2 border-purple-500">
+              <div class="flex justify-between items-start mb-2">
+                <p class="font-bold text-lg">${food.name}</p>
+                <span class="bg-purple-600 px-2 py-1 rounded text-xs">${food.macro}</span>
+              </div>
+              <p class="text-3xl font-bold text-purple-400 mb-2">${food.portion}</p>
+              <p class="text-sm text-slate-300 mb-3">${food.unit} por dia</p>
+              <p class="text-xs text-green-300 mt-3">${food.note}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Scientific Notes -->
+      <div class="bg-gradient-to-r from-cyan-900 to-blue-900 p-4 rounded-lg">
+        <h5 class="font-semibold text-lg mb-2">🔬 Base Científica</h5>
+        <div class="text-sm text-slate-300 space-y-2">
+          <p><strong>Proteína:</strong> Recomendação de 1.8-2.2 g/kg/dia para otimizar síntese proteica e hipertrofia muscular (Phillips et al., 2022).</p>
+          <p><strong>Timing:</strong> Distribuir proteína em 4-6 refeições ao longo do dia, com 20-40g por refeição (Schoenfeld et al., 2023).</p>
+          <p><strong>Creatina:</strong> 5g/dia melhora força e ganho de massa muscular em adultos que praticam treinamento resistido (Wang et al., 2024).</p>
+          <p><strong>Carboidratos:</strong> Essenciais para reposição de glicogênio e performance em treinos intensos. Ajustar conforme nível de atividade.</p>
+          <p><strong>Gorduras:</strong> 0.8-1.0 g/kg/dia para suporte hormonal e absorção de vitaminas lipossolúveis.</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderNutricao(user) {
   const notes = buildReferenceNotesForNutrition();
   return `
+    ${renderNutritionRecommendations(user)}
+    
     <div class="bg-slate-800 p-4 rounded mb-6">
-      <h3 class="font-bold">Plano nutricional (estimativa)</h3>
+      <h3 class="font-bold">Plano nutricional (resumo)</h3>
       <p class="text-slate-300 text-sm">${notes || 'Importe referências na aba CIÊNCIA para ver recomendações.'}</p>
-      <div class="grid md:grid-cols-3 gap-3 mt-3">
-        <div class="bg-white/10 p-3 rounded"><p class="text-sm">Meta Calórica</p><p class="text-xl font-bold">${user.gender === 'male' ? 2000 : 1700} kcal</p></div>
-        <div class="bg-white/10 p-3 rounded"><p class="text-sm">Proteína</p><p class="text-xl font-bold">${user.gender === 'male' ? '140-160g' : '95-105g'}</p></div>
-        <div class="bg-white/10 p-3 rounded"><p class="text-sm">Superávit</p><p class="text-xl font-bold">+${user.gender === 'male' ? 400 : 300} kcal</p></div>
+      <div class="mt-3 text-slate-300 text-sm">
+        <p class="mb-2"><strong>Dicas práticas:</strong></p>
+        <ul class="list-disc list-inside space-y-1 text-sm">
+          <li>Distribua a proteína em 4-6 refeições ao longo do dia</li>
+          <li>Consuma 20-40g de proteína a cada 3-4 horas</li>
+          <li>Tome creatina diariamente (5g), preferencialmente com carboidratos</li>
+          <li>Whey protein ideal no pós-treino (janela de 0-2h)</li>
+          <li>Carboidratos concentrados antes e após treinos intensos</li>
+          <li>Gorduras saudáveis em todas as refeições principais</li>
+          <li>Hidrate-se: mínimo 35ml/kg de peso corporal por dia</li>
+        </ul>
       </div>
-      <div class="mt-3 text-slate-300 text-sm">Recomendações: priorizar ingestão proteica total diária e fracionamento; consider creatina 3–5 g/dia conforme tolerância. Ajustar calorias conforme monitoramento.</div>
     </div>
   `;
+}
 }
 
 function renderAlimentacao() {
