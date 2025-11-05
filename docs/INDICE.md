@@ -72,25 +72,7 @@
 
 ---
 
-#### 2. LAYOUT-CIENTIFICO.md (22KB) ⭐ NOVO!
-**O QUE É:** Layout baseado em estudos científicos de UX/UI  
-**QUANDO LER:** Antes de fazer mudanças de design/layout  
-**TEMPO:** 20-30 minutos  
-**CONTEÚDO:**
-- ✅ 10 princípios científicos fundamentais
-- ✅ Fitts's Law, Hick's Law, F-Pattern, Gestalt
-- ✅ Miller's Law, Thumb Zones, WCAG 2.1
-- ✅ Performance Perception, Data-Ink Ratio
-- ✅ Redesign do Dashboard com base científica
-- ✅ Melhorias para listas, formulários, navegação
-- ✅ Checklist de implementação em 7 fases
-- ✅ 10 referências científicas (1952-2023)
-
-**LEIA SE:** Quer fazer mudanças de layout com base científica
-
----
-
-#### 3. LISTA-MELHORIAS-ATUALIZADA.md (19KB) ⭐ NOVO!
+#### 2. LISTA-MELHORIAS-ATUALIZADA.md (19KB) ⭐ NOVO!
 **O QUE É:** Lista consolidada e atualizada de todas as melhorias  
 **QUANDO LER:** Para planejar próximas implementações  
 **TEMPO:** 15-25 minutos  
@@ -108,7 +90,7 @@
 
 ---
 
-#### 4. RESUMO-EXECUTIVO.md (14KB)
+#### 3. RESUMO-EXECUTIVO.md (14KB)
 **O QUE É:** Visão geral completa da análise  
 **QUANDO LER:** Primeiro documento a ler  
 **TEMPO:** 5-10 minutos  
@@ -126,7 +108,7 @@
 
 ---
 
-#### 5. MELHORIAS-SUGERIDAS.md (27KB)
+#### 4. MELHORIAS-SUGERIDAS.md (27KB)
 **O QUE É:** Lista completa de melhorias com código de exemplo  
 **QUANDO LER:** Quando for implementar features  
 **TEMPO:** 15-30 minutos  
@@ -144,7 +126,7 @@
 
 ---
 
-#### 6. COMPARACAO-CONCORRENTES.md (18KB)
+#### 5. COMPARACAO-CONCORRENTES.md (18KB)
 **O QUE É:** Análise detalhada de 4 concorrentes principais  
 **QUANDO LER:** Para entender o mercado  
 **TEMPO:** 10-20 minutos  
@@ -166,7 +148,7 @@
 
 ### 📋 Documentos de Suporte
 
-#### 7. ANALISE-SITE.md (21KB)
+#### 6. ANALISE-SITE.md (21KB)
 **O QUE É:** Análise inicial anterior (já existia)  
 **QUANDO LER:** Para contexto histórico  
 **TEMPO:** 15 minutos  
@@ -180,7 +162,7 @@
 
 ---
 
-#### 8. RESUMO-ALTERACOES.md (13KB)
+#### 7. RESUMO-ALTERACOES.md (13KB)
 **O QUE É:** Changelog das últimas alterações  
 **QUANDO LER:** Para saber o que mudou recentemente  
 **TEMPO:** 5-10 minutos  
@@ -197,7 +179,7 @@
 
 ---
 
-#### 9. README.md (6KB)
+#### 8. README.md (6KB)
 **O QUE É:** Informações gerais do projeto  
 **QUANDO LER:** Para apresentação geral  
 **TEMPO:** 5 minutos  
