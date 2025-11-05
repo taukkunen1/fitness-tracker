@@ -643,6 +643,13 @@ const commonFoods = {
 };
 
 /* ----------------------------- Utilities ----------------------------- */
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 function parseNumber(value) {
   if (!value && value !== 0) return 0;
   const n = parseFloat(String(value).replace(/[^\d.-]/g, ''));
@@ -3042,10 +3049,10 @@ function renderFotosProgresso(user) {
           `<div class="grid md:grid-cols-3 gap-4">
             ${photos.map(photo => `
               <div class="bg-slate-700 p-3 rounded">
-                <img src="${photo.imageData}" alt="Foto de ${photo.date}" class="w-full h-64 object-cover rounded mb-3" />
+                <img src="${photo.imageData}" alt="Foto de ${escapeHtml(photo.date)}" class="w-full h-64 object-cover rounded mb-3" />
                 <div class="space-y-1">
                   <p class="font-bold text-lg">${new Date(photo.date).toLocaleDateString('pt-BR')}</p>
-                  ${photo.notes ? `<p class="text-sm text-slate-300">${photo.notes}</p>` : ''}
+                  ${photo.notes ? `<p class="text-sm text-slate-300">${escapeHtml(photo.notes)}</p>` : ''}
                   <p class="text-xs text-slate-400">Adicionada em ${new Date(photo.uploadedAt).toLocaleDateString('pt-BR')}</p>
                   <button onclick="handleDeleteProgressPhoto('${photo.id}')" class="mt-2 bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-sm w-full">🗑️ Excluir</button>
                 </div>
@@ -3065,14 +3072,14 @@ function renderFotosProgresso(user) {
               <label class="block text-sm text-slate-300 mb-2">Foto 1 (Antes):</label>
               <select id="comparePhoto1" class="w-full px-4 py-2 rounded bg-slate-700 text-white">
                 <option value="">Selecione...</option>
-                ${photos.map(p => `<option value="${p.id}">${new Date(p.date).toLocaleDateString('pt-BR')} ${p.notes ? '- ' + p.notes : ''}</option>`).join('')}
+                ${photos.map(p => `<option value="${p.id}">${new Date(p.date).toLocaleDateString('pt-BR')} ${p.notes ? '- ' + escapeHtml(p.notes) : ''}</option>`).join('')}
               </select>
             </div>
             <div>
               <label class="block text-sm text-slate-300 mb-2">Foto 2 (Depois):</label>
               <select id="comparePhoto2" class="w-full px-4 py-2 rounded bg-slate-700 text-white">
                 <option value="">Selecione...</option>
-                ${photos.map(p => `<option value="${p.id}">${new Date(p.date).toLocaleDateString('pt-BR')} ${p.notes ? '- ' + p.notes : ''}</option>`).join('')}
+                ${photos.map(p => `<option value="${p.id}">${new Date(p.date).toLocaleDateString('pt-BR')} ${p.notes ? '- ' + escapeHtml(p.notes) : ''}</option>`).join('')}
               </select>
             </div>
           </div>
@@ -3171,7 +3178,7 @@ function compareProgressPhotos() {
     <div class="bg-slate-700 p-3 rounded">
       <img src="${photo1.imageData}" alt="Foto 1" class="w-full h-96 object-cover rounded mb-3" />
       <p class="font-bold text-lg">${new Date(photo1.date).toLocaleDateString('pt-BR')}</p>
-      ${photo1.notes ? `<p class="text-sm text-slate-300">${photo1.notes}</p>` : ''}
+      ${photo1.notes ? `<p class="text-sm text-slate-300">${escapeHtml(photo1.notes)}</p>` : ''}
     </div>
   `;
   
@@ -3179,7 +3186,7 @@ function compareProgressPhotos() {
     <div class="bg-slate-700 p-3 rounded">
       <img src="${photo2.imageData}" alt="Foto 2" class="w-full h-96 object-cover rounded mb-3" />
       <p class="font-bold text-lg">${new Date(photo2.date).toLocaleDateString('pt-BR')}</p>
-      ${photo2.notes ? `<p class="text-sm text-slate-300">${photo2.notes}</p>` : ''}
+      ${photo2.notes ? `<p class="text-sm text-slate-300">${escapeHtml(photo2.notes)}</p>` : ''}
     </div>
   `;
   
