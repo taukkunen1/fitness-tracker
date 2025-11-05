@@ -73,20 +73,20 @@
 ---
 
 #### 2. LAYOUT-CIENTIFICO.md (22KB) ⭐ NOVO!
-**O QUE É:** Lista consolidada e atualizada de todas as melhorias  
-**QUANDO LER:** Para planejar próximas implementações  
-**TEMPO:** 15-25 minutos  
+**O QUE É:** Layout baseado em estudos científicos de UX/UI  
+**QUANDO LER:** Antes de fazer mudanças de design/layout  
+**TEMPO:** 20-30 minutos  
 **CONTEÚDO:**
-- ✅ 20 melhorias organizadas por prioridade
-- ✅ Matriz Impacto vs Esforço
-- ✅ 4 níveis: Crítica, Alta, Média, Baixa
-- ✅ ROI calculado para cada feature
-- ✅ Estimativa de horas de desenvolvimento
-- ✅ Roadmap de 3 meses detalhado
-- ✅ Checklist de implementação
-- ✅ Estatísticas e resumos
+- ✅ 10 princípios científicos fundamentais
+- ✅ Fitts's Law, Hick's Law, F-Pattern, Gestalt
+- ✅ Miller's Law, Thumb Zones, WCAG 2.1
+- ✅ Performance Perception, Data-Ink Ratio
+- ✅ Redesign do Dashboard com base científica
+- ✅ Melhorias para listas, formulários, navegação
+- ✅ Checklist de implementação em 7 fases
+- ✅ 10 referências científicas (1952-2023)
 
-**LEIA SE:** Quer ver lista completa priorizada de melhorias
+**LEIA SE:** Quer fazer mudanças de layout com base científica
 
 ---
 
