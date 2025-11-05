@@ -4284,7 +4284,7 @@ function renderEvolucao(bodyMetrics, user) {
         <h3 class="font-bold text-xl mb-4">🏃 Registrar Treino Manual</h3>
         <p class="text-slate-300 text-sm mb-4">Adicione um treino manualmente ou aguarde sincronização futura via smartwatch.</p>
         
-        <form id="workoutForm" class="space-y-4">
+        <form id="workoutForm" onsubmit="handleWorkoutFormSubmit(event); return false;" class="space-y-4">
           <!-- Basic Info -->
           <div class="bg-slate-700 p-4 rounded">
             <h4 class="font-semibold mb-3 text-purple-300">📅 Informações Básicas</h4>
@@ -4549,8 +4549,11 @@ function switchEvolucaoTab(tab) {
     workoutsContent.classList.remove('hidden');
     bodyMetricsContent.classList.add('hidden');
     
-    // Render workout charts after switching to workout tab
-    setTimeout(() => renderWorkoutCharts(), 150);
+    // Setup form listeners after showing the form
+    setTimeout(() => {
+      setupWorkoutFormListeners();
+      renderWorkoutCharts();
+    }, 150);
   }
 }
 
@@ -4746,11 +4749,11 @@ function setupWorkoutFormListeners() {
   const form = document.getElementById('workoutForm');
   if (!form) return;
   
-  form.addEventListener('submit', handleWorkoutFormSubmit);
-  
   const startTimeInput = form.querySelector('[name="startTime"]');
   const endTimeInput = form.querySelector('[name="endTime"]');
   const durationInput = form.querySelector('[name="duration"]');
+  
+  if (!startTimeInput || !endTimeInput || !durationInput) return;
   
   function updateDuration() {
     const startTime = startTimeInput.value;
