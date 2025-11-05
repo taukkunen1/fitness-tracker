@@ -678,32 +678,6 @@ async function registerAccount(username, email, password) {
   
   return account;
 }
-    logSecurityEvent('register_failed', username, 'Username already exists');
-    throw new Error('Nome de usuário já existe.');
-  }
-  
-  // Create account
-  const salt = generateSalt();
-  const passwordHash = await hashPassword(password, salt);
-  
-  const account = {
-    username,
-    email,
-    passwordHash,
-    salt,
-    createdAt: new Date().toISOString(),
-    lastLogin: null,
-    linkedProfiles: [],
-    twoFactorEnabled: false,
-    accountLocked: false,
-    role: 'user' // 'user' or 'admin'
-  };
-  
-  await dbPut(STORE_ACCOUNTS, account);
-  logSecurityEvent('register_success', username, 'New account created');
-  
-  return account;
-}
 
 // ----------------------------- Login -----------------------------
 async function loginAccount(username, password) {
