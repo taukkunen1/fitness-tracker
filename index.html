@@ -113,6 +113,25 @@
     /* Pequeno ajuste para tabelas e canvas em mobile */
     table { border-collapse: collapse; width: 100%; }
     th, td { padding: 6px 8px; }
+    
+    /* Notification animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes fadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(20px); }
+    }
+    
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+    
+    .animate-fade-out {
+      animation: fadeOut 0.3s ease-in;
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen" oncopy="return false" oncut="return false" onpaste="return false">
@@ -159,13 +178,15 @@
    ====================================================================== */
 
 const DB_NAME = 'fitness-tracker-db';
-const DB_VERSION = 4; // bumped for "accounts" store for authentication
+const DB_VERSION = 5; // bumped for admin features (tasks, suggestions)
 const STORE_USERS = 'users';
 const STORE_COMPARISONS = 'comparisons';
 const STORE_REFERENCES = 'references';
 const STORE_ARCHIVE = 'archive';
 const STORE_SETTINGS = 'settings';
 const STORE_ACCOUNTS = 'accounts'; // New store for authentication
+const STORE_TASKS = 'tasks'; // Admin task management
+const STORE_SUGGESTIONS = 'suggestions'; // User suggestions and feedback
 
 // ----------------------------- IndexedDB helpers -----------------------------
 function openDB() {
@@ -181,6 +202,12 @@ function openDB() {
       if (!db.objectStoreNames.contains(STORE_ACCOUNTS)) {
         const accountStore = db.createObjectStore(STORE_ACCOUNTS, { keyPath: 'username' });
         accountStore.createIndex('email', 'email', { unique: true });
+      }
+      if (!db.objectStoreNames.contains(STORE_TASKS)) {
+        db.createObjectStore(STORE_TASKS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_SUGGESTIONS)) {
+        db.createObjectStore(STORE_SUGGESTIONS, { keyPath: 'id' });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -521,7 +548,8 @@ function createSession(account) {
     username: account.username,
     email: account.email,
     createdAt: account.createdAt,
-    linkedProfiles: account.linkedProfiles || []
+    linkedProfiles: account.linkedProfiles || [],
+    role: account.role || 'user'
   };
   authState.sessionToken = sessionToken;
   authState.csrfToken = csrfToken;
@@ -531,6 +559,7 @@ function createSession(account) {
     token: sessionToken,
     csrf: csrfToken,
     username: account.username,
+    role: account.role || 'user',
     createdAt: Date.now(),
     expiresAt: Date.now() + SECURITY_CONFIG.SESSION_TIMEOUT_MS
   };
@@ -565,7 +594,8 @@ async function validateSession() {
       username: account.username,
       email: account.email,
       createdAt: account.createdAt,
-      linkedProfiles: account.linkedProfiles || []
+      linkedProfiles: account.linkedProfiles || [],
+      role: account.role || 'user'
     };
     authState.sessionToken = session.token;
     authState.csrfToken = session.csrf;
@@ -635,7 +665,8 @@ async function registerAccount(username, email, password) {
     lastLogin: null,
     linkedProfiles: [],
     twoFactorEnabled: false,
-    accountLocked: false
+    accountLocked: false,
+    role: 'user' // 'user' or 'admin'
   };
   
   await dbPut(STORE_ACCOUNTS, account);
@@ -725,6 +756,395 @@ async function unlinkProfileFromAccount(accountUsername, profileId) {
     await dbPut(STORE_ACCOUNTS, account);
     logSecurityEvent('profile_unlinked', accountUsername, `Profile ${profileId} unlinked from account`);
   }
+}
+
+// ============================= ADMIN & TASK MANAGEMENT SYSTEM (2025) =============================
+
+// Check if user is admin
+function isAdmin() {
+  return authState.isAuthenticated && authState.currentAccount && authState.currentAccount.role === 'admin';
+}
+
+// Promote user to admin (can only be done programmatically or by existing admin)
+async function promoteToAdmin(username) {
+  if (!isAdmin() && authState.currentAccount && authState.currentAccount.username !== username) {
+    throw new Error('Somente administradores podem promover outros usuários.');
+  }
+  
+  const account = await dbGet(STORE_ACCOUNTS, username);
+  if (!account) {
+    throw new Error('Conta não encontrada.');
+  }
+  
+  account.role = 'admin';
+  await dbPut(STORE_ACCOUNTS, account);
+  logSecurityEvent('admin_promotion', username, `User promoted to admin by ${authState.currentAccount ? authState.currentAccount.username : 'system'}`);
+}
+
+// ----------------------------- Task Management System -----------------------------
+
+const TASK_PRIORITIES = {
+  CRITICAL: 'critical',
+  HIGH: 'high',
+  MEDIUM: 'medium',
+  LOW: 'low'
+};
+
+const TASK_STATUSES = {
+  TODO: 'todo',
+  IN_PROGRESS: 'in_progress',
+  DONE: 'done',
+  BLOCKED: 'blocked'
+};
+
+const TASK_CATEGORIES = {
+  SHORT_TERM: 'short_term', // 1-2 weeks
+  MEDIUM_TERM: 'medium_term', // 1-3 months
+  LONG_TERM: 'long_term' // 3-6 months
+};
+
+// Initialize default tasks (short-term roadmap from problem statement)
+const defaultShortTermTasks = [
+  {
+    id: 'task_deploy_https',
+    title: 'Deploy em produção com HTTPS',
+    description: 'Configurar deploy em produção com certificado SSL/TLS para acesso seguro via HTTPS',
+    category: TASK_CATEGORIES.SHORT_TERM,
+    priority: TASK_PRIORITIES.CRITICAL,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['deploy', 'security', 'https'],
+    checklist: [
+      { id: 1, text: 'Obter certificado SSL (Let\'s Encrypt)', done: false },
+      { id: 2, text: 'Configurar servidor para HTTPS', done: false },
+      { id: 3, text: 'Testar conexão HTTPS', done: false },
+      { id: 4, text: 'Redirecionar HTTP para HTTPS', done: false },
+      { id: 5, text: 'Verificar segurança com SSL Labs', done: false }
+    ]
+  },
+  {
+    id: 'task_browser_testing',
+    title: 'Testar em múltiplos navegadores',
+    description: 'Realizar testes de compatibilidade em Chrome, Firefox, Safari e Edge',
+    category: TASK_CATEGORIES.SHORT_TERM,
+    priority: TASK_PRIORITIES.HIGH,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['testing', 'browsers', 'compatibility'],
+    checklist: [
+      { id: 1, text: 'Testar no Chrome (desktop e mobile)', done: false },
+      { id: 2, text: 'Testar no Firefox', done: false },
+      { id: 3, text: 'Testar no Safari (macOS e iOS)', done: false },
+      { id: 4, text: 'Testar no Edge', done: false },
+      { id: 5, text: 'Documentar bugs encontrados', done: false },
+      { id: 6, text: 'Corrigir bugs de compatibilidade', done: false }
+    ]
+  },
+  {
+    id: 'task_user_feedback',
+    title: 'Coletar feedback de usuários',
+    description: 'Implementar sistema de coleta de feedback e sugestões dos usuários',
+    category: TASK_CATEGORIES.SHORT_TERM,
+    priority: TASK_PRIORITIES.HIGH,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feedback', 'users', 'suggestions'],
+    checklist: [
+      { id: 1, text: 'Criar formulário de feedback', done: false },
+      { id: 2, text: 'Implementar sistema de sugestões', done: false },
+      { id: 3, text: 'Adicionar votação em sugestões', done: false },
+      { id: 4, text: 'Criar página de visualização de sugestões', done: false },
+      { id: 5, text: 'Exportar sugestões para GitHub Issues', done: false }
+    ]
+  },
+  {
+    id: 'task_security_monitoring',
+    title: 'Monitorar logs de segurança',
+    description: 'Implementar dashboard de monitoramento de eventos de segurança e tentativas de acesso',
+    category: TASK_CATEGORIES.SHORT_TERM,
+    priority: TASK_PRIORITIES.CRITICAL,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['security', 'monitoring', 'logs'],
+    checklist: [
+      { id: 1, text: 'Criar dashboard de eventos de segurança', done: false },
+      { id: 2, text: 'Implementar alertas de atividade suspeita', done: false },
+      { id: 3, text: 'Adicionar gráficos de tentativas de login', done: false },
+      { id: 4, text: 'Exportar logs para análise', done: false },
+      { id: 5, text: 'Criar relatório semanal de segurança', done: false }
+    ]
+  }
+];
+
+// Initialize tasks in database
+async function initializeTasks() {
+  try {
+    for (const task of defaultShortTermTasks) {
+      const existing = await dbGet(STORE_TASKS, task.id);
+      if (!existing) {
+        await dbPut(STORE_TASKS, task);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to initialize tasks', err);
+  }
+}
+
+// Get all tasks
+async function getAllTasks() {
+  return await dbGetAll(STORE_TASKS);
+}
+
+// Get tasks by category
+async function getTasksByCategory(category) {
+  const tasks = await getAllTasks();
+  return tasks.filter(t => t.category === category);
+}
+
+// Get tasks by status
+async function getTasksByStatus(status) {
+  const tasks = await getAllTasks();
+  return tasks.filter(t => t.status === status);
+}
+
+// Create new task
+async function createTask(taskData) {
+  if (!isAdmin()) {
+    throw new Error('Apenas administradores podem criar tarefas.');
+  }
+  
+  const task = {
+    id: 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11),
+    title: sanitizeInput(taskData.title),
+    description: sanitizeInput(taskData.description),
+    category: taskData.category || TASK_CATEGORIES.SHORT_TERM,
+    priority: taskData.priority || TASK_PRIORITIES.MEDIUM,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: taskData.dueDate || null,
+    assignedTo: taskData.assignedTo || null,
+    tags: taskData.tags || [],
+    checklist: taskData.checklist || [],
+    createdBy: authState.currentAccount.username
+  };
+  
+  await dbPut(STORE_TASKS, task);
+  logSecurityEvent('task_created', authState.currentAccount.username, `Task created: ${task.title}`);
+  return task;
+}
+
+// Update task
+async function updateTask(taskId, updates) {
+  if (!isAdmin()) {
+    throw new Error('Apenas administradores podem atualizar tarefas.');
+  }
+  
+  const task = await dbGet(STORE_TASKS, taskId);
+  if (!task) {
+    throw new Error('Tarefa não encontrada.');
+  }
+  
+  Object.assign(task, {
+    ...updates,
+    updatedAt: new Date().toISOString(),
+    updatedBy: authState.currentAccount.username
+  });
+  
+  await dbPut(STORE_TASKS, task);
+  logSecurityEvent('task_updated', authState.currentAccount.username, `Task updated: ${task.title}`);
+  return task;
+}
+
+// Toggle checklist item
+async function toggleChecklistItem(taskId, checklistItemId) {
+  if (!isAdmin()) {
+    throw new Error('Apenas administradores podem atualizar tarefas.');
+  }
+  
+  const task = await dbGet(STORE_TASKS, taskId);
+  if (!task) {
+    throw new Error('Tarefa não encontrada.');
+  }
+  
+  const item = task.checklist.find(i => i.id === checklistItemId);
+  if (item) {
+    item.done = !item.done;
+    
+    // Check if all items are done
+    const allDone = task.checklist.every(i => i.done);
+    if (allDone && task.status !== TASK_STATUSES.DONE) {
+      task.status = TASK_STATUSES.DONE;
+      task.completedAt = new Date().toISOString();
+    }
+    
+    task.updatedAt = new Date().toISOString();
+    task.updatedBy = authState.currentAccount.username;
+    
+    await dbPut(STORE_TASKS, task);
+  }
+  
+  return task;
+}
+
+// Delete task
+async function deleteTask(taskId) {
+  if (!isAdmin()) {
+    throw new Error('Apenas administradores podem deletar tarefas.');
+  }
+  
+  const task = await dbGet(STORE_TASKS, taskId);
+  if (task) {
+    // Archive instead of delete
+    await dbPut(STORE_ARCHIVE, {
+      id: 'archived_task_' + taskId + '_' + Date.now(),
+      type: 'task',
+      data: task,
+      archivedAt: new Date().toISOString(),
+      archivedBy: authState.currentAccount.username
+    });
+    
+    await dbDelete(STORE_TASKS, taskId);
+    logSecurityEvent('task_deleted', authState.currentAccount.username, `Task archived: ${task.title}`);
+  }
+}
+
+// ----------------------------- Suggestion System -----------------------------
+
+// Submit suggestion
+async function submitSuggestion(suggestionData) {
+  if (!authState.isAuthenticated) {
+    throw new Error('Você precisa estar logado para enviar sugestões.');
+  }
+  
+  const suggestion = {
+    id: 'suggestion_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11),
+    title: sanitizeInput(suggestionData.title),
+    description: sanitizeInput(suggestionData.description),
+    category: sanitizeInput(suggestionData.category) || 'general',
+    priority: suggestionData.priority || 'medium',
+    status: 'pending', // pending, approved, rejected, implemented
+    submittedBy: authState.currentAccount.username,
+    submittedAt: new Date().toISOString(),
+    votes: 0,
+    votedBy: [],
+    comments: []
+  };
+  
+  await dbPut(STORE_SUGGESTIONS, suggestion);
+  logSecurityEvent('suggestion_submitted', authState.currentAccount.username, `Suggestion: ${suggestion.title}`);
+  return suggestion;
+}
+
+// Get all suggestions
+async function getAllSuggestions() {
+  return await dbGetAll(STORE_SUGGESTIONS);
+}
+
+// Vote on suggestion
+async function voteSuggestion(suggestionId) {
+  if (!authState.isAuthenticated) {
+    throw new Error('Você precisa estar logado para votar.');
+  }
+  
+  const suggestion = await dbGet(STORE_SUGGESTIONS, suggestionId);
+  if (!suggestion) {
+    throw new Error('Sugestão não encontrada.');
+  }
+  
+  const username = authState.currentAccount.username;
+  
+  // Toggle vote
+  if (suggestion.votedBy.includes(username)) {
+    suggestion.votes--;
+    suggestion.votedBy = suggestion.votedBy.filter(u => u !== username);
+  } else {
+    suggestion.votes++;
+    suggestion.votedBy.push(username);
+  }
+  
+  await dbPut(STORE_SUGGESTIONS, suggestion);
+  return suggestion;
+}
+
+// Update suggestion status (admin only)
+async function updateSuggestionStatus(suggestionId, status, adminNote = '') {
+  if (!isAdmin()) {
+    throw new Error('Apenas administradores podem atualizar status de sugestões.');
+  }
+  
+  const suggestion = await dbGet(STORE_SUGGESTIONS, suggestionId);
+  if (!suggestion) {
+    throw new Error('Sugestão não encontrada.');
+  }
+  
+  suggestion.status = status;
+  suggestion.reviewedAt = new Date().toISOString();
+  suggestion.reviewedBy = authState.currentAccount.username;
+  suggestion.adminNote = sanitizeInput(adminNote);
+  
+  await dbPut(STORE_SUGGESTIONS, suggestion);
+  logSecurityEvent('suggestion_reviewed', authState.currentAccount.username, `Suggestion ${suggestionId} status: ${status}`);
+  return suggestion;
+}
+
+// Export suggestions to GitHub-like format
+async function exportSuggestionsToGitHub() {
+  if (!isAdmin()) {
+    throw new Error('Apenas administradores podem exportar sugestões.');
+  }
+  
+  const suggestions = await getAllSuggestions();
+  const githubIssues = suggestions.map(s => ({
+    title: s.title,
+    body: `${s.description}\n\n---\n**Categoria:** ${s.category}\n**Prioridade:** ${s.priority}\n**Votos:** ${s.votes}\n**Submetido por:** ${s.submittedBy}\n**Data:** ${new Date(s.submittedAt).toLocaleDateString('pt-BR')}`,
+    labels: [s.category, s.priority, s.status],
+    assignees: []
+  }));
+  
+  // Create markdown file
+  let markdown = '# Sugestões de Usuários - Fitness Tracker Pro\n\n';
+  markdown += `**Data de Exportação:** ${new Date().toLocaleString('pt-BR')}\n\n`;
+  markdown += '---\n\n';
+  
+  const grouped = {
+    pending: [],
+    approved: [],
+    rejected: [],
+    implemented: []
+  };
+  
+  suggestions.forEach(s => {
+    grouped[s.status].push(s);
+  });
+  
+  for (const [status, items] of Object.entries(grouped)) {
+    if (items.length > 0) {
+      markdown += `## ${status.toUpperCase()}\n\n`;
+      items.forEach(s => {
+        markdown += `### ${s.title}\n`;
+        markdown += `- **Descrição:** ${s.description}\n`;
+        markdown += `- **Categoria:** ${s.category}\n`;
+        markdown += `- **Prioridade:** ${s.priority}\n`;
+        markdown += `- **Votos:** ${s.votes} 👍\n`;
+        markdown += `- **Submetido por:** ${s.submittedBy}\n`;
+        markdown += `- **Data:** ${new Date(s.submittedAt).toLocaleDateString('pt-BR')}\n`;
+        if (s.adminNote) {
+          markdown += `- **Nota do Admin:** ${s.adminNote}\n`;
+        }
+        markdown += '\n---\n\n';
+      });
+    }
+  }
+  
+  return markdown;
 }
 
 // ----------------------------- Load login attempts from storage -----------------------------
@@ -2280,6 +2700,24 @@ function render() {
             ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : tab === 'comparacao' ? '⚖️ Comparação' : '🔬 Ciência'}
           </button>
         `).join('')}
+        ${isAdmin() ? `
+          <div class="w-full my-2"></div>
+          <div class="flex items-center gap-2 px-4 py-2 bg-red-900/30 rounded-lg">
+            <span class="text-red-400 font-bold">👑 ADMIN:</span>
+          </div>
+          ${['admin_tasks','admin_suggestions','admin_security'].map(tab => `
+            <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white' : 'bg-slate-800/50 text-slate-300 border border-red-500/30'}">
+              ${tab === 'admin_tasks' ? '📋 Tarefas' : tab === 'admin_suggestions' ? '💡 Sugestões' : '🔐 Segurança'}
+            </button>
+          `).join('')}
+        ` : `
+          ${['suggestions'].map(tab => `
+            <div class="w-full my-2"></div>
+            <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-green-600 to-teal-600 text-white' : 'bg-slate-800/50 text-slate-300'}">
+              💡 Sugestões
+            </button>
+          `).join('')}
+        `}
       </div>
 
       <main>
@@ -2292,6 +2730,10 @@ function render() {
         ${state.activeTab === 'evolucao' ? renderEvolucao(bodyMetrics, currentUser) : ''}
         ${state.activeTab === 'comparacao' ? renderComparacao() : ''}
         ${state.activeTab === 'ciencia' ? renderCiencia() : ''}
+        ${state.activeTab === 'admin_tasks' && isAdmin() ? renderAdminTasks() : ''}
+        ${state.activeTab === 'admin_suggestions' && isAdmin() ? renderAdminSuggestions() : ''}
+        ${state.activeTab === 'admin_security' && isAdmin() ? renderAdminSecurity() : ''}
+        ${state.activeTab === 'suggestions' && !isAdmin() ? renderUserSuggestions() : ''}
       </main>
     </div>
 
@@ -2344,6 +2786,26 @@ function render() {
   if (state.activeTab === 'fotos') {
     const photoForm = document.getElementById('progressPhotoForm');
     if (photoForm) photoForm.addEventListener('submit', handleAddProgressPhoto);
+  }
+  
+  // Admin tabs - load data and attach event listeners
+  if (state.activeTab === 'admin_tasks' && isAdmin()) {
+    loadAndDisplayTasks();
+  }
+  
+  if (state.activeTab === 'admin_suggestions' && isAdmin()) {
+    loadAndDisplayAdminSuggestions();
+  }
+  
+  if (state.activeTab === 'admin_security' && isAdmin()) {
+    loadAndDisplaySecurityEvents();
+  }
+  
+  // User suggestions tab
+  if (state.activeTab === 'suggestions' && !isAdmin()) {
+    loadAndDisplayUserSuggestions();
+    const suggestionForm = document.getElementById('suggestionForm');
+    if (suggestionForm) suggestionForm.addEventListener('submit', handleSuggestionFormSubmit);
   }
 }
 
@@ -3624,6 +4086,241 @@ function renderFotosProgresso(user) {
   `;
 }
 
+/* ============================= ADMIN RENDER FUNCTIONS ============================= */
+
+function renderAdminTasks() {
+  return `
+    <div class="space-y-6">
+      <!-- Admin Header -->
+      <div class="bg-gradient-to-r from-red-900 to-orange-900 p-6 rounded-xl border border-red-500">
+        <h2 class="text-3xl font-bold mb-2">👑 Painel do Administrador - Tarefas</h2>
+        <p class="text-red-200">Gerencie as tarefas do roadmap e acompanhe o progresso do projeto</p>
+      </div>
+
+      <!-- Task Stats -->
+      <div class="grid md:grid-cols-4 gap-4" id="taskStats">
+        <div class="bg-slate-800 p-4 rounded-lg">
+          <p class="text-slate-400 text-sm">Total de Tarefas</p>
+          <p class="text-3xl font-bold text-white" id="totalTasks">-</p>
+        </div>
+        <div class="bg-green-900/30 p-4 rounded-lg border border-green-500/30">
+          <p class="text-green-400 text-sm">Concluídas</p>
+          <p class="text-3xl font-bold text-green-300" id="doneTasks">-</p>
+        </div>
+        <div class="bg-yellow-900/30 p-4 rounded-lg border border-yellow-500/30">
+          <p class="text-yellow-400 text-sm">Em Progresso</p>
+          <p class="text-3xl font-bold text-yellow-300" id="inProgressTasks">-</p>
+        </div>
+        <div class="bg-blue-900/30 p-4 rounded-lg border border-blue-500/30">
+          <p class="text-blue-400 text-sm">A Fazer</p>
+          <p class="text-3xl font-bold text-blue-300" id="todoTasks">-</p>
+        </div>
+      </div>
+
+      <!-- Create Task Button -->
+      <div class="flex justify-between items-center">
+        <h3 class="text-xl font-bold">📋 Tarefas do Roadmap</h3>
+        <button onclick="showCreateTaskModal()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-semibold">
+          ➕ Nova Tarefa
+        </button>
+      </div>
+
+      <!-- Task Categories -->
+      <div class="space-y-6" id="tasksList">
+        <p class="text-slate-400">Carregando tarefas...</p>
+      </div>
+
+      <!-- Export Button -->
+      <div class="flex gap-3">
+        <button onclick="exportTasksToMarkdown()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-semibold">
+          📄 Exportar Tarefas (Markdown)
+        </button>
+        <button onclick="exportTasksToJSON()" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-lg font-semibold">
+          💾 Exportar JSON
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminSuggestions() {
+  return `
+    <div class="space-y-6">
+      <!-- Admin Header -->
+      <div class="bg-gradient-to-r from-purple-900 to-indigo-900 p-6 rounded-xl border border-purple-500">
+        <h2 class="text-3xl font-bold mb-2">💡 Painel do Administrador - Sugestões</h2>
+        <p class="text-purple-200">Gerencie sugestões e feedback dos usuários</p>
+      </div>
+
+      <!-- Suggestion Stats -->
+      <div class="grid md:grid-cols-4 gap-4" id="suggestionStats">
+        <div class="bg-slate-800 p-4 rounded-lg">
+          <p class="text-slate-400 text-sm">Total</p>
+          <p class="text-3xl font-bold text-white" id="totalSuggestions">-</p>
+        </div>
+        <div class="bg-yellow-900/30 p-4 rounded-lg border border-yellow-500/30">
+          <p class="text-yellow-400 text-sm">Pendentes</p>
+          <p class="text-3xl font-bold text-yellow-300" id="pendingSuggestions">-</p>
+        </div>
+        <div class="bg-green-900/30 p-4 rounded-lg border border-green-500/30">
+          <p class="text-green-400 text-sm">Aprovadas</p>
+          <p class="text-3xl font-bold text-green-300" id="approvedSuggestions">-</p>
+        </div>
+        <div class="bg-blue-900/30 p-4 rounded-lg border border-blue-500/30">
+          <p class="text-blue-400 text-sm">Implementadas</p>
+          <p class="text-3xl font-bold text-blue-300" id="implementedSuggestions">-</p>
+        </div>
+      </div>
+
+      <!-- Export to GitHub -->
+      <div class="bg-slate-800 p-4 rounded-lg border border-green-500/30">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-lg font-bold mb-1">🔄 Sincronizar com GitHub</h3>
+            <p class="text-slate-400 text-sm">Exporte todas as sugestões para um arquivo Markdown compatível com GitHub Issues</p>
+          </div>
+          <button onclick="exportSuggestionsToGitHubFormat()" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-lg font-semibold whitespace-nowrap">
+            📤 Exportar para GitHub
+          </button>
+        </div>
+      </div>
+
+      <!-- Suggestions List -->
+      <div class="space-y-4" id="suggestionsList">
+        <p class="text-slate-400">Carregando sugestões...</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminSecurity() {
+  return `
+    <div class="space-y-6">
+      <!-- Admin Header -->
+      <div class="bg-gradient-to-r from-red-900 to-pink-900 p-6 rounded-xl border border-red-500">
+        <h2 class="text-3xl font-bold mb-2">🔐 Painel do Administrador - Segurança</h2>
+        <p class="text-red-200">Monitore eventos de segurança e atividades suspeitas</p>
+      </div>
+
+      <!-- Security Stats -->
+      <div class="grid md:grid-cols-4 gap-4" id="securityStats">
+        <div class="bg-slate-800 p-4 rounded-lg">
+          <p class="text-slate-400 text-sm">Total de Eventos</p>
+          <p class="text-3xl font-bold text-white" id="totalSecurityEvents">-</p>
+        </div>
+        <div class="bg-green-900/30 p-4 rounded-lg border border-green-500/30">
+          <p class="text-green-400 text-sm">Logins Sucesso</p>
+          <p class="text-3xl font-bold text-green-300" id="successfulLogins">-</p>
+        </div>
+        <div class="bg-red-900/30 p-4 rounded-lg border border-red-500/30">
+          <p class="text-red-400 text-sm">Logins Falhados</p>
+          <p class="text-3xl font-bold text-red-300" id="failedLogins">-</p>
+        </div>
+        <div class="bg-yellow-900/30 p-4 rounded-lg border border-yellow-500/30">
+          <p class="text-yellow-400 text-sm">Contas Bloqueadas</p>
+          <p class="text-3xl font-bold text-yellow-300" id="blockedAccounts">-</p>
+        </div>
+      </div>
+
+      <!-- Security Events List -->
+      <div class="bg-slate-800 p-4 rounded-lg">
+        <h3 class="text-xl font-bold mb-4">📊 Eventos de Segurança Recentes</h3>
+        <div id="securityEventsList">
+          <p class="text-slate-400">Carregando eventos...</p>
+        </div>
+      </div>
+
+      <!-- Account Management -->
+      <div class="bg-slate-800 p-4 rounded-lg">
+        <h3 class="text-xl font-bold mb-4">👥 Gerenciamento de Contas</h3>
+        <div id="accountsList">
+          <p class="text-slate-400">Carregando contas...</p>
+        </div>
+      </div>
+
+      <!-- Export Buttons -->
+      <div class="flex gap-3">
+        <button onclick="exportSecurityLogs()" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-lg font-semibold">
+          📄 Exportar Logs de Segurança
+        </button>
+        <button onclick="clearOldSecurityLogs()" class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-lg font-semibold">
+          🗑️ Limpar Logs Antigos (>30 dias)
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderUserSuggestions() {
+  return `
+    <div class="space-y-6">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-green-900 to-teal-900 p-6 rounded-xl border border-green-500">
+        <h2 class="text-3xl font-bold mb-2">💡 Sugestões e Feedback</h2>
+        <p class="text-green-200">Compartilhe suas ideias para melhorar o Fitness Tracker Pro</p>
+      </div>
+
+      <!-- Submit Suggestion Form -->
+      <div class="bg-slate-800 p-6 rounded-lg">
+        <h3 class="text-xl font-bold mb-4">📝 Enviar Nova Sugestão</h3>
+        <form id="suggestionForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Título da Sugestão *</label>
+            <input type="text" name="title" required maxlength="100" 
+                   class="w-full px-4 py-2 rounded-lg bg-slate-700 text-white focus:ring-2 focus:ring-green-500"
+                   placeholder="Ex: Adicionar timer de descanso entre séries" />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Descrição Detalhada *</label>
+            <textarea name="description" required maxlength="500" rows="4"
+                      class="w-full px-4 py-2 rounded-lg bg-slate-700 text-white focus:ring-2 focus:ring-green-500"
+                      placeholder="Descreva sua sugestão em detalhes..."></textarea>
+            <p class="text-xs text-slate-400 mt-1">Máximo 500 caracteres</p>
+          </div>
+          
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Categoria</label>
+              <select name="category" class="w-full px-4 py-2 rounded-lg bg-slate-700 text-white">
+                <option value="feature">Nova Funcionalidade</option>
+                <option value="improvement">Melhoria</option>
+                <option value="bugfix">Correção de Bug</option>
+                <option value="ui">Interface/Design</option>
+                <option value="performance">Performance</option>
+                <option value="other">Outro</option>
+              </select>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Prioridade</label>
+              <select name="priority" class="w-full px-4 py-2 rounded-lg bg-slate-700 text-white">
+                <option value="low">Baixa</option>
+                <option value="medium" selected>Média</option>
+                <option value="high">Alta</option>
+                <option value="critical">Crítica</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full bg-green-600 hover:bg-green-500 px-6 py-3 rounded-lg font-semibold text-lg">
+            ✨ Enviar Sugestão
+          </button>
+        </form>
+      </div>
+
+      <!-- Existing Suggestions -->
+      <div class="bg-slate-800 p-6 rounded-lg">
+        <h3 class="text-xl font-bold mb-4">📋 Sugestões da Comunidade</h3>
+        <p class="text-slate-400 text-sm mb-4">Vote nas sugestões que você mais gostaria de ver implementadas</p>
+        <div id="userSuggestionsList">
+          <p class="text-slate-400">Carregando sugestões...</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 /* ----------------------------- Chart rendering ----------------------------- */
 function renderMuscleEvolutionChart(bodyMetrics, userId) {
   const canvas = document.getElementById('muscleChart');
@@ -4028,6 +4725,609 @@ function handleLogout() {
   }
 }
 
+/* ============================= ADMIN HANDLER FUNCTIONS ============================= */
+
+// Load and display tasks
+async function loadAndDisplayTasks() {
+  const tasks = await getAllTasks();
+  
+  // Update stats
+  const stats = {
+    total: tasks.length,
+    done: tasks.filter(t => t.status === TASK_STATUSES.DONE).length,
+    inProgress: tasks.filter(t => t.status === TASK_STATUSES.IN_PROGRESS).length,
+    todo: tasks.filter(t => t.status === TASK_STATUSES.TODO).length
+  };
+  
+  document.getElementById('totalTasks').textContent = stats.total;
+  document.getElementById('doneTasks').textContent = stats.done;
+  document.getElementById('inProgressTasks').textContent = stats.inProgress;
+  document.getElementById('todoTasks').textContent = stats.todo;
+  
+  // Group by category
+  const categories = {
+    [TASK_CATEGORIES.SHORT_TERM]: tasks.filter(t => t.category === TASK_CATEGORIES.SHORT_TERM),
+    [TASK_CATEGORIES.MEDIUM_TERM]: tasks.filter(t => t.category === TASK_CATEGORIES.MEDIUM_TERM),
+    [TASK_CATEGORIES.LONG_TERM]: tasks.filter(t => t.category === TASK_CATEGORIES.LONG_TERM)
+  };
+  
+  let html = '';
+  
+  for (const [category, categoryTasks] of Object.entries(categories)) {
+    if (categoryTasks.length === 0) continue;
+    
+    const categoryName = category === TASK_CATEGORIES.SHORT_TERM ? 'Curto Prazo (1-2 semanas)' :
+                         category === TASK_CATEGORIES.MEDIUM_TERM ? 'Médio Prazo (1-3 meses)' :
+                         'Longo Prazo (3-6 meses)';
+    
+    html += `
+      <div class="bg-slate-800 p-4 rounded-lg">
+        <h4 class="text-lg font-bold mb-4">${categoryName}</h4>
+        <div class="space-y-3">
+    `;
+    
+    categoryTasks.forEach(task => {
+      const priorityColor = task.priority === TASK_PRIORITIES.CRITICAL ? 'red' :
+                            task.priority === TASK_PRIORITIES.HIGH ? 'orange' :
+                            task.priority === TASK_PRIORITIES.MEDIUM ? 'yellow' : 'blue';
+      
+      const statusColor = task.status === TASK_STATUSES.DONE ? 'green' :
+                          task.status === TASK_STATUSES.IN_PROGRESS ? 'blue' :
+                          task.status === TASK_STATUSES.BLOCKED ? 'red' : 'slate';
+      
+      const completedItems = task.checklist.filter(i => i.done).length;
+      const totalItems = task.checklist.length;
+      const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+      
+      html += `
+        <div class="bg-slate-700 p-4 rounded-lg border-l-4 border-${priorityColor}-500">
+          <div class="flex justify-between items-start mb-2">
+            <div class="flex-1">
+              <h5 class="font-bold text-lg mb-1">${task.title}</h5>
+              <p class="text-slate-300 text-sm">${task.description}</p>
+            </div>
+            <div class="flex gap-2 ml-4">
+              <span class="px-2 py-1 rounded text-xs bg-${priorityColor}-900 text-${priorityColor}-300 border border-${priorityColor}-500">
+                ${task.priority}
+              </span>
+              <span class="px-2 py-1 rounded text-xs bg-${statusColor}-900 text-${statusColor}-300 border border-${statusColor}-500">
+                ${task.status.replace('_', ' ')}
+              </span>
+            </div>
+          </div>
+          
+          ${task.checklist.length > 0 ? `
+            <div class="mt-3">
+              <div class="flex justify-between items-center mb-2">
+                <p class="text-sm text-slate-400">Progresso: ${completedItems}/${totalItems}</p>
+                <p class="text-sm font-bold text-${progress === 100 ? 'green' : 'blue'}-400">${progress}%</p>
+              </div>
+              <div class="w-full bg-slate-600 rounded-full h-2 mb-3">
+                <div class="bg-${progress === 100 ? 'green' : 'blue'}-500 h-2 rounded-full transition-all" style="width: ${progress}%"></div>
+              </div>
+              <div class="space-y-2">
+                ${task.checklist.map(item => `
+                  <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-600 p-2 rounded">
+                    <input type="checkbox" ${item.done ? 'checked' : ''} 
+                           onchange="handleToggleChecklistItem('${task.id}', ${item.id})"
+                           class="w-4 h-4 rounded" />
+                    <span class="${item.done ? 'line-through text-slate-500' : 'text-slate-300'}">${item.text}</span>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+          
+          <div class="mt-3 flex gap-2">
+            <button onclick="editTask('${task.id}')" class="text-sm px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded">
+              ✏️ Editar
+            </button>
+            <button onclick="changeTaskStatus('${task.id}')" class="text-sm px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded">
+              🔄 Mudar Status
+            </button>
+            <button onclick="deleteTaskConfirm('${task.id}')" class="text-sm px-3 py-1 bg-red-600 hover:bg-red-500 rounded">
+              🗑️ Arquivar
+            </button>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div></div>';
+  }
+  
+  document.getElementById('tasksList').innerHTML = html || '<p class="text-slate-400">Nenhuma tarefa encontrada.</p>';
+}
+
+// Handle checklist item toggle
+async function handleToggleChecklistItem(taskId, checklistItemId) {
+  try {
+    await toggleChecklistItem(taskId, checklistItemId);
+    await loadAndDisplayTasks();
+    showNotification('✅ Item atualizado!', 'success');
+  } catch (err) {
+    showNotification('❌ ' + err.message, 'error');
+  }
+}
+
+// Show create task modal
+function showCreateTaskModal() {
+  const modal = prompt('Digite o título da nova tarefa:');
+  if (!modal) return;
+  
+  const description = prompt('Digite a descrição da tarefa:');
+  if (!description) return;
+  
+  const category = prompt('Categoria (short_term/medium_term/long_term):', 'short_term');
+  const priority = prompt('Prioridade (low/medium/high/critical):', 'medium');
+  
+  createTask({
+    title: modal,
+    description: description,
+    category: category || 'short_term',
+    priority: priority || 'medium'
+  }).then(() => {
+    showNotification('✅ Tarefa criada!', 'success');
+    loadAndDisplayTasks();
+  }).catch(err => {
+    showNotification('❌ ' + err.message, 'error');
+  });
+}
+
+// Change task status
+async function changeTaskStatus(taskId) {
+  const newStatus = prompt('Novo status (todo/in_progress/done/blocked):', 'in_progress');
+  if (!newStatus) return;
+  
+  try {
+    await updateTask(taskId, { status: newStatus });
+    await loadAndDisplayTasks();
+    showNotification('✅ Status atualizado!', 'success');
+  } catch (err) {
+    showNotification('❌ ' + err.message, 'error');
+  }
+}
+
+// Delete task with confirmation
+async function deleteTaskConfirm(taskId) {
+  if (!confirm('Deseja arquivar esta tarefa? Ela será movida para o arquivo.')) return;
+  
+  try {
+    await deleteTask(taskId);
+    await loadAndDisplayTasks();
+    showNotification('✅ Tarefa arquivada!', 'success');
+  } catch (err) {
+    showNotification('❌ ' + err.message, 'error');
+  }
+}
+
+// Export tasks to markdown
+async function exportTasksToMarkdown() {
+  const tasks = await getAllTasks();
+  
+  let markdown = '# Roadmap - Fitness Tracker Pro\n\n';
+  markdown += `**Data:** ${new Date().toLocaleString('pt-BR')}\n\n`;
+  markdown += '---\n\n';
+  
+  const categories = {
+    [TASK_CATEGORIES.SHORT_TERM]: 'Curto Prazo (1-2 semanas)',
+    [TASK_CATEGORIES.MEDIUM_TERM]: 'Médio Prazo (1-3 meses)',
+    [TASK_CATEGORIES.LONG_TERM]: 'Longo Prazo (3-6 meses)'
+  };
+  
+  for (const [category, categoryName] of Object.entries(categories)) {
+    const categoryTasks = tasks.filter(t => t.category === category);
+    if (categoryTasks.length === 0) continue;
+    
+    markdown += `## ${categoryName}\n\n`;
+    
+    categoryTasks.forEach(task => {
+      markdown += `### ${task.title}\n`;
+      markdown += `- **Status:** ${task.status}\n`;
+      markdown += `- **Prioridade:** ${task.priority}\n`;
+      markdown += `- **Descrição:** ${task.description}\n`;
+      
+      if (task.checklist.length > 0) {
+        markdown += `- **Checklist:**\n`;
+        task.checklist.forEach(item => {
+          markdown += `  - [${item.done ? 'x' : ' '}] ${item.text}\n`;
+        });
+      }
+      
+      markdown += '\n---\n\n';
+    });
+  }
+  
+  // Download as file
+  const blob = new Blob([markdown], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `roadmap_${new Date().toISOString().split('T')[0]}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showNotification('✅ Roadmap exportado!', 'success');
+}
+
+// Export tasks to JSON
+async function exportTasksToJSON() {
+  const tasks = await getAllTasks();
+  const json = JSON.stringify(tasks, null, 2);
+  
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tasks_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showNotification('✅ Tarefas exportadas!', 'success');
+}
+
+// Load and display suggestions (admin view)
+async function loadAndDisplayAdminSuggestions() {
+  const suggestions = await getAllSuggestions();
+  
+  // Update stats
+  const stats = {
+    total: suggestions.length,
+    pending: suggestions.filter(s => s.status === 'pending').length,
+    approved: suggestions.filter(s => s.status === 'approved').length,
+    implemented: suggestions.filter(s => s.status === 'implemented').length
+  };
+  
+  document.getElementById('totalSuggestions').textContent = stats.total;
+  document.getElementById('pendingSuggestions').textContent = stats.pending;
+  document.getElementById('approvedSuggestions').textContent = stats.approved;
+  document.getElementById('implementedSuggestions').textContent = stats.implemented;
+  
+  // Sort by votes
+  suggestions.sort((a, b) => b.votes - a.votes);
+  
+  let html = '';
+  
+  suggestions.forEach(suggestion => {
+    const statusColor = suggestion.status === 'approved' ? 'green' :
+                        suggestion.status === 'implemented' ? 'blue' :
+                        suggestion.status === 'rejected' ? 'red' : 'yellow';
+    
+    html += `
+      <div class="bg-slate-700 p-4 rounded-lg border-l-4 border-${statusColor}-500">
+        <div class="flex justify-between items-start mb-2">
+          <div class="flex-1">
+            <h5 class="font-bold text-lg mb-1">${suggestion.title}</h5>
+            <p class="text-slate-300 text-sm mb-2">${suggestion.description}</p>
+            <div class="flex gap-2 flex-wrap">
+              <span class="px-2 py-1 rounded text-xs bg-slate-600 text-slate-300">${suggestion.category}</span>
+              <span class="px-2 py-1 rounded text-xs bg-${statusColor}-900 text-${statusColor}-300 border border-${statusColor}-500">
+                ${suggestion.status}
+              </span>
+              <span class="px-2 py-1 rounded text-xs bg-blue-900 text-blue-300 border border-blue-500">
+                👍 ${suggestion.votes} votos
+              </span>
+              <span class="px-2 py-1 rounded text-xs bg-purple-900 text-purple-300">
+                Por: ${suggestion.submittedBy}
+              </span>
+              <span class="px-2 py-1 rounded text-xs bg-slate-600 text-slate-300">
+                ${new Date(suggestion.submittedAt).toLocaleDateString('pt-BR')}
+              </span>
+            </div>
+            ${suggestion.adminNote ? `
+              <div class="mt-2 p-2 bg-slate-800 rounded text-sm">
+                <strong>Nota do Admin:</strong> ${suggestion.adminNote}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        
+        <div class="mt-3 flex gap-2">
+          <button onclick="updateSuggestionStatusWithNote('${suggestion.id}', 'approved')" class="text-sm px-3 py-1 bg-green-600 hover:bg-green-500 rounded">
+            ✅ Aprovar
+          </button>
+          <button onclick="updateSuggestionStatusWithNote('${suggestion.id}', 'implemented')" class="text-sm px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded">
+            🎉 Implementada
+          </button>
+          <button onclick="updateSuggestionStatusWithNote('${suggestion.id}', 'rejected')" class="text-sm px-3 py-1 bg-red-600 hover:bg-red-500 rounded">
+            ❌ Rejeitar
+          </button>
+        </div>
+      </div>
+    `;
+  });
+  
+  document.getElementById('suggestionsList').innerHTML = html || '<p class="text-slate-400">Nenhuma sugestão encontrada.</p>';
+}
+
+// Update suggestion status with note
+async function updateSuggestionStatusWithNote(suggestionId, status) {
+  const note = prompt(`Adicione uma nota (opcional) para esta ${status === 'rejected' ? 'rejeição' : 'aprovação'}:`);
+  
+  try {
+    await updateSuggestionStatus(suggestionId, status, note || '');
+    await loadAndDisplayAdminSuggestions();
+    showNotification('✅ Status atualizado!', 'success');
+  } catch (err) {
+    showNotification('❌ ' + err.message, 'error');
+  }
+}
+
+// Export suggestions to GitHub format
+async function exportSuggestionsToGitHubFormat() {
+  try {
+    const markdown = await exportSuggestionsToGitHub();
+    
+    // Download as file
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sugestoes_github_${new Date().toISOString().split('T')[0]}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showNotification('✅ Sugestões exportadas para GitHub!', 'success');
+  } catch (err) {
+    showNotification('❌ ' + err.message, 'error');
+  }
+}
+
+// Load and display security events
+async function loadAndDisplaySecurityEvents() {
+  const settings = await dbGetAll(STORE_SETTINGS);
+  const securityEvents = settings.filter(s => s.key.startsWith('security_log_')).map(s => s.value);
+  
+  // Sort by timestamp
+  securityEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  
+  // Update stats
+  const stats = {
+    total: securityEvents.length,
+    loginSuccess: securityEvents.filter(e => e.type === 'login_success').length,
+    loginFailed: securityEvents.filter(e => e.type === 'login_failed').length,
+    blocked: securityEvents.filter(e => e.type === 'account_locked').length
+  };
+  
+  document.getElementById('totalSecurityEvents').textContent = stats.total;
+  document.getElementById('successfulLogins').textContent = stats.loginSuccess;
+  document.getElementById('failedLogins').textContent = stats.loginFailed;
+  document.getElementById('blockedAccounts').textContent = stats.blocked;
+  
+  // Display recent events (last 50)
+  let html = '<div class="space-y-2 max-h-96 overflow-y-auto">';
+  
+  securityEvents.slice(0, 50).forEach(event => {
+    const typeColor = event.type.includes('success') ? 'green' :
+                      event.type.includes('failed') || event.type.includes('blocked') ? 'red' :
+                      event.type.includes('locked') ? 'orange' : 'blue';
+    
+    html += `
+      <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
+        <div class="flex-1">
+          <span class="px-2 py-1 rounded text-xs bg-${typeColor}-900 text-${typeColor}-300 border border-${typeColor}-500 mr-2">
+            ${event.type.replace(/_/g, ' ').toUpperCase()}
+          </span>
+          <span class="text-sm text-slate-300">${event.username}</span>
+          <p class="text-xs text-slate-400 mt-1">${event.details}</p>
+        </div>
+        <div class="text-right text-xs text-slate-400">
+          ${new Date(event.timestamp).toLocaleString('pt-BR')}
+        </div>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  
+  document.getElementById('securityEventsList').innerHTML = html || '<p class="text-slate-400">Nenhum evento encontrado.</p>';
+  
+  // Load accounts
+  const accounts = await dbGetAll(STORE_ACCOUNTS);
+  
+  let accountsHtml = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-slate-600">';
+  accountsHtml += '<th class="py-2 px-4 text-left">Username</th>';
+  accountsHtml += '<th class="py-2 px-4 text-left">Email</th>';
+  accountsHtml += '<th class="py-2 px-4 text-left">Role</th>';
+  accountsHtml += '<th class="py-2 px-4 text-left">Criado Em</th>';
+  accountsHtml += '<th class="py-2 px-4 text-left">Último Login</th>';
+  accountsHtml += '<th class="py-2 px-4 text-left">Ações</th>';
+  accountsHtml += '</tr></thead><tbody>';
+  
+  accounts.forEach(account => {
+    accountsHtml += '<tr class="border-b border-slate-700">';
+    accountsHtml += `<td class="py-2 px-4">${account.username}</td>`;
+    accountsHtml += `<td class="py-2 px-4">${account.email}</td>`;
+    accountsHtml += `<td class="py-2 px-4">`;
+    accountsHtml += `<span class="px-2 py-1 rounded text-xs ${account.role === 'admin' ? 'bg-red-900 text-red-300' : 'bg-blue-900 text-blue-300'}">${account.role || 'user'}</span>`;
+    accountsHtml += `</td>`;
+    accountsHtml += `<td class="py-2 px-4 text-xs">${new Date(account.createdAt).toLocaleDateString('pt-BR')}</td>`;
+    accountsHtml += `<td class="py-2 px-4 text-xs">${account.lastLogin ? new Date(account.lastLogin).toLocaleDateString('pt-BR') : 'Nunca'}</td>`;
+    accountsHtml += `<td class="py-2 px-4">`;
+    if (account.role !== 'admin') {
+      accountsHtml += `<button onclick="promoteUserToAdmin('${account.username}')" class="text-xs px-2 py-1 bg-orange-600 hover:bg-orange-500 rounded mr-2">👑 Promover</button>`;
+    }
+    accountsHtml += `</td>`;
+    accountsHtml += '</tr>';
+  });
+  
+  accountsHtml += '</tbody></table></div>';
+  
+  document.getElementById('accountsList').innerHTML = accountsHtml;
+}
+
+// Promote user to admin
+async function promoteUserToAdmin(username) {
+  if (!confirm(`Deseja promover ${username} a administrador?`)) return;
+  
+  try {
+    await promoteToAdmin(username);
+    await loadAndDisplaySecurityEvents();
+    showNotification('✅ Usuário promovido a admin!', 'success');
+  } catch (err) {
+    showNotification('❌ ' + err.message, 'error');
+  }
+}
+
+// Export security logs
+async function exportSecurityLogs() {
+  const settings = await dbGetAll(STORE_SETTINGS);
+  const securityEvents = settings.filter(s => s.key.startsWith('security_log_')).map(s => s.value);
+  
+  const json = JSON.stringify(securityEvents, null, 2);
+  
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `security_logs_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showNotification('✅ Logs exportados!', 'success');
+}
+
+// Clear old security logs
+async function clearOldSecurityLogs() {
+  if (!confirm('Deseja limpar logs de segurança com mais de 30 dias?')) return;
+  
+  const settings = await dbGetAll(STORE_SETTINGS);
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  let removed = 0;
+  
+  for (const setting of settings) {
+    if (setting.key.startsWith('security_log_')) {
+      const event = setting.value;
+      if (new Date(event.timestamp) < thirtyDaysAgo) {
+        await dbDelete(STORE_SETTINGS, setting.key);
+        removed++;
+      }
+    }
+  }
+  
+  showNotification(`✅ ${removed} logs removidos!`, 'success');
+  await loadAndDisplaySecurityEvents();
+}
+
+// Load and display user suggestions
+async function loadAndDisplayUserSuggestions() {
+  const suggestions = await getAllSuggestions();
+  
+  // Sort by votes
+  suggestions.sort((a, b) => b.votes - a.votes);
+  
+  let html = '<div class="space-y-4">';
+  
+  suggestions.forEach(suggestion => {
+    const hasVoted = suggestion.votedBy.includes(authState.currentAccount.username);
+    const statusColor = suggestion.status === 'approved' ? 'green' :
+                        suggestion.status === 'implemented' ? 'blue' :
+                        suggestion.status === 'rejected' ? 'red' : 'yellow';
+    
+    html += `
+      <div class="bg-slate-700 p-4 rounded-lg ${suggestion.status === 'implemented' ? 'border-2 border-blue-500' : ''}">
+        <div class="flex justify-between items-start mb-2">
+          <div class="flex-1">
+            <h5 class="font-bold text-lg mb-1">
+              ${suggestion.title}
+              ${suggestion.status === 'implemented' ? '<span class="ml-2 text-blue-400">✅ Implementada!</span>' : ''}
+            </h5>
+            <p class="text-slate-300 text-sm mb-2">${suggestion.description}</p>
+            <div class="flex gap-2 flex-wrap">
+              <span class="px-2 py-1 rounded text-xs bg-slate-600 text-slate-300">${suggestion.category}</span>
+              <span class="px-2 py-1 rounded text-xs bg-${statusColor}-900 text-${statusColor}-300 border border-${statusColor}-500">
+                ${suggestion.status}
+              </span>
+              <span class="px-2 py-1 rounded text-xs bg-slate-600 text-slate-300">
+                Por: ${suggestion.submittedBy}
+              </span>
+              <span class="px-2 py-1 rounded text-xs bg-slate-600 text-slate-300">
+                ${new Date(suggestion.submittedAt).toLocaleDateString('pt-BR')}
+              </span>
+            </div>
+            ${suggestion.adminNote && suggestion.status !== 'pending' ? `
+              <div class="mt-2 p-2 bg-slate-800 rounded text-sm">
+                <strong>Resposta do Admin:</strong> ${suggestion.adminNote}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        
+        <div class="mt-3 flex items-center gap-3">
+          <button onclick="handleVoteSuggestion('${suggestion.id}')" 
+                  class="px-4 py-2 rounded font-semibold ${hasVoted ? 'bg-green-600 hover:bg-green-500' : 'bg-slate-600 hover:bg-slate-500'}">
+            ${hasVoted ? '👍 Votado' : '👍 Votar'} (${suggestion.votes})
+          </button>
+          ${suggestion.submittedBy === authState.currentAccount.username ? `
+            <button onclick="deleteSuggestion('${suggestion.id}')" class="px-4 py-2 rounded bg-red-600 hover:bg-red-500">
+              🗑️ Excluir
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  
+  document.getElementById('userSuggestionsList').innerHTML = html || '<p class="text-slate-400">Nenhuma sugestão encontrada.</p>';
+}
+
+// Handle vote suggestion
+async function handleVoteSuggestion(suggestionId) {
+  try {
+    await voteSuggestion(suggestionId);
+    await loadAndDisplayUserSuggestions();
+    showNotification('✅ Voto registrado!', 'success');
+  } catch (err) {
+    showNotification('❌ ' + err.message, 'error');
+  }
+}
+
+// Handle suggestion form submit
+async function handleSuggestionFormSubmit(event) {
+  event.preventDefault();
+  
+  const formData = new FormData(event.target);
+  const suggestionData = {
+    title: formData.get('title'),
+    description: formData.get('description'),
+    category: formData.get('category'),
+    priority: formData.get('priority')
+  };
+  
+  try {
+    await submitSuggestion(suggestionData);
+    event.target.reset();
+    await loadAndDisplayUserSuggestions();
+    showNotification('✅ Sugestão enviada com sucesso!', 'success');
+  } catch (err) {
+    showNotification('❌ ' + err.message, 'error');
+  }
+}
+
+// Simple notification system
+function showNotification(message, type = 'info') {
+  const colors = {
+    success: 'bg-green-600',
+    error: 'bg-red-600',
+    info: 'bg-blue-600'
+  };
+  
+  const notification = document.createElement('div');
+  notification.className = `fixed bottom-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in`;
+  notification.textContent = message;
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.classList.add('animate-fade-out');
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
 /* ----------------------------- Init and safety ----------------------------- */
 window.addEventListener('beforeunload', () => { try { saveAllToDB(); } catch (e) { } });
 
@@ -4049,6 +5349,10 @@ window.addEventListener('beforeunload', () => { try { saveAllToDB(); } catch (e)
     // store marmitas in settings for reference (not required, but keeps record)
     await dbPut(STORE_SETTINGS, { key: 'marmitas_seed_loaded', value: new Date().toISOString() });
   }
+  
+  // Initialize tasks (short-term roadmap)
+  await initializeTasks();
+  
   await saveAllToDB();
   
   // Try to restore session
