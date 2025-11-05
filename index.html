@@ -1344,6 +1344,7 @@ const initialUsers = (function() {
       height: 175,
       workoutHistory: [],
       mealHistory: [],
+      workoutLogs: [],
       bodyMetrics: [{
         id: 'm_pedro_' + now,
         date: new Date().toISOString().split('T')[0],
@@ -1408,6 +1409,7 @@ const initialUsers = (function() {
       height: 165,
       workoutHistory: [],
       mealHistory: [],
+      workoutLogs: [],
       bodyMetrics: [{
         id: 'm_valentina_' + (now + 1),
         date: new Date().toISOString().split('T')[0],
@@ -1846,6 +1848,13 @@ async function loadAllFromDB() {
     state.comparisons = comparisons;
     state.references = references;
   }
+
+  // Ensure all users have workoutLogs array (migration for new feature)
+  Object.keys(state.users).forEach(userId => {
+    if (!state.users[userId].workoutLogs) {
+      state.users[userId].workoutLogs = [];
+    }
+  });
 }
 
 /* ----------------------------- Custom Meals Management -----------------------------
@@ -3067,6 +3076,7 @@ function render() {
   // after injecting DOM, hook forms / draw chart if needed
   if (state.activeTab === 'evolucao') {
     renderMuscleEvolutionChart(bodyMetrics, currentUser.id);
+    setupWorkoutFormListeners();
   }
   
   // Load progress photos for current user
@@ -4031,10 +4041,26 @@ function renderAlimentacao() {
 }
 
 function renderEvolucao(bodyMetrics, user) {
+  const workoutLogs = user.workoutLogs || [];
+  
   return `
-    <div class="bg-slate-800 p-4 rounded mb-6">
-      <h3 class="font-bold text-xl mb-4">📊 Adicionar Medidas de Bioimpedância Completa</h3>
-      <p class="text-slate-300 text-sm mb-4">Preencha todos os campos disponíveis do seu equipamento de bioimpedância. Os campos obrigatórios são marcados com *. Os demais são opcionais mas recomendados para análise completa.</p>
+    <!-- Sub-navigation tabs for Evolution page -->
+    <div class="bg-slate-800 p-4 rounded mb-4">
+      <div class="flex gap-2 border-b border-slate-700 pb-2">
+        <button onclick="switchEvolucaoTab('body-metrics')" id="evolucaoTabBodyMetrics" class="px-4 py-2 rounded-t font-semibold bg-purple-600 text-white">
+          📊 Medidas Corporais
+        </button>
+        <button onclick="switchEvolucaoTab('workouts')" id="evolucaoTabWorkouts" class="px-4 py-2 rounded-t font-semibold bg-slate-700 text-slate-300 hover:bg-slate-600">
+          🏃 Treinos
+        </button>
+      </div>
+    </div>
+
+    <!-- Body Metrics Section -->
+    <div id="evolucaoContentBodyMetrics">
+      <div class="bg-slate-800 p-4 rounded mb-6">
+        <h3 class="font-bold text-xl mb-4">📊 Adicionar Medidas de Bioimpedância Completa</h3>
+        <p class="text-slate-300 text-sm mb-4">Preencha todos os campos disponíveis do seu equipamento de bioimpedância. Os campos obrigatórios são marcados com *. Os demais são opcionais mas recomendados para análise completa.</p>
       
       <form id="metricsForm" class="space-y-4">
         <!-- Informações Básicas -->
@@ -4249,7 +4275,604 @@ function renderEvolucao(bodyMetrics, user) {
         </div>
       ` : ''}
     </div>
+    </div>
+
+    <!-- Workouts Section -->
+    <div id="evolucaoContentWorkouts" class="hidden">
+      <!-- Manual Workout Entry Form -->
+      <div class="bg-slate-800 p-4 rounded mb-6">
+        <h3 class="font-bold text-xl mb-4">🏃 Registrar Treino Manual</h3>
+        <p class="text-slate-300 text-sm mb-4">Adicione um treino manualmente ou aguarde sincronização futura via smartwatch.</p>
+        
+        <form id="workoutForm" class="space-y-4">
+          <!-- Basic Info -->
+          <div class="bg-slate-700 p-4 rounded">
+            <h4 class="font-semibold mb-3 text-purple-300">📅 Informações Básicas</h4>
+            <div class="grid md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">Nome do Treino *</label>
+                <input type="text" name="workoutName" required placeholder="Ex: Corrida Matinal" class="w-full px-3 py-2 rounded bg-slate-600 text-white"/>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">Tipo de Treino *</label>
+                <select name="workoutType" required class="w-full px-3 py-2 rounded bg-slate-600 text-white">
+                  <option value="">Selecione...</option>
+                  <option value="corrida">🏃 Corrida</option>
+                  <option value="caminhada">🚶 Caminhada</option>
+                  <option value="ciclismo">🚴 Ciclismo</option>
+                  <option value="natacao">🏊 Natação</option>
+                  <option value="musculacao">💪 Musculação</option>
+                  <option value="crossfit">🏋️ CrossFit</option>
+                  <option value="yoga">🧘 Yoga</option>
+                  <option value="pilates">🤸 Pilates</option>
+                  <option value="funcional">⚡ Treino Funcional</option>
+                  <option value="lutas">🥋 Lutas/Artes Marciais</option>
+                  <option value="danca">💃 Dança</option>
+                  <option value="outro">📋 Outro</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Date and Time -->
+          <div class="bg-slate-700 p-4 rounded">
+            <h4 class="font-semibold mb-3 text-green-300">⏰ Data e Horário</h4>
+            <div class="grid md:grid-cols-4 gap-3">
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">Data *</label>
+                <input type="date" name="workoutDate" value="${new Date().toISOString().split('T')[0]}" required class="w-full px-3 py-2 rounded bg-slate-600 text-white"/>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">Hora de Início *</label>
+                <input type="time" name="startTime" required class="w-full px-3 py-2 rounded bg-slate-600 text-white"/>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">Hora de Término *</label>
+                <input type="time" name="endTime" required class="w-full px-3 py-2 rounded bg-slate-600 text-white"/>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">Duração (minutos)</label>
+                <input type="number" name="duration" placeholder="Auto-calculado" readonly class="w-full px-3 py-2 rounded bg-slate-500 text-slate-300"/>
+              </div>
+            </div>
+          </div>
+
+          <!-- Workout Metrics -->
+          <div class="bg-slate-700 p-4 rounded">
+            <h4 class="font-semibold mb-3 text-red-300">📈 Métricas do Treino</h4>
+            <div class="grid md:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">Calorias Gastas (kcal) *</label>
+                <input type="number" name="calories" step="0.1" required placeholder="Ex: 350" class="w-full px-3 py-2 rounded bg-slate-600 text-white"/>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">BPM Médio</label>
+                <input type="number" name="avgHeartRate" placeholder="Ex: 140" class="w-full px-3 py-2 rounded bg-slate-600 text-white"/>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">BPM Máximo</label>
+                <input type="number" name="maxHeartRate" placeholder="Ex: 175" class="w-full px-3 py-2 rounded bg-slate-600 text-white"/>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">Distância (km)</label>
+                <input type="number" name="distance" step="0.01" placeholder="Ex: 5.2" class="w-full px-3 py-2 rounded bg-slate-600 text-white"/>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">Velocidade Média (km/h)</label>
+                <input type="number" name="avgSpeed" step="0.1" placeholder="Ex: 10.5" class="w-full px-3 py-2 rounded bg-slate-600 text-white"/>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-1">Intensidade</label>
+                <select name="intensity" class="w-full px-3 py-2 rounded bg-slate-600 text-white">
+                  <option value="">Não informado</option>
+                  <option value="baixa">🟢 Baixa</option>
+                  <option value="moderada">🟡 Moderada</option>
+                  <option value="alta">🟠 Alta</option>
+                  <option value="maxima">🔴 Máxima</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Additional Notes -->
+          <div class="bg-slate-700 p-4 rounded">
+            <h4 class="font-semibold mb-3 text-blue-300">📝 Observações</h4>
+            <textarea name="notes" rows="3" placeholder="Adicione notas sobre o treino, como você se sentiu, pontos de atenção, etc." class="w-full px-3 py-2 rounded bg-slate-600 text-white"></textarea>
+          </div>
+
+          <div class="flex gap-3">
+            <button type="submit" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded font-semibold text-lg">➕ Registrar Treino</button>
+            <button type="button" onclick="document.getElementById('workoutForm').reset()" class="bg-slate-600 hover:bg-slate-500 px-4 py-3 rounded">🔄 Limpar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Smartwatch Sync Notice -->
+      <div class="bg-gradient-to-r from-blue-900 to-purple-900 p-4 rounded mb-6 border border-blue-500">
+        <h4 class="font-bold text-lg mb-2">⌚ Sincronização via Smartwatch</h4>
+        <p class="text-sm text-blue-200 mb-3">
+          Sincronização automática de treinos via smartwatch (Apple Watch, Garmin, Fitbit, etc.) estará disponível em breve!
+          Por enquanto, você pode adicionar treinos manualmente usando o formulário acima.
+        </p>
+        <p class="text-xs text-blue-300">
+          💡 Recursos futuros: sincronização automática de BPM ao longo do treino, calorias em tempo real, GPS tracking, e muito mais!
+        </p>
+      </div>
+
+      <!-- Workout Charts -->
+      ${workoutLogs.length > 0 ? `
+        <div class="bg-slate-800 p-4 rounded mb-6">
+          <h3 class="font-bold text-xl mb-4">📊 Gráficos de Treino</h3>
+          
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <!-- Calories Over Time Chart -->
+            <div class="bg-slate-700 p-4 rounded">
+              <h4 class="font-semibold mb-3 text-center">🔥 Calorias por Treino</h4>
+              <canvas id="workoutCaloriesChart" height="200"></canvas>
+            </div>
+            
+            <!-- Duration Over Time Chart -->
+            <div class="bg-slate-700 p-4 rounded">
+              <h4 class="font-semibold mb-3 text-center">⏱️ Duração dos Treinos</h4>
+              <canvas id="workoutDurationChart" height="200"></canvas>
+            </div>
+          </div>
+
+          <!-- Heart Rate Chart (if data available) -->
+          ${workoutLogs.some(w => w.avgHeartRate) ? `
+            <div class="bg-slate-700 p-4 rounded mb-4">
+              <h4 class="font-semibold mb-3 text-center">❤️ Frequência Cardíaca Média</h4>
+              <canvas id="workoutHeartRateChart" height="200"></canvas>
+            </div>
+          ` : ''}
+
+          <div class="flex gap-3">
+            <button onclick="exportWorkoutLogsCSV('${user.id}')" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded">📊 Exportar CSV</button>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Workout Logs Table -->
+      <div class="bg-slate-800 p-4 rounded mb-6">
+        <h3 class="font-bold text-xl mb-4">📋 Histórico de Treinos</h3>
+        
+        ${workoutLogs.length === 0 ? `
+          <p class="text-slate-400 text-center py-8">Nenhum treino registrado ainda. Use o formulário acima para adicionar seu primeiro treino!</p>
+        ` : `
+          <!-- Summary Stats -->
+          <div class="grid md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gradient-to-br from-purple-900 to-purple-800 p-4 rounded">
+              <p class="text-sm text-purple-300">Total de Treinos</p>
+              <p class="text-3xl font-bold">${workoutLogs.length}</p>
+            </div>
+            <div class="bg-gradient-to-br from-red-900 to-red-800 p-4 rounded">
+              <p class="text-sm text-red-300">Calorias Totais</p>
+              <p class="text-3xl font-bold">${workoutLogs.reduce((sum, w) => sum + (w.calories || 0), 0).toFixed(0)}</p>
+              <p class="text-xs text-red-200">kcal</p>
+            </div>
+            <div class="bg-gradient-to-br from-blue-900 to-blue-800 p-4 rounded">
+              <p class="text-sm text-blue-300">Tempo Total</p>
+              <p class="text-3xl font-bold">${(workoutLogs.reduce((sum, w) => sum + (w.duration || 0), 0) / 60).toFixed(1)}</p>
+              <p class="text-xs text-blue-200">horas</p>
+            </div>
+            <div class="bg-gradient-to-br from-green-900 to-green-800 p-4 rounded">
+              <p class="text-sm text-green-300">Média Semanal</p>
+              <p class="text-3xl font-bold">${(workoutLogs.length / Math.max(1, Math.ceil((Date.now() - new Date(workoutLogs[0]?.date).getTime()) / (7 * 24 * 60 * 60 * 1000)))).toFixed(1)}</p>
+              <p class="text-xs text-green-200">treinos/semana</p>
+            </div>
+          </div>
+
+          <!-- Workouts Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-slate-600">
+                  <th class="py-2 px-2 text-left">Data</th>
+                  <th class="py-2 px-2 text-left">Nome</th>
+                  <th class="py-2 px-2 text-left">Tipo</th>
+                  <th class="py-2 px-2 text-center">Duração</th>
+                  <th class="py-2 px-2 text-center">Calorias</th>
+                  <th class="py-2 px-2 text-center">BPM Médio</th>
+                  <th class="py-2 px-2 text-center">Intensidade</th>
+                  <th class="py-2 px-2 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${workoutLogs.slice().reverse().map(workout => {
+                  const intensityEmoji = {
+                    'baixa': '🟢',
+                    'moderada': '🟡',
+                    'alta': '🟠',
+                    'maxima': '🔴'
+                  }[workout.intensity] || '⚪';
+                  
+                  const typeEmoji = {
+                    'corrida': '🏃',
+                    'caminhada': '🚶',
+                    'ciclismo': '🚴',
+                    'natacao': '🏊',
+                    'musculacao': '💪',
+                    'crossfit': '🏋️',
+                    'yoga': '🧘',
+                    'pilates': '🤸',
+                    'funcional': '⚡',
+                    'lutas': '🥋',
+                    'danca': '💃',
+                    'outro': '📋'
+                  }[workout.type] || '📋';
+
+                  return `
+                    <tr class="border-b border-slate-700 hover:bg-slate-700 cursor-pointer" onclick="showWorkoutDetails('${workout.id}')">
+                      <td class="py-2 px-2">${workout.date}</td>
+                      <td class="py-2 px-2 font-semibold">${escapeHtml(workout.name)}</td>
+                      <td class="py-2 px-2">${typeEmoji} ${workout.type}</td>
+                      <td class="py-2 px-2 text-center">${workout.duration} min</td>
+                      <td class="py-2 px-2 text-center">${workout.calories} kcal</td>
+                      <td class="py-2 px-2 text-center">${workout.avgHeartRate ? workout.avgHeartRate + ' bpm' : '-'}</td>
+                      <td class="py-2 px-2 text-center">${intensityEmoji}</td>
+                      <td class="py-2 px-2 text-center">
+                        <button onclick="event.stopPropagation(); handleDeleteWorkout('${workout.id}')" class="text-red-400 hover:text-red-300" title="Excluir treino">🗑️</button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+      </div>
+    </div>
   `;
+}
+
+/* ============================= WORKOUT TRACKING FUNCTIONS ============================= */
+
+// Switch between body metrics and workouts tabs
+function switchEvolucaoTab(tab) {
+  const bodyMetricsTab = document.getElementById('evolucaoTabBodyMetrics');
+  const workoutsTab = document.getElementById('evolucaoTabWorkouts');
+  const bodyMetricsContent = document.getElementById('evolucaoContentBodyMetrics');
+  const workoutsContent = document.getElementById('evolucaoContentWorkouts');
+
+  if (tab === 'body-metrics') {
+    bodyMetricsTab.classList.remove('bg-slate-700', 'text-slate-300');
+    bodyMetricsTab.classList.add('bg-purple-600', 'text-white');
+    workoutsTab.classList.remove('bg-purple-600', 'text-white');
+    workoutsTab.classList.add('bg-slate-700', 'text-slate-300');
+    bodyMetricsContent.classList.remove('hidden');
+    workoutsContent.classList.add('hidden');
+  } else if (tab === 'workouts') {
+    workoutsTab.classList.remove('bg-slate-700', 'text-slate-300');
+    workoutsTab.classList.add('bg-purple-600', 'text-white');
+    bodyMetricsTab.classList.remove('bg-purple-600', 'text-white');
+    bodyMetricsTab.classList.add('bg-slate-700', 'text-slate-300');
+    workoutsContent.classList.remove('hidden');
+    bodyMetricsContent.classList.add('hidden');
+    
+    // Render workout charts after switching to workout tab
+    setTimeout(() => renderWorkoutCharts(), 150);
+  }
+}
+
+// Chart instances for workouts
+let workoutCaloriesChart = null;
+let workoutDurationChart = null;
+let workoutHeartRateChart = null;
+
+// Render workout charts
+function renderWorkoutCharts() {
+  const user = state.users[state.activeUser];
+  if (!user || !user.workoutLogs || user.workoutLogs.length === 0) return;
+
+  const workoutLogs = user.workoutLogs.slice().sort((a, b) => new Date(a.date + 'T' + a.startTime) - new Date(b.date + 'T' + b.startTime));
+
+  // Calories Chart
+  const caloriesCanvas = document.getElementById('workoutCaloriesChart');
+  if (caloriesCanvas) {
+    const labels = workoutLogs.map(w => w.date + ' ' + w.name.substring(0, 10));
+    const caloriesData = workoutLogs.map(w => w.calories || 0);
+
+    if (workoutCaloriesChart) {
+      workoutCaloriesChart.destroy();
+      workoutCaloriesChart = null;
+    }
+
+    workoutCaloriesChart = new Chart(caloriesCanvas, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Calorias (kcal)',
+          data: caloriesData,
+          backgroundColor: '#EF4444',
+          borderColor: '#DC2626',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'kcal' }
+          }
+        }
+      }
+    });
+  }
+
+  // Duration Chart
+  const durationCanvas = document.getElementById('workoutDurationChart');
+  if (durationCanvas) {
+    const labels = workoutLogs.map(w => w.date + ' ' + w.name.substring(0, 10));
+    const durationData = workoutLogs.map(w => w.duration || 0);
+
+    if (workoutDurationChart) {
+      workoutDurationChart.destroy();
+      workoutDurationChart = null;
+    }
+
+    workoutDurationChart = new Chart(durationCanvas, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Duração (minutos)',
+          data: durationData,
+          backgroundColor: '#3B82F6',
+          borderColor: '#2563EB',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'minutos' }
+          }
+        }
+      }
+    });
+  }
+
+  // Heart Rate Chart (if data available)
+  const heartRateCanvas = document.getElementById('workoutHeartRateChart');
+  if (heartRateCanvas && workoutLogs.some(w => w.avgHeartRate)) {
+    const labels = workoutLogs.filter(w => w.avgHeartRate).map(w => w.date + ' ' + w.name.substring(0, 10));
+    const heartRateData = workoutLogs.filter(w => w.avgHeartRate).map(w => w.avgHeartRate);
+
+    if (workoutHeartRateChart) {
+      workoutHeartRateChart.destroy();
+      workoutHeartRateChart = null;
+    }
+
+    workoutHeartRateChart = new Chart(heartRateCanvas, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'BPM Médio',
+          data: heartRateData,
+          backgroundColor: '#F59E0B',
+          borderColor: '#D97706',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: false,
+            title: { display: true, text: 'BPM' }
+          }
+        }
+      }
+    });
+  }
+}
+
+// Handle workout form submission
+async function handleWorkoutFormSubmit(event) {
+  event.preventDefault();
+  
+  const formData = new FormData(event.target);
+  const user = state.users[state.activeUser];
+  
+  if (!user) {
+    alert('Erro: usuário não encontrado');
+    return;
+  }
+
+  // Calculate duration from start and end time
+  const startTime = formData.get('startTime');
+  const endTime = formData.get('endTime');
+  let duration = 0;
+  
+  if (startTime && endTime) {
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    duration = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+    
+    if (duration < 0) duration += 24 * 60; // Handle overnight workouts
+  }
+
+  // Create workout log
+  const workout = {
+    id: 'workout_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11),
+    date: formData.get('workoutDate'),
+    name: sanitizeInput(formData.get('workoutName')),
+    type: formData.get('workoutType'),
+    startTime: startTime,
+    endTime: endTime,
+    duration: duration,
+    calories: parseFloat(formData.get('calories')) || 0,
+    avgHeartRate: formData.get('avgHeartRate') ? parseInt(formData.get('avgHeartRate')) : null,
+    maxHeartRate: formData.get('maxHeartRate') ? parseInt(formData.get('maxHeartRate')) : null,
+    distance: formData.get('distance') ? parseFloat(formData.get('distance')) : null,
+    avgSpeed: formData.get('avgSpeed') ? parseFloat(formData.get('avgSpeed')) : null,
+    intensity: formData.get('intensity') || null,
+    notes: sanitizeInput(formData.get('notes') || ''),
+    createdAt: new Date().toISOString(),
+    source: 'manual' // vs 'smartwatch' in the future
+  };
+
+  // Add to user's workout logs
+  if (!user.workoutLogs) user.workoutLogs = [];
+  user.workoutLogs.push(workout);
+
+  // Save to database
+  await saveAllToDB();
+  
+  // Reset form and re-render
+  event.target.reset();
+  render();
+  
+  // Switch to workouts tab to show the new workout
+  setTimeout(() => switchEvolucaoTab('workouts'), 100);
+  
+  showNotification('✅ Treino registrado com sucesso!', 'success');
+}
+
+// Calculate duration when times change
+function setupWorkoutFormListeners() {
+  const form = document.getElementById('workoutForm');
+  if (!form) return;
+  
+  form.addEventListener('submit', handleWorkoutFormSubmit);
+  
+  const startTimeInput = form.querySelector('[name="startTime"]');
+  const endTimeInput = form.querySelector('[name="endTime"]');
+  const durationInput = form.querySelector('[name="duration"]');
+  
+  function updateDuration() {
+    const startTime = startTimeInput.value;
+    const endTime = endTimeInput.value;
+    
+    if (startTime && endTime) {
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      let duration = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+      
+      if (duration < 0) duration += 24 * 60; // Handle overnight workouts
+      
+      durationInput.value = duration;
+    }
+  }
+  
+  startTimeInput.addEventListener('change', updateDuration);
+  endTimeInput.addEventListener('change', updateDuration);
+}
+
+// Delete workout
+async function handleDeleteWorkout(workoutId) {
+  if (!confirm('Deseja realmente excluir este treino?')) return;
+  
+  const user = state.users[state.activeUser];
+  if (!user || !user.workoutLogs) return;
+  
+  // Find and archive the workout
+  const workout = user.workoutLogs.find(w => w.id === workoutId);
+  if (workout) {
+    await archiveItem('workout', workoutId, 'workout_log', workout);
+  }
+  
+  // Remove from user's workout logs
+  user.workoutLogs = user.workoutLogs.filter(w => w.id !== workoutId);
+  
+  await saveAllToDB();
+  render();
+  
+  showNotification('✅ Treino excluído!', 'success');
+}
+
+// Show workout details
+function showWorkoutDetails(workoutId) {
+  const user = state.users[state.activeUser];
+  if (!user || !user.workoutLogs) return;
+  
+  const workout = user.workoutLogs.find(w => w.id === workoutId);
+  if (!workout) return;
+  
+  const typeEmoji = {
+    'corrida': '🏃',
+    'caminhada': '🚶',
+    'ciclismo': '🚴',
+    'natacao': '🏊',
+    'musculacao': '💪',
+    'crossfit': '🏋️',
+    'yoga': '🧘',
+    'pilates': '🤸',
+    'funcional': '⚡',
+    'lutas': '🥋',
+    'danca': '💃',
+    'outro': '📋'
+  }[workout.type] || '📋';
+  
+  const intensityText = {
+    'baixa': '🟢 Baixa',
+    'moderada': '🟡 Moderada',
+    'alta': '🟠 Alta',
+    'maxima': '🔴 Máxima'
+  }[workout.intensity] || '⚪ Não informado';
+  
+  let details = `
+📋 Detalhes do Treino
+
+${typeEmoji} ${workout.name}
+Tipo: ${workout.type}
+Data: ${workout.date}
+Horário: ${workout.startTime} - ${workout.endTime}
+Duração: ${workout.duration} minutos
+
+📊 Métricas:
+• Calorias: ${workout.calories} kcal
+${workout.avgHeartRate ? '• BPM Médio: ' + workout.avgHeartRate : ''}
+${workout.maxHeartRate ? '• BPM Máximo: ' + workout.maxHeartRate : ''}
+${workout.distance ? '• Distância: ' + workout.distance + ' km' : ''}
+${workout.avgSpeed ? '• Velocidade Média: ' + workout.avgSpeed + ' km/h' : ''}
+• Intensidade: ${intensityText}
+
+${workout.notes ? '📝 Observações:\n' + workout.notes : ''}
+
+Fonte: ${workout.source === 'manual' ? 'Registro Manual' : 'Smartwatch'}
+  `.trim();
+  
+  alert(details);
+}
+
+// Export workout logs to CSV
+function exportWorkoutLogsCSV(userId) {
+  const user = state.users[userId];
+  if (!user || !user.workoutLogs || user.workoutLogs.length === 0) {
+    alert('Nenhum treino para exportar');
+    return;
+  }
+  
+  const workoutLogs = user.workoutLogs.slice().sort((a, b) => new Date(a.date + 'T' + a.startTime) - new Date(b.date + 'T' + b.startTime));
+  
+  let csv = 'Data,Nome,Tipo,Hora Início,Hora Término,Duração (min),Calorias (kcal),BPM Médio,BPM Máximo,Distância (km),Velocidade Média (km/h),Intensidade,Observações,Fonte\n';
+  
+  workoutLogs.forEach(w => {
+    csv += `${w.date},"${w.name}",${w.type},${w.startTime},${w.endTime},${w.duration},${w.calories},${w.avgHeartRate || ''},${w.maxHeartRate || ''},${w.distance || ''},${w.avgSpeed || ''},${w.intensity || ''},"${(w.notes || '').replace(/"/g, '""')}",${w.source}\n`;
+  });
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `treinos_${user.name}_${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+  
+  showNotification('✅ CSV exportado!', 'success');
 }
 
 function renderComparacao() {
