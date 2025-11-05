@@ -988,6 +988,63 @@ function handleDeleteCustomMeal(mealId) {
   render();
 }
 
+/* ----------------------------- Nutrition Calculator Functions ----------------------------- */
+function calculateMacros() {
+  const foodName = document.getElementById('calcFoodName').value;
+  const weight = parseFloat(document.getElementById('calcWeight').value);
+  const protPer100 = parseFloat(document.getElementById('calcProtPer100').value) || 0;
+  const carbPer100 = parseFloat(document.getElementById('calcCarbPer100').value) || 0;
+  const fatPer100 = parseFloat(document.getElementById('calcFatPer100').value) || 0;
+  
+  if (!weight || weight <= 0) {
+    alert('Por favor, insira um peso válido em gramas');
+    return;
+  }
+  
+  // Calculate multiplier (weight / 100)
+  const multiplier = weight / 100;
+  
+  // Calculate macros for the given weight
+  const proteinGrams = (protPer100 * multiplier).toFixed(1);
+  const carbGrams = (carbPer100 * multiplier).toFixed(1);
+  const fatGrams = (fatPer100 * multiplier).toFixed(1);
+  
+  // Calculate calories (protein: 4kcal/g, carbs: 4kcal/g, fat: 9kcal/g)
+  const proteinKcal = (proteinGrams * 4).toFixed(1);
+  const carbKcal = (carbGrams * 4).toFixed(1);
+  const fatKcal = (fatGrams * 9).toFixed(1);
+  const totalKcal = (parseFloat(proteinKcal) + parseFloat(carbKcal) + parseFloat(fatKcal)).toFixed(1);
+  
+  // Update results
+  document.getElementById('resultProt').textContent = proteinGrams + 'g';
+  document.getElementById('resultProtKcal').textContent = proteinKcal + ' kcal';
+  document.getElementById('resultCarb').textContent = carbGrams + 'g';
+  document.getElementById('resultCarbKcal').textContent = carbKcal + ' kcal';
+  document.getElementById('resultFat').textContent = fatGrams + 'g';
+  document.getElementById('resultFatKcal').textContent = fatKcal + ' kcal';
+  document.getElementById('resultTotal').textContent = totalKcal + ' kcal';
+  
+  // Show results
+  document.getElementById('calcResults').classList.remove('hidden');
+  
+  // Show success notification
+  showNotification(`✅ Calculado: ${weight}g de ${foodName || 'alimento'} = ${totalKcal} kcal`, 'success');
+}
+
+function fillCalculatorExample(name, weight, prot, carb, fat) {
+  document.getElementById('calcFoodName').value = name;
+  document.getElementById('calcWeight').value = weight;
+  document.getElementById('calcProtPer100').value = prot;
+  document.getElementById('calcCarbPer100').value = carb;
+  document.getElementById('calcFatPer100').value = fat;
+  
+  // Auto-calculate
+  calculateMacros();
+  
+  // Scroll to calculator
+  document.getElementById('calcFoodName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 /* ----------------------------- Custom workout handler ----------------------------- */
 function handleAddCustomWorkout(e) {
   e.preventDefault();
@@ -1926,7 +1983,6 @@ function renderNutricao(user) {
     </div>
   `;
 }
-}
 
 function renderAlimentacao() {
   const currentUser = state.users[state.activeUser];
@@ -1967,6 +2023,144 @@ function renderAlimentacao() {
     <div class="bg-gradient-to-r from-green-600 to-green-800 p-4 rounded mb-6">
       <h4 class="font-bold text-lg">Totais de ${dateLabel}</h4>
       <p class="text-white text-xl">${Math.round(dayTotals.kcal)} kcal • ${Math.round(dayTotals.prot)} g proteína • ${Math.round(dayTotals.fat)} g gord.</p>
+    </div>
+
+    <!-- Nutrition Calculator & Guide -->
+    <div class="bg-gradient-to-br from-blue-900 to-indigo-900 p-6 rounded-xl mb-6 border-2 border-blue-500">
+      <h3 class="font-bold text-2xl mb-4 flex items-center gap-2">
+        🧮 Calculadora de Macronutrientes
+        <span class="text-xs font-normal bg-yellow-500 text-black px-2 py-1 rounded">NOVO</span>
+      </h3>
+      
+      <div class="bg-white/10 backdrop-blur p-5 rounded-lg mb-6">
+        <h4 class="font-semibold text-lg mb-3 text-cyan-300">📚 Como Calcular os Macros da sua Refeição</h4>
+        <div class="space-y-3 text-sm text-slate-200">
+          <p class="leading-relaxed"><strong>1. Pese os alimentos crus</strong> (antes de cozinhar) sempre que possível, pois as tabelas nutricionais se referem ao peso cru.</p>
+          <p class="leading-relaxed"><strong>2. Use a regra de três simples:</strong> Se a tabela nutricional informa valores para 100g, e você tem 150g, multiplique por 1.5 (150 ÷ 100).</p>
+          <p class="leading-relaxed"><strong>3. Lembre-se das calorias por grama:</strong></p>
+          <ul class="list-disc list-inside ml-4 space-y-1">
+            <li><strong>Proteína:</strong> 4 kcal por grama</li>
+            <li><strong>Carboidrato:</strong> 4 kcal por grama</li>
+            <li><strong>Gordura:</strong> 9 kcal por grama</li>
+          </ul>
+          <p class="leading-relaxed"><strong>4. Some todos os ingredientes</strong> da sua refeição para obter o total.</p>
+        </div>
+      </div>
+
+      <!-- Interactive Calculator -->
+      <div class="bg-slate-800 p-5 rounded-lg mb-4">
+        <h4 class="font-semibold text-lg mb-4 text-green-300">🔢 Calculadora Interativa</h4>
+        <div class="space-y-4">
+          <!-- Food input -->
+          <div class="grid md:grid-cols-6 gap-3">
+            <input type="text" id="calcFoodName" placeholder="Nome do alimento" class="px-3 py-2 rounded bg-slate-700 text-white" />
+            <input type="number" id="calcWeight" placeholder="Peso (g)" step="0.1" class="px-3 py-2 rounded bg-slate-700 text-white" />
+            <input type="number" id="calcProtPer100" placeholder="Prot/100g" step="0.1" class="px-3 py-2 rounded bg-slate-700 text-white" />
+            <input type="number" id="calcCarbPer100" placeholder="Carb/100g" step="0.1" class="px-3 py-2 rounded bg-slate-700 text-white" />
+            <input type="number" id="calcFatPer100" placeholder="Gord/100g" step="0.1" class="px-3 py-2 rounded bg-slate-700 text-white" />
+            <button onclick="calculateMacros()" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded font-semibold">Calcular</button>
+          </div>
+          
+          <!-- Results -->
+          <div id="calcResults" class="hidden bg-gradient-to-r from-green-700 to-emerald-800 p-4 rounded-lg">
+            <h5 class="font-semibold mb-2">Resultado do Cálculo:</h5>
+            <div class="grid md:grid-cols-4 gap-3 text-center">
+              <div class="bg-white/10 backdrop-blur p-3 rounded">
+                <p class="text-xs text-green-200 mb-1">Proteína</p>
+                <p class="text-2xl font-bold" id="resultProt">0g</p>
+                <p class="text-xs text-green-300" id="resultProtKcal">0 kcal</p>
+              </div>
+              <div class="bg-white/10 backdrop-blur p-3 rounded">
+                <p class="text-xs text-orange-200 mb-1">Carboidrato</p>
+                <p class="text-2xl font-bold" id="resultCarb">0g</p>
+                <p class="text-xs text-orange-300" id="resultCarbKcal">0 kcal</p>
+              </div>
+              <div class="bg-white/10 backdrop-blur p-3 rounded">
+                <p class="text-xs text-yellow-200 mb-1">Gordura</p>
+                <p class="text-2xl font-bold" id="resultFat">0g</p>
+                <p class="text-xs text-yellow-300" id="resultFatKcal">0 kcal</p>
+              </div>
+              <div class="bg-white/10 backdrop-blur p-3 rounded">
+                <p class="text-xs text-cyan-200 mb-1">Total</p>
+                <p class="text-2xl font-bold" id="resultTotal">0 kcal</p>
+                <p class="text-xs text-cyan-300">calorias totais</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Examples Section -->
+      <div class="bg-slate-800 p-5 rounded-lg">
+        <h4 class="font-semibold text-lg mb-3 text-yellow-300">💡 Exemplos Práticos</h4>
+        <div class="space-y-4">
+          <div class="bg-slate-700 p-4 rounded">
+            <p class="font-bold text-blue-300 mb-2">Exemplo 1: Frango Grelhado (150g)</p>
+            <p class="text-sm text-slate-300 mb-2">Valores por 100g: 31g prot, 0g carb, 3.6g gord</p>
+            <div class="bg-slate-800 p-3 rounded text-sm">
+              <p class="mb-1"><strong>Cálculo:</strong></p>
+              <p>• Proteína: 31g × 1.5 = <strong class="text-green-400">46.5g</strong> = 186 kcal</p>
+              <p>• Carboidrato: 0g × 1.5 = <strong class="text-orange-400">0g</strong> = 0 kcal</p>
+              <p>• Gordura: 3.6g × 1.5 = <strong class="text-yellow-400">5.4g</strong> = 48.6 kcal</p>
+              <p class="mt-2 text-cyan-400"><strong>Total: 234.6 kcal</strong></p>
+            </div>
+            <button onclick="fillCalculatorExample('Frango grelhado', 150, 31, 0, 3.6)" class="mt-2 bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Testar na Calculadora</button>
+          </div>
+
+          <div class="bg-slate-700 p-4 rounded">
+            <p class="font-bold text-blue-300 mb-2">Exemplo 2: Arroz Integral Cozido (200g)</p>
+            <p class="text-sm text-slate-300 mb-2">Valores por 100g: 2.6g prot, 23g carb, 0.9g gord</p>
+            <div class="bg-slate-800 p-3 rounded text-sm">
+              <p class="mb-1"><strong>Cálculo:</strong></p>
+              <p>• Proteína: 2.6g × 2 = <strong class="text-green-400">5.2g</strong> = 20.8 kcal</p>
+              <p>• Carboidrato: 23g × 2 = <strong class="text-orange-400">46g</strong> = 184 kcal</p>
+              <p>• Gordura: 0.9g × 2 = <strong class="text-yellow-400">1.8g</strong> = 16.2 kcal</p>
+              <p class="mt-2 text-cyan-400"><strong>Total: 221 kcal</strong></p>
+            </div>
+            <button onclick="fillCalculatorExample('Arroz integral cozido', 200, 2.6, 23, 0.9)" class="mt-2 bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Testar na Calculadora</button>
+          </div>
+
+          <div class="bg-slate-700 p-4 rounded">
+            <p class="font-bold text-blue-300 mb-2">Exemplo 3: Batata Doce (300g)</p>
+            <p class="text-sm text-slate-300 mb-2">Valores por 100g: 1.6g prot, 20g carb, 0.1g gord</p>
+            <div class="bg-slate-800 p-3 rounded text-sm">
+              <p class="mb-1"><strong>Cálculo:</strong></p>
+              <p>• Proteína: 1.6g × 3 = <strong class="text-green-400">4.8g</strong> = 19.2 kcal</p>
+              <p>• Carboidrato: 20g × 3 = <strong class="text-orange-400">60g</strong> = 240 kcal</p>
+              <p>• Gordura: 0.1g × 3 = <strong class="text-yellow-400">0.3g</strong> = 2.7 kcal</p>
+              <p class="mt-2 text-cyan-400"><strong>Total: 261.9 kcal</strong></p>
+            </div>
+            <button onclick="fillCalculatorExample('Batata doce', 300, 1.6, 20, 0.1)" class="mt-2 bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Testar na Calculadora</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tips Section -->
+      <div class="bg-gradient-to-r from-purple-900 to-pink-900 p-5 rounded-lg mt-4">
+        <h4 class="font-semibold text-lg mb-3">✨ Dicas Importantes</h4>
+        <ul class="space-y-2 text-sm text-slate-200">
+          <li class="flex items-start gap-2">
+            <span class="text-green-400 flex-shrink-0">✓</span>
+            <span><strong>Balança digital:</strong> Investir numa balança de cozinha precisa (até 0.1g) facilita muito o controle.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400 flex-shrink-0">✓</span>
+            <span><strong>Aplicativos úteis:</strong> MyFitnessPal, FatSecret e Cronometer têm grandes bancos de dados de alimentos.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400 flex-shrink-0">✓</span>
+            <span><strong>Cozido vs Cru:</strong> Arroz e macarrão absorvem água ao cozinhar (peso aumenta 2-3x, mas calorias não mudam).</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400 flex-shrink-0">✓</span>
+            <span><strong>Óleos e temperos:</strong> Não esqueça de contar azeite, óleo, manteiga usados no preparo (1 colher sopa ≈ 15ml ≈ 135 kcal).</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400 flex-shrink-0">✓</span>
+            <span><strong>Estimativas:</strong> Quando não puder pesar, use aproximações: 1 palma de mão = ~100g de proteína, 1 punho = ~150g de carboidrato.</span>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <!-- Custom Meal Form -->
