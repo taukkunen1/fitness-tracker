@@ -27,6 +27,14 @@ Todos os dados são armazenados localmente no navegador. Nenhuma informação é
 
 ⚠️ **Atenção**: Limpar dados do navegador apaga o histórico. Faça backups regulares!
 
+## 📚 Documentação
+
+Para documentação detalhada, incluindo guias de administração, performance, deploy e análises, acesse a pasta [`docs/`](docs/).
+
+## 🔒 Segurança
+
+Para informações sobre segurança, consulte o arquivo [`SECURITY.md`](SECURITY.md).
+
 ## 📄 Licença
 
 Veja o arquivo `LICENSE` para detalhes.
