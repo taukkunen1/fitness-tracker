@@ -2,6 +2,14 @@
 
 Esta pasta contém toda a documentação organizada do projeto em categorias específicas.
 
+## 🌿 Novo: Guia de Gerenciamento de Branches
+
+**⚠️ Problemas com muitas branches?** Veja o [Guia de Gerenciamento de Branches](GERENCIAMENTO-BRANCHES.md) para:
+- Limpar branches merged de forma segura
+- Configurar auto-delete no GitHub
+- Automatizar limpeza com scripts
+- Seguir melhores práticas
+
 ## 📁 Estrutura de Pastas
 
 ### `/admin` - Administração

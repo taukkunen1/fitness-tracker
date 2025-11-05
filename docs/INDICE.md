@@ -36,6 +36,24 @@
 
 ### 🌟 Documentos Principais (COMECE AQUI)
 
+#### 0. GERENCIAMENTO-BRANCHES.md (16KB) ⭐ NOVO!
+**O QUE É:** Guia completo para gerenciar e reduzir branches do Git  
+**QUANDO LER:** Quando tiver muitas branches acumuladas  
+**TEMPO:** 10-15 minutos  
+**CONTEÚDO:**
+- ✅ Comandos rápidos para limpeza de branches
+- ✅ Estratégias de limpeza (conservadora, agressiva, por data)
+- ✅ Processo passo a passo para limpar branches merged
+- ✅ Configuração de auto-delete no GitHub
+- ✅ Melhores práticas para prevenir acúmulo
+- ✅ Scripts de automação (Bash + GitHub Actions)
+- ✅ FAQ completo sobre gestão de branches
+- ✅ Checklist de limpeza mensal
+
+**LEIA SE:** Quer limpar e organizar suas branches no GitHub
+
+---
+
 #### 1. LAYOUT-CIENTIFICO.md (22KB) ⭐ NOVO!
 **O QUE É:** Layout baseado em estudos científicos de UX/UI  
 **QUANDO LER:** Antes de fazer mudanças de design/layout  
@@ -54,7 +72,7 @@
 
 ---
 
-#### 2. LISTA-MELHORIAS-ATUALIZADA.md (19KB) ⭐ NOVO!
+#### 2. LAYOUT-CIENTIFICO.md (22KB) ⭐ NOVO!
 **O QUE É:** Lista consolidada e atualizada de todas as melhorias  
 **QUANDO LER:** Para planejar próximas implementações  
 **TEMPO:** 15-25 minutos  
@@ -72,7 +90,25 @@
 
 ---
 
-#### 3. RESUMO-EXECUTIVO.md (14KB)
+#### 3. LISTA-MELHORIAS-ATUALIZADA.md (19KB) ⭐ NOVO!
+**O QUE É:** Lista consolidada e atualizada de todas as melhorias  
+**QUANDO LER:** Para planejar próximas implementações  
+**TEMPO:** 15-25 minutos  
+**CONTEÚDO:**
+- ✅ 20 melhorias organizadas por prioridade
+- ✅ Matriz Impacto vs Esforço
+- ✅ 4 níveis: Crítica, Alta, Média, Baixa
+- ✅ ROI calculado para cada feature
+- ✅ Estimativa de horas de desenvolvimento
+- ✅ Roadmap de 3 meses detalhado
+- ✅ Checklist de implementação
+- ✅ Estatísticas e resumos
+
+**LEIA SE:** Quer ver lista completa priorizada de melhorias
+
+---
+
+#### 4. RESUMO-EXECUTIVO.md (14KB)
 **O QUE É:** Visão geral completa da análise  
 **QUANDO LER:** Primeiro documento a ler  
 **TEMPO:** 5-10 minutos  
@@ -90,7 +126,7 @@
 
 ---
 
-#### 4. MELHORIAS-SUGERIDAS.md (27KB)
+#### 5. MELHORIAS-SUGERIDAS.md (27KB)
 **O QUE É:** Lista completa de melhorias com código de exemplo  
 **QUANDO LER:** Quando for implementar features  
 **TEMPO:** 15-30 minutos  
@@ -108,7 +144,7 @@
 
 ---
 
-#### 5. COMPARACAO-CONCORRENTES.md (18KB)
+#### 6. COMPARACAO-CONCORRENTES.md (18KB)
 **O QUE É:** Análise detalhada de 4 concorrentes principais  
 **QUANDO LER:** Para entender o mercado  
 **TEMPO:** 10-20 minutos  
@@ -130,7 +166,7 @@
 
 ### 📋 Documentos de Suporte
 
-#### 6. ANALISE-SITE.md (21KB)
+#### 7. ANALISE-SITE.md (21KB)
 **O QUE É:** Análise inicial anterior (já existia)  
 **QUANDO LER:** Para contexto histórico  
 **TEMPO:** 15 minutos  
@@ -144,7 +180,7 @@
 
 ---
 
-#### 7. RESUMO-ALTERACOES.md (13KB)
+#### 8. RESUMO-ALTERACOES.md (13KB)
 **O QUE É:** Changelog das últimas alterações  
 **QUANDO LER:** Para saber o que mudou recentemente  
 **TEMPO:** 5-10 minutos  
@@ -161,7 +197,7 @@
 
 ---
 
-#### 8. README.md (6KB)
+#### 9. README.md (6KB)
 **O QUE É:** Informações gerais do projeto  
 **QUANDO LER:** Para apresentação geral  
 **TEMPO:** 5 minutos  
@@ -181,6 +217,12 @@
 ## 🔍 BUSCA RÁPIDA
 
 ### Procurando informações sobre...
+
+#### 🌿 **Gerenciamento de Branches** ⭐ NOVO!
+- GERENCIAMENTO-BRANCHES.md → Todo o documento
+- Limpeza de branches merged
+- Auto-delete no GitHub
+- Scripts de automação
 
 #### 🎨 **Layout e Design Científico** ⭐ NOVO!
 - LAYOUT-CIENTIFICO.md → Todo o documento
@@ -249,11 +291,11 @@
 ## 📊 ESTATÍSTICAS DA DOCUMENTAÇÃO
 
 ### Documentos Criados:
-- **Total:** 8 documentos
-- **Novos (esta atualização):** 2 documentos (LAYOUT-CIENTIFICO.md, LISTA-MELHORIAS-ATUALIZADA.md)
-- **Tamanho total:** 137KB
-- **Tempo de leitura total:** ~2h
-- **Tempo para visão geral:** ~30min (top 3 docs)
+- **Total:** 9 documentos
+- **Novos (esta atualização):** 3 documentos (GERENCIAMENTO-BRANCHES.md, LAYOUT-CIENTIFICO.md, LISTA-MELHORIAS-ATUALIZADA.md)
+- **Tamanho total:** 153KB
+- **Tempo de leitura total:** ~2h 15min
+- **Tempo para visão geral:** ~35min (top 4 docs)
 
 ### Melhorias Identificadas:
 - **Total:** 20 melhorias priorizadas (atualizado!)
@@ -443,6 +485,7 @@ Você agora tem **acesso completo** a:
 
 ```
 📖 ÍNDICE.md                           ← VOCÊ ESTÁ AQUI
+├── 🌿 GERENCIAMENTO-BRANCHES.md ⭐ NOVO! (Gestão de branches - 10 min)
 ├── 🎨 LAYOUT-CIENTIFICO.md ⭐ NOVO!   (Design científico - 20 min)
 ├── 📋 LISTA-MELHORIAS-ATUALIZADA.md ⭐ (Lista priorizada - 15 min)
 ├── 🌟 RESUMO-EXECUTIVO.md             (Comece aqui - 5 min)
