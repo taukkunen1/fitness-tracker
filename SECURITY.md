@@ -128,7 +128,7 @@ Permissions-Policy: restrições de APIs do navegador
 
 ### 8. Auditoria e Logging
 
-#### 8.1 Eventos Registrados
+#### 8.1 Eventos de Segurança Registrados
 - `register_success`: Nova conta criada
 - `register_failed`: Tentativa de registro falhou
 - `login_success`: Login bem-sucedido
@@ -138,8 +138,53 @@ Permissions-Policy: restrições de APIs do navegador
 - `logout`: Usuário fez logout
 - `profile_linked`: Perfil linkado à conta
 - `profile_unlinked`: Perfil deslinkado da conta
+- `admin_promotion`: Usuário promovido a administrador
+- `task_created`: Tarefa administrativa criada
+- `task_updated`: Tarefa administrativa atualizada
+- `task_deleted`: Tarefa administrativa deletada
+- `suggestion_submitted`: Sugestão enviada por usuário
+- `suggestion_reviewed`: Sugestão revisada por admin
 
-#### 8.2 Informações Armazenadas
+#### 8.2 Monitoramento de Acessos (Novo em v1.1.0)
+**Sistema de tracking de acessos ao site para administradores:**
+
+- **Logs de Acesso**: Cada acesso autenticado é registrado com:
+  ```javascript
+  {
+    id: "access_timestamp_random",
+    timestamp: "ISO8601",
+    username: "username",
+    role: "user|admin",
+    page: "/index.html",
+    userAgent: "navegador",
+    screenResolution: "1920x1080",
+    language: "pt-BR"
+  }
+  ```
+
+- **Estatísticas Disponíveis**:
+  - Total de acessos históricos
+  - Acessos nas últimas 24 horas
+  - Acessos nos últimos 7 dias
+  - Acessos nos últimos 30 dias
+  - Visitantes únicos por período
+  - Distribuição horária (24h)
+  - Distribuição diária (7 dias)
+  - Total de contas registradas
+
+- **Dashboard Administrativo**:
+  - Visualização em tempo real de acessos
+  - Gráfico de acessos por hora
+  - Lista de acessos recentes com detalhes
+  - Atualização automática a cada 5 minutos
+  - Exportação de logs em JSON
+  - Limpeza automática de logs antigos (>90 dias)
+
+- **Armazenamento**: IndexedDB (store: access_logs)
+- **Retenção**: 90 dias (limpeza automática)
+- **Acesso**: Apenas administradores
+
+#### 8.3 Informações de Eventos de Segurança
 ```javascript
 {
   id: "sec_timestamp_random",
@@ -151,10 +196,11 @@ Permissions-Policy: restrições de APIs do navegador
 }
 ```
 
-#### 8.3 Armazenamento
-- **Local**: IndexedDB (store: settings)
-- **Prefixo**: `security_log_{id}`
-- **Retenção**: Indefinida (gerenciada pelo usuário)
+#### 8.4 Armazenamento
+- **Eventos de Segurança**: IndexedDB (store: settings, prefixo: security_log_{id})
+- **Logs de Acesso**: IndexedDB (store: access_logs)
+- **Retenção Eventos**: 30 dias (gerenciável pelo admin)
+- **Retenção Acessos**: 90 dias (limpeza automática)
 
 ### 9. Validação de Inputs
 
@@ -250,23 +296,39 @@ IndexedDB Stores:
 - **Proteções**:
   - X-Content-Type-Options: nosniff
 
-### 8. Password Cracking
+### 10. Password Cracking
 - **Status**: ✅ Mitigado
 - **Proteções**:
   - PBKDF2 com 100k iterações
   - Salt único por usuário
   - Requisitos de senha forte
 
-### 9. Enumeration Attacks
+### 11. Enumeration Attacks
 - **Status**: ✅ Mitigado
 - **Proteções**:
   - Mensagens de erro genéricas
   - Rate limiting
   - Lockout temporário
 
-### 10. Man-in-the-Middle (MITM)
+### 12. Man-in-the-Middle (MITM)
 - **Status**: ⚠️ Depende do Deploy
 - **Recomendação**: Usar HTTPS em produção
+
+### 13. Denial of Service (DoS)
+- **Status**: ✅ Parcialmente Mitigado
+- **Proteções**:
+  - Rate limiting (10 req/min)
+  - Limite de tamanho de senha (128 chars)
+  - Limite de campos de entrada (255 chars)
+  - Limpeza automática de logs antigos
+
+### 14. Information Disclosure
+- **Status**: ✅ Mitigado
+- **Proteções**:
+  - Mensagens genéricas de erro
+  - Logs acessíveis apenas para admins
+  - Dados sensíveis não expostos em console
+  - Monitoramento de acesso restrito a admins
 
 ## 📊 Níveis de Segurança por Camada
 
@@ -376,6 +438,17 @@ Para reportar vulnerabilidades de segurança:
 
 ## 📝 Changelog de Segurança
 
+### v1.1.0 (2025-11-05)
+- ✅ Sistema de monitoramento de acessos ao site
+- ✅ Dashboard administrativo com estatísticas em tempo real
+- ✅ Contagem de contas registradas
+- ✅ Atualização automática a cada 5 minutos
+- ✅ Gráfico de distribuição horária de acessos
+- ✅ Exportação de logs de acesso
+- ✅ Limpeza automática de logs antigos (>90 dias)
+- ✅ Proteção adicional contra DoS
+- ✅ Proteção contra information disclosure
+
 ### v1.0.0 (2025-11-05)
 - ✅ Implementação inicial de autenticação
 - ✅ PBKDF2 password hashing
@@ -389,5 +462,5 @@ Para reportar vulnerabilidades de segurança:
 ---
 
 **Última atualização**: 2025-11-05  
-**Versão**: 1.0.0  
+**Versão**: 1.1.0  
 **Status**: ✅ Produção

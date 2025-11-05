@@ -178,7 +178,7 @@
    ====================================================================== */
 
 const DB_NAME = 'fitness-tracker-db';
-const DB_VERSION = 5; // bumped for admin features (tasks, suggestions)
+const DB_VERSION = 6; // bumped for access tracking and monitoring
 const STORE_USERS = 'users';
 const STORE_COMPARISONS = 'comparisons';
 const STORE_REFERENCES = 'references';
@@ -187,6 +187,7 @@ const STORE_SETTINGS = 'settings';
 const STORE_ACCOUNTS = 'accounts'; // New store for authentication
 const STORE_TASKS = 'tasks'; // Admin task management
 const STORE_SUGGESTIONS = 'suggestions'; // User suggestions and feedback
+const STORE_ACCESS_LOGS = 'access_logs'; // Site access tracking
 
 // ----------------------------- IndexedDB helpers -----------------------------
 function openDB() {
@@ -208,6 +209,11 @@ function openDB() {
       }
       if (!db.objectStoreNames.contains(STORE_SUGGESTIONS)) {
         db.createObjectStore(STORE_SUGGESTIONS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_ACCESS_LOGS)) {
+        const accessStore = db.createObjectStore(STORE_ACCESS_LOGS, { keyPath: 'id' });
+        accessStore.createIndex('timestamp', 'timestamp', { unique: false });
+        accessStore.createIndex('username', 'username', { unique: false });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -424,6 +430,8 @@ function sanitizeInput(input) {
     .slice(0, 255); // Limit length
 }
 
+// Note: escapeHtml function is defined later in the file around line 1723
+
 function validateEmail(email) {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return emailRegex.test(email);
@@ -538,6 +546,99 @@ async function logSecurityEvent(eventType, username, details) {
   }
 }
 
+// ----------------------------- Access Tracking for Admin Monitoring -----------------------------
+async function logPageAccess() {
+  const accessLog = {
+    id: 'access_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11),
+    timestamp: new Date().toISOString(),
+    username: authState.isAuthenticated ? authState.currentAccount.username : 'anonymous',
+    role: authState.isAuthenticated ? (authState.currentAccount.role || 'user') : 'anonymous',
+    page: window.location.pathname,
+    userAgent: navigator.userAgent,
+    screenResolution: `${window.screen.width}x${window.screen.height}`,
+    language: navigator.language
+  };
+  
+  try {
+    await dbPut(STORE_ACCESS_LOGS, accessLog);
+    console.log('[ACCESS]', accessLog);
+  } catch (err) {
+    console.error('Failed to log page access', err);
+  }
+}
+
+async function getAccessStatistics() {
+  const accessLogs = await dbGetAll(STORE_ACCESS_LOGS);
+  const now = new Date();
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  
+  const logs24h = accessLogs.filter(log => new Date(log.timestamp) > last24h);
+  const logs7d = accessLogs.filter(log => new Date(log.timestamp) > last7d);
+  const logs30d = accessLogs.filter(log => new Date(log.timestamp) > last30d);
+  
+  // Get unique visitors
+  const uniqueVisitors24h = new Set(logs24h.map(log => log.username)).size;
+  const uniqueVisitors7d = new Set(logs7d.map(log => log.username)).size;
+  const uniqueVisitors30d = new Set(logs30d.map(log => log.username)).size;
+  
+  // Get hourly breakdown for last 24h
+  const hourlyBreakdown = {};
+  for (let i = 0; i < 24; i++) {
+    hourlyBreakdown[i] = 0;
+  }
+  
+  logs24h.forEach(log => {
+    const hour = new Date(log.timestamp).getHours();
+    hourlyBreakdown[hour]++;
+  });
+  
+  // Get daily breakdown for last 7 days
+  const dailyBreakdown = {};
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const dateKey = date.toISOString().split('T')[0];
+    dailyBreakdown[dateKey] = 0;
+  }
+  
+  logs7d.forEach(log => {
+    const dateKey = log.timestamp.split('T')[0];
+    if (dailyBreakdown[dateKey] !== undefined) {
+      dailyBreakdown[dateKey]++;
+    }
+  });
+  
+  return {
+    total: accessLogs.length,
+    last24h: logs24h.length,
+    last7d: logs7d.length,
+    last30d: logs30d.length,
+    uniqueVisitors24h,
+    uniqueVisitors7d,
+    uniqueVisitors30d,
+    hourlyBreakdown,
+    dailyBreakdown,
+    recentLogs: accessLogs.slice(-50).reverse()
+  };
+}
+
+async function cleanOldAccessLogs() {
+  // Keep only last 90 days of access logs to prevent database bloat
+  const accessLogs = await dbGetAll(STORE_ACCESS_LOGS);
+  const cutoffDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  
+  let removed = 0;
+  for (const log of accessLogs) {
+    if (new Date(log.timestamp) < cutoffDate) {
+      await dbDelete(STORE_ACCESS_LOGS, log.id);
+      removed++;
+    }
+  }
+  
+  return removed;
+}
+
 // ----------------------------- Session Management -----------------------------
 function createSession(account) {
   const sessionToken = generateToken();
@@ -566,6 +667,9 @@ function createSession(account) {
   
   saveLS('ft_session', session);
   logSecurityEvent('login_success', account.username, 'User logged in successfully');
+  
+  // Log page access after login
+  logPageAccess().catch(err => console.error('Failed to log page access', err));
 }
 
 async function validateSession() {
@@ -2847,6 +2951,9 @@ function render() {
   
   if (state.activeTab === 'admin_security' && isAdmin()) {
     loadAndDisplaySecurityEvents();
+    startAdminSecurityAutoRefresh(); // Start auto-refresh when admin visits security panel
+  } else {
+    stopAdminSecurityAutoRefresh(); // Stop auto-refresh when leaving security panel
   }
   
   // User suggestions tab
@@ -2854,6 +2961,11 @@ function render() {
     loadAndDisplayUserSuggestions();
     const suggestionForm = document.getElementById('suggestionForm');
     if (suggestionForm) suggestionForm.addEventListener('submit', handleSuggestionFormSubmit);
+  }
+  
+  // Log page access for monitoring (only when authenticated)
+  if (authState.isAuthenticated) {
+    logPageAccess().catch(err => console.error('Failed to log page access', err));
   }
 }
 
@@ -4246,27 +4358,74 @@ function renderAdminSecurity() {
     <div class="space-y-6">
       <!-- Admin Header -->
       <div class="bg-gradient-to-r from-red-900 to-pink-900 p-6 rounded-xl border border-red-500">
-        <h2 class="text-3xl font-bold mb-2">🔐 Painel do Administrador - Segurança</h2>
-        <p class="text-red-200">Monitore eventos de segurança e atividades suspeitas</p>
+        <h2 class="text-3xl font-bold mb-2">🔐 Painel do Administrador - Segurança & Monitoramento</h2>
+        <p class="text-red-200">Monitore acessos ao site, contas registradas e eventos de segurança</p>
+        <p class="text-red-300 text-sm mt-2">⏱️ <span id="lastUpdateTime">Atualização automática a cada 5 minutos</span></p>
+      </div>
+
+      <!-- Access Monitoring Stats -->
+      <div class="bg-gradient-to-r from-purple-900 to-indigo-900 p-4 rounded-xl border border-purple-500">
+        <h3 class="text-xl font-bold mb-4">📊 Monitoramento de Acessos ao Site</h3>
+        <div class="grid md:grid-cols-5 gap-4">
+          <div class="bg-slate-800 p-4 rounded-lg">
+            <p class="text-slate-400 text-sm">Total de Acessos</p>
+            <p class="text-3xl font-bold text-white" id="totalAccesses">-</p>
+          </div>
+          <div class="bg-blue-900/30 p-4 rounded-lg border border-blue-500/30">
+            <p class="text-blue-400 text-sm">Últimas 24h</p>
+            <p class="text-3xl font-bold text-blue-300" id="accesses24h">-</p>
+          </div>
+          <div class="bg-cyan-900/30 p-4 rounded-lg border border-cyan-500/30">
+            <p class="text-cyan-400 text-sm">Últimos 7 dias</p>
+            <p class="text-3xl font-bold text-cyan-300" id="accesses7d">-</p>
+          </div>
+          <div class="bg-teal-900/30 p-4 rounded-lg border border-teal-500/30">
+            <p class="text-teal-400 text-sm">Visitantes Únicos (24h)</p>
+            <p class="text-3xl font-bold text-teal-300" id="uniqueVisitors24h">-</p>
+          </div>
+          <div class="bg-purple-900/30 p-4 rounded-lg border border-purple-500/30">
+            <p class="text-purple-400 text-sm">Contas Registradas</p>
+            <p class="text-3xl font-bold text-purple-300" id="totalRegisteredAccounts">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Access Logs -->
+      <div class="bg-slate-800 p-4 rounded-lg">
+        <h3 class="text-xl font-bold mb-4">🕒 Acessos Recentes</h3>
+        <div id="accessLogsList">
+          <p class="text-slate-400">Carregando acessos...</p>
+        </div>
+      </div>
+
+      <!-- Hourly Access Chart -->
+      <div class="bg-slate-800 p-4 rounded-lg">
+        <h3 class="text-xl font-bold mb-4">📈 Acessos por Hora (Últimas 24h)</h3>
+        <div id="hourlyAccessChart">
+          <p class="text-slate-400">Carregando gráfico...</p>
+        </div>
       </div>
 
       <!-- Security Stats -->
-      <div class="grid md:grid-cols-4 gap-4" id="securityStats">
-        <div class="bg-slate-800 p-4 rounded-lg">
-          <p class="text-slate-400 text-sm">Total de Eventos</p>
-          <p class="text-3xl font-bold text-white" id="totalSecurityEvents">-</p>
-        </div>
-        <div class="bg-green-900/30 p-4 rounded-lg border border-green-500/30">
-          <p class="text-green-400 text-sm">Logins Sucesso</p>
-          <p class="text-3xl font-bold text-green-300" id="successfulLogins">-</p>
-        </div>
-        <div class="bg-red-900/30 p-4 rounded-lg border border-red-500/30">
-          <p class="text-red-400 text-sm">Logins Falhados</p>
-          <p class="text-3xl font-bold text-red-300" id="failedLogins">-</p>
-        </div>
-        <div class="bg-yellow-900/30 p-4 rounded-lg border border-yellow-500/30">
-          <p class="text-yellow-400 text-sm">Contas Bloqueadas</p>
-          <p class="text-3xl font-bold text-yellow-300" id="blockedAccounts">-</p>
+      <div class="bg-gradient-to-r from-red-900 to-orange-900 p-4 rounded-xl border border-red-500 mt-6">
+        <h3 class="text-xl font-bold mb-4">🔒 Estatísticas de Segurança</h3>
+        <div class="grid md:grid-cols-4 gap-4" id="securityStats">
+          <div class="bg-slate-800 p-4 rounded-lg">
+            <p class="text-slate-400 text-sm">Total de Eventos</p>
+            <p class="text-3xl font-bold text-white" id="totalSecurityEvents">-</p>
+          </div>
+          <div class="bg-green-900/30 p-4 rounded-lg border border-green-500/30">
+            <p class="text-green-400 text-sm">Logins Sucesso</p>
+            <p class="text-3xl font-bold text-green-300" id="successfulLogins">-</p>
+          </div>
+          <div class="bg-red-900/30 p-4 rounded-lg border border-red-500/30">
+            <p class="text-red-400 text-sm">Logins Falhados</p>
+            <p class="text-3xl font-bold text-red-300" id="failedLogins">-</p>
+          </div>
+          <div class="bg-yellow-900/30 p-4 rounded-lg border border-yellow-500/30">
+            <p class="text-yellow-400 text-sm">Contas Bloqueadas</p>
+            <p class="text-3xl font-bold text-yellow-300" id="blockedAccounts">-</p>
+          </div>
         </div>
       </div>
 
@@ -4287,12 +4446,18 @@ function renderAdminSecurity() {
       </div>
 
       <!-- Export Buttons -->
-      <div class="flex gap-3">
+      <div class="flex flex-wrap gap-3">
         <button onclick="exportSecurityLogs()" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-lg font-semibold">
           📄 Exportar Logs de Segurança
         </button>
+        <button onclick="exportAccessLogs()" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-lg font-semibold">
+          📊 Exportar Logs de Acesso
+        </button>
         <button onclick="clearOldSecurityLogs()" class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-lg font-semibold">
           🗑️ Limpar Logs Antigos (>30 dias)
+        </button>
+        <button onclick="clearOldAccessLogsManual()" class="bg-yellow-600 hover:bg-yellow-500 px-6 py-3 rounded-lg font-semibold">
+          🗑️ Limpar Acessos Antigos (>90 dias)
         </button>
       </div>
     </div>
@@ -5127,6 +5292,101 @@ async function exportSuggestionsToGitHubFormat() {
 
 // Load and display security events
 async function loadAndDisplaySecurityEvents() {
+  // Get access statistics
+  const accessStats = await getAccessStatistics();
+  
+  // Update access monitoring stats
+  if (document.getElementById('totalAccesses')) {
+    document.getElementById('totalAccesses').textContent = accessStats.total;
+    document.getElementById('accesses24h').textContent = accessStats.last24h;
+    document.getElementById('accesses7d').textContent = accessStats.last7d;
+    document.getElementById('uniqueVisitors24h').textContent = accessStats.uniqueVisitors24h;
+  }
+  
+  // Update registered accounts count
+  const accounts = await dbGetAll(STORE_ACCOUNTS);
+  if (document.getElementById('totalRegisteredAccounts')) {
+    document.getElementById('totalRegisteredAccounts').textContent = accounts.length;
+  }
+  
+  // Display recent access logs
+  if (document.getElementById('accessLogsList')) {
+    let accessHtml = '<div class="space-y-2 max-h-96 overflow-y-auto">';
+    
+    accessStats.recentLogs.slice(0, 30).forEach(log => {
+      // Use mapping object for role colors to prevent CSS injection
+      const roleColorMap = {
+        'admin': { bg: 'red-900', text: 'red-300', border: 'red-500' },
+        'user': { bg: 'blue-900', text: 'blue-300', border: 'blue-500' },
+        'anonymous': { bg: 'gray-900', text: 'gray-300', border: 'gray-500' }
+      };
+      const colors = roleColorMap[log.role] || roleColorMap['anonymous'];
+      
+      // Escape user-controlled data to prevent XSS
+      const safeUsername = escapeHtml(log.username);
+      const safeRole = escapeHtml(log.role);
+      const safeResolution = escapeHtml(log.screenResolution);
+      const safeLanguage = escapeHtml(log.language);
+      const safeTimestamp = escapeHtml(new Date(log.timestamp).toLocaleString('pt-BR'));
+      
+      // Build CSS classes safely without interpolation in class attributes
+      const bgClass = 'bg-' + colors.bg;
+      const textClass = 'text-' + colors.text;
+      const borderClass = 'border-' + colors.border;
+      
+      accessHtml += `
+        <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
+          <div class="flex-1">
+            <span class="px-2 py-1 rounded text-xs ${bgClass} ${textClass} border ${borderClass} mr-2">
+              ${safeRole.toUpperCase()}
+            </span>
+            <span class="text-sm text-slate-300">${safeUsername}</span>
+            <p class="text-xs text-slate-400 mt-1">Resolução: ${safeResolution} | Idioma: ${safeLanguage}</p>
+          </div>
+          <div class="text-right text-xs text-slate-400">
+            ${safeTimestamp}
+          </div>
+        </div>
+      `;
+    });
+    
+    accessHtml += '</div>';
+    document.getElementById('accessLogsList').innerHTML = accessHtml || '<p class="text-slate-400">Nenhum acesso registrado.</p>';
+  }
+  
+  // Display hourly access chart
+  if (document.getElementById('hourlyAccessChart')) {
+    let chartHtml = '<div class="grid grid-cols-12 gap-2">';
+    
+    for (let hour = 0; hour < 24; hour++) {
+      const count = accessStats.hourlyBreakdown[hour] || 0;
+      // Safely find max value without spreading large arrays
+      const values = Object.values(accessStats.hourlyBreakdown);
+      const maxCount = values.length > 0 ? values.reduce((max, val) => Math.max(max, val), 0) : 0;
+      const heightPercent = maxCount > 0 ? ((count / maxCount) * 100).toFixed(2) : 0;
+      
+      chartHtml += `
+        <div class="flex flex-col items-center">
+          <div class="w-full bg-slate-700 rounded" style="height: 100px; display: flex; align-items: flex-end;">
+            <div class="w-full bg-purple-500 rounded-t" style="height: ${heightPercent}%;" title="${count} acessos às ${hour}h"></div>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">${hour}h</p>
+          <p class="text-xs text-white font-bold">${count}</p>
+        </div>
+      `;
+    }
+    
+    chartHtml += '</div>';
+    document.getElementById('hourlyAccessChart').innerHTML = chartHtml;
+  }
+  
+  // Update last update time
+  if (document.getElementById('lastUpdateTime')) {
+    document.getElementById('lastUpdateTime').textContent = 
+      `Última atualização: ${new Date().toLocaleTimeString('pt-BR')} - Próxima em 5 minutos`;
+  }
+  
+  // Load security events
   const settings = await dbGetAll(STORE_SETTINGS);
   const securityEvents = settings.filter(s => s.key.startsWith('security_log_')).map(s => s.value);
   
@@ -5175,8 +5435,6 @@ async function loadAndDisplaySecurityEvents() {
   document.getElementById('securityEventsList').innerHTML = html || '<p class="text-slate-400">Nenhum evento encontrado.</p>';
   
   // Load accounts
-  const accounts = await dbGetAll(STORE_ACCOUNTS);
-  
   let accountsHtml = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-slate-600">';
   accountsHtml += '<th class="py-2 px-4 text-left">Username</th>';
   accountsHtml += '<th class="py-2 px-4 text-left">Email</th>';
@@ -5261,6 +5519,58 @@ async function clearOldSecurityLogs() {
   
   showNotification(`✅ ${removed} logs removidos!`, 'success');
   await loadAndDisplaySecurityEvents();
+}
+
+// Export access logs
+async function exportAccessLogs() {
+  const accessLogs = await dbGetAll(STORE_ACCESS_LOGS);
+  
+  const json = JSON.stringify(accessLogs, null, 2);
+  
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `access_logs_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showNotification('✅ Logs de acesso exportados!', 'success');
+}
+
+// Clear old access logs (manual trigger)
+async function clearOldAccessLogsManual() {
+  if (!confirm('Deseja limpar logs de acesso com mais de 90 dias?')) return;
+  
+  const removed = await cleanOldAccessLogs();
+  
+  showNotification(`✅ ${removed} logs de acesso removidos!`, 'success');
+  await loadAndDisplaySecurityEvents();
+}
+
+// Auto-refresh interval for admin security panel
+let adminSecurityRefreshInterval = null;
+
+function startAdminSecurityAutoRefresh() {
+  // Clear any existing interval
+  if (adminSecurityRefreshInterval) {
+    clearInterval(adminSecurityRefreshInterval);
+  }
+  
+  // Refresh every 5 minutes (300000 ms)
+  adminSecurityRefreshInterval = setInterval(() => {
+    if (isAdmin() && state.activeTab === 'admin_security') {
+      console.log('[AUTO-REFRESH] Updating admin security panel...');
+      loadAndDisplaySecurityEvents();
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+}
+
+function stopAdminSecurityAutoRefresh() {
+  if (adminSecurityRefreshInterval) {
+    clearInterval(adminSecurityRefreshInterval);
+    adminSecurityRefreshInterval = null;
+  }
 }
 
 // Load and display user suggestions
