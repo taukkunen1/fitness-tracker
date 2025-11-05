@@ -301,10 +301,18 @@ let authState = {
 // ----------------------------- Crypto utilities -----------------------------
 async function hashPassword(password, salt) {
   const encoder = new TextEncoder();
-  const passwordData = encoder.encode(password + salt);
+  // Encode password and salt separately for better security
+  const passwordBuffer = encoder.encode(password);
+  const saltBuffer = encoder.encode(salt);
+  
+  // Combine password and salt buffers
+  const combined = new Uint8Array(passwordBuffer.length + saltBuffer.length);
+  combined.set(passwordBuffer, 0);
+  combined.set(saltBuffer, passwordBuffer.length);
+  
   const key = await crypto.subtle.importKey(
     'raw',
-    passwordData,
+    combined,
     { name: 'PBKDF2' },
     false,
     ['deriveBits']
@@ -340,8 +348,14 @@ function generateToken() {
 function validatePassword(password) {
   const errors = [];
   
+  // Check minimum length
   if (password.length < SECURITY_CONFIG.PASSWORD_MIN_LENGTH) {
     errors.push(`Senha deve ter pelo menos ${SECURITY_CONFIG.PASSWORD_MIN_LENGTH} caracteres`);
+  }
+  
+  // Check maximum length to prevent DoS attacks
+  if (password.length > 128) {
+    errors.push('Senha muito longa (máximo 128 caracteres)');
   }
   
   if (SECURITY_CONFIG.PASSWORD_REQUIRE_UPPERCASE && !/[A-Z]/.test(password)) {
@@ -369,11 +383,16 @@ function sanitizeInput(input) {
   
   // Remove dangerous characters and HTML tags
   return input
+    .replace(/&/g, '&amp;')   // Must be first to avoid double-encoding
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;')
+    .replace(/`/g, '&#x60;')   // Backticks for template literals
     .replace(/\//g, '&#x2F;')
+    .replace(/\n/g, ' ')        // Remove newlines
+    .replace(/\r/g, ' ')        // Remove carriage returns
+    .replace(/\t/g, ' ')        // Remove tabs
     .trim()
     .slice(0, 255); // Limit length
 }
@@ -470,7 +489,7 @@ function clearFailedLoginAttempts(username) {
 // ----------------------------- Security Audit Log -----------------------------
 async function logSecurityEvent(eventType, username, details) {
   const event = {
-    id: 'sec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    id: 'sec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11),
     type: eventType,
     username: username || 'anonymous',
     timestamp: new Date().toISOString(),
