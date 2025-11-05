@@ -4,6 +4,93 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Fitness Tracker Pro — Full (verbose)</title>
+  
+  <!-- ===== PROTEÇÕES DE CÓDIGO - 2025 ===== -->
+  <!-- Desabilitar clique direito -->
+  <script>
+    document.addEventListener('contextmenu', e => e.preventDefault());
+  </script>
+  
+  <!-- Desabilitar atalhos de teclado para DevTools -->
+  <script>
+    document.addEventListener('keydown', function(e) {
+      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S
+      if (e.keyCode === 123 || 
+          (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) ||
+          (e.ctrlKey && e.keyCode === 85) ||
+          (e.ctrlKey && e.keyCode === 83)) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  </script>
+  
+  <!-- Proteção contra seleção de texto e cópia -->
+  <style>
+    * {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    
+    /* Permitir seleção apenas em inputs/textareas para funcionalidade */
+    input, textarea, [contenteditable="true"] {
+      -webkit-user-select: text !important;
+      -moz-user-select: text !important;
+      -ms-user-select: text !important;
+      user-select: text !important;
+    }
+  </style>
+  
+  <!-- Detectar abertura de DevTools -->
+  <script>
+    (function() {
+      var devtools = {isOpen: false, orientation: null};
+      var threshold = 160;
+      var emitEvent = function(isOpen, orientation) {
+        window.dispatchEvent(new CustomEvent('devtoolschange', {
+          detail: {isOpen: isOpen, orientation: orientation}
+        }));
+      };
+      
+      setInterval(function() {
+        var widthThreshold = window.outerWidth - window.innerWidth > threshold;
+        var heightThreshold = window.outerHeight - window.innerHeight > threshold;
+        var orientation = widthThreshold ? 'vertical' : 'horizontal';
+        
+        if (!(heightThreshold && widthThreshold) &&
+            ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) || 
+             widthThreshold || heightThreshold)) {
+          if (!devtools.isOpen || devtools.orientation !== orientation) {
+            emitEvent(true, orientation);
+            console.clear();
+          }
+          devtools.isOpen = true;
+          devtools.orientation = orientation;
+        } else {
+          if (devtools.isOpen) {
+            emitEvent(false, null);
+          }
+          devtools.isOpen = false;
+          devtools.orientation = null;
+        }
+      }, 500);
+      
+      window.addEventListener('devtoolschange', function(e) {
+        if (e.detail.isOpen) {
+          console.clear();
+          document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-size:2rem;color:red;">Acesso não autorizado detectado</div>';
+        }
+      });
+    })();
+  </script>
+  
+  <!-- Copyright e aviso de proteção -->
+  <meta name="copyright" content="© 2025 Fitness Tracker Pro. Todos os direitos reservados." />
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
@@ -12,7 +99,7 @@
     th, td { padding: 6px 8px; }
   </style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen">
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen" oncopy="return false" oncut="return false" onpaste="return false">
   <!--
     Fitness Tracker Pro - Versão completa e verbosa (2025-11)
     Objetivos desta versão:
