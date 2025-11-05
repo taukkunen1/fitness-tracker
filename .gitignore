@@ -22,13 +22,8 @@ npm-debug.log*
 # Backup
 *.backup
 *.bak
-*.txt
-*.old
 
-# Scripts de deploy manual (usar GitHub Actions)
-update-site.sh
-update-site.bat
-
-# Versões antigas de workflows (apenas cópias versionadas no root)
-*_Version*.yml
-github_workflows_*.yml
+# Nota: Os seguintes arquivos são intencionalmente incluídos no repositório:
+# - index.html.txt (versão alternativa com funcionalidades admin)
+# - update-site.sh e update-site.bat (scripts de deploy)
+# - github_workflows_auto-deploy-index_Version9.yml (workflow alternativo)
