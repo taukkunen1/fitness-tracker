@@ -4564,6 +4564,12 @@ let workoutHeartRateChart = null;
 
 // Render workout charts
 function renderWorkoutCharts() {
+  // Check if Chart.js is available
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js not loaded, skipping workout chart rendering');
+    return;
+  }
+  
   const user = state.users[state.activeUser];
   if (!user || !user.workoutLogs || user.workoutLogs.length === 0) return;
 
@@ -5439,6 +5445,12 @@ function renderUserSuggestions() {
 
 /* ----------------------------- Chart rendering ----------------------------- */
 function renderMuscleEvolutionChart(bodyMetrics, userId) {
+  // Check if Chart.js is available
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js not loaded, skipping chart rendering');
+    return;
+  }
+  
   const canvas = document.getElementById('muscleChart');
   if (!canvas) return;
   const metrics = (bodyMetrics || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
