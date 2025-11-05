@@ -90,15 +90,16 @@ fitness-tracker/
 │   └── workflows/
 │       └── auto-deploy.yml          # Deploy automático
 ├── .gitignore                        # Regras Git
+├── CLEANUP-SUMMARY.md               # Este documento
+├── GUIA-DEPLOY-GITHUB.md            # Guia de deploy
+├── GUIA-USUARIO-AUTENTICACAO.md     # Guia do usuário
 ├── index.html                        # Aplicação principal
 ├── LICENSE                           # Licença
 ├── README.md                         # Documentação principal
-├── SECURITY.md                       # Segurança
-├── GUIA-USUARIO-AUTENTICACAO.md     # Guia do usuário
-└── GUIA-DEPLOY-GITHUB.md            # Guia de deploy
+└── SECURITY.md                       # Segurança
 ```
 
-**Total:** 8 arquivos essenciais + este resumo de limpeza
+**Total:** 9 arquivos essenciais (incluindo este resumo)
 
 ---
 

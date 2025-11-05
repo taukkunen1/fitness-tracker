@@ -29,6 +29,6 @@ npm-debug.log*
 update-site.sh
 update-site.bat
 
-# Versões antigas de workflows
+# Versões antigas de workflows (apenas cópias versionadas no root)
 *_Version*.yml
-github_workflows_*
+github_workflows_*.yml
