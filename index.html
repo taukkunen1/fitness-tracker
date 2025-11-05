@@ -430,16 +430,7 @@ function sanitizeInput(input) {
     .slice(0, 255); // Limit length
 }
 
-function escapeHtml(text) {
-  if (typeof text !== 'string') return text;
-  
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-}
+// Note: escapeHtml function is defined later in the file around line 1723
 
 function validateEmail(email) {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -5369,23 +5360,18 @@ async function loadAndDisplaySecurityEvents() {
     
     for (let hour = 0; hour < 24; hour++) {
       const count = accessStats.hourlyBreakdown[hour] || 0;
-      // Ensure maxCount is always a valid number, never -Infinity
+      // Safely find max value without spreading large arrays
       const values = Object.values(accessStats.hourlyBreakdown);
-      const maxCount = values.length > 0 ? Math.max(...values) : 0;
-      const heightPercent = maxCount > 0 ? (count / maxCount) * 100 : 0;
-      
-      // Validate and sanitize numeric values for safe inline styles
-      const safeHeightPercent = Math.max(0, Math.min(100, Number(heightPercent) || 0)).toFixed(2);
-      const safeCount = Number(count) || 0;
-      const safeHour = Number(hour) || 0;
+      const maxCount = values.length > 0 ? values.reduce((max, val) => Math.max(max, val), 0) : 0;
+      const heightPercent = maxCount > 0 ? ((count / maxCount) * 100).toFixed(2) : 0;
       
       chartHtml += `
         <div class="flex flex-col items-center">
           <div class="w-full bg-slate-700 rounded" style="height: 100px; display: flex; align-items: flex-end;">
-            <div class="w-full bg-purple-500 rounded-t" style="height: ${safeHeightPercent}%;" title="${safeCount} acessos às ${safeHour}h"></div>
+            <div class="w-full bg-purple-500 rounded-t" style="height: ${heightPercent}%;" title="${count} acessos às ${hour}h"></div>
           </div>
-          <p class="text-xs text-slate-400 mt-1">${safeHour}h</p>
-          <p class="text-xs text-white font-bold">${safeCount}</p>
+          <p class="text-xs text-slate-400 mt-1">${hour}h</p>
+          <p class="text-xs text-white font-bold">${count}</p>
         </div>
       `;
     }
