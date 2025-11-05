@@ -5338,10 +5338,15 @@ async function loadAndDisplaySecurityEvents() {
       const safeLanguage = escapeHtml(log.language);
       const safeTimestamp = escapeHtml(new Date(log.timestamp).toLocaleString('pt-BR'));
       
+      // Build CSS classes safely without interpolation in class attributes
+      const bgClass = 'bg-' + colors.bg;
+      const textClass = 'text-' + colors.text;
+      const borderClass = 'border-' + colors.border;
+      
       accessHtml += `
         <div class="bg-slate-700 p-3 rounded flex justify-between items-center">
           <div class="flex-1">
-            <span class="px-2 py-1 rounded text-xs bg-${colors.bg} text-${colors.text} border border-${colors.border} mr-2">
+            <span class="px-2 py-1 rounded text-xs ${bgClass} ${textClass} border ${borderClass} mr-2">
               ${safeRole.toUpperCase()}
             </span>
             <span class="text-sm text-slate-300">${safeUsername}</span>
@@ -5364,16 +5369,23 @@ async function loadAndDisplaySecurityEvents() {
     
     for (let hour = 0; hour < 24; hour++) {
       const count = accessStats.hourlyBreakdown[hour] || 0;
-      const maxCount = Math.max(...Object.values(accessStats.hourlyBreakdown), 0); // Add fallback 0
+      // Ensure maxCount is always a valid number, never -Infinity
+      const values = Object.values(accessStats.hourlyBreakdown);
+      const maxCount = values.length > 0 ? Math.max(...values) : 0;
       const heightPercent = maxCount > 0 ? (count / maxCount) * 100 : 0;
+      
+      // Validate and sanitize numeric values for safe inline styles
+      const safeHeightPercent = Math.max(0, Math.min(100, Number(heightPercent) || 0)).toFixed(2);
+      const safeCount = Number(count) || 0;
+      const safeHour = Number(hour) || 0;
       
       chartHtml += `
         <div class="flex flex-col items-center">
           <div class="w-full bg-slate-700 rounded" style="height: 100px; display: flex; align-items: flex-end;">
-            <div class="w-full bg-purple-500 rounded-t" style="height: ${heightPercent}%;" title="${count} acessos às ${hour}h"></div>
+            <div class="w-full bg-purple-500 rounded-t" style="height: ${safeHeightPercent}%;" title="${safeCount} acessos às ${safeHour}h"></div>
           </div>
-          <p class="text-xs text-slate-400 mt-1">${hour}h</p>
-          <p class="text-xs text-white font-bold">${count}</p>
+          <p class="text-xs text-slate-400 mt-1">${safeHour}h</p>
+          <p class="text-xs text-white font-bold">${safeCount}</p>
         </div>
       `;
     }
