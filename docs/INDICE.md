@@ -36,6 +36,24 @@
 
 ### 🌟 Documentos Principais (COMECE AQUI)
 
+#### 0. GERENCIAMENTO-BRANCHES.md (16KB) ⭐ NOVO!
+**O QUE É:** Guia completo para gerenciar e reduzir branches do Git  
+**QUANDO LER:** Quando tiver muitas branches acumuladas  
+**TEMPO:** 10-15 minutos  
+**CONTEÚDO:**
+- ✅ Comandos rápidos para limpeza de branches
+- ✅ Estratégias de limpeza (conservadora, agressiva, por data)
+- ✅ Processo passo a passo para limpar branches merged
+- ✅ Configuração de auto-delete no GitHub
+- ✅ Melhores práticas para prevenir acúmulo
+- ✅ Scripts de automação (Bash + GitHub Actions)
+- ✅ FAQ completo sobre gestão de branches
+- ✅ Checklist de limpeza mensal
+
+**LEIA SE:** Quer limpar e organizar suas branches no GitHub
+
+---
+
 #### 1. LAYOUT-CIENTIFICO.md (22KB) ⭐ NOVO!
 **O QUE É:** Layout baseado em estudos científicos de UX/UI  
 **QUANDO LER:** Antes de fazer mudanças de design/layout  
@@ -182,6 +200,12 @@
 
 ### Procurando informações sobre...
 
+#### 🌿 **Gerenciamento de Branches** ⭐ NOVO!
+- GERENCIAMENTO-BRANCHES.md → Todo o documento
+- Limpeza de branches merged
+- Auto-delete no GitHub
+- Scripts de automação
+
 #### 🎨 **Layout e Design Científico** ⭐ NOVO!
 - LAYOUT-CIENTIFICO.md → Todo o documento
 - LISTA-MELHORIAS-ATUALIZADA.md → Priorização de UX
@@ -249,11 +273,11 @@
 ## 📊 ESTATÍSTICAS DA DOCUMENTAÇÃO
 
 ### Documentos Criados:
-- **Total:** 8 documentos
-- **Novos (esta atualização):** 2 documentos (LAYOUT-CIENTIFICO.md, LISTA-MELHORIAS-ATUALIZADA.md)
-- **Tamanho total:** 137KB
-- **Tempo de leitura total:** ~2h
-- **Tempo para visão geral:** ~30min (top 3 docs)
+- **Total:** 9 documentos
+- **Novos (esta atualização):** 3 documentos (GERENCIAMENTO-BRANCHES.md, LAYOUT-CIENTIFICO.md, LISTA-MELHORIAS-ATUALIZADA.md)
+- **Tamanho total:** 153KB
+- **Tempo de leitura total:** ~2h 15min
+- **Tempo para visão geral:** ~35min (top 4 docs)
 
 ### Melhorias Identificadas:
 - **Total:** 20 melhorias priorizadas (atualizado!)
@@ -443,6 +467,7 @@ Você agora tem **acesso completo** a:
 
 ```
 📖 ÍNDICE.md                           ← VOCÊ ESTÁ AQUI
+├── 🌿 GERENCIAMENTO-BRANCHES.md ⭐ NOVO! (Gestão de branches - 10 min)
 ├── 🎨 LAYOUT-CIENTIFICO.md ⭐ NOVO!   (Design científico - 20 min)
 ├── 📋 LISTA-MELHORIAS-ATUALIZADA.md ⭐ (Lista priorizada - 15 min)
 ├── 🌟 RESUMO-EXECUTIVO.md             (Comece aqui - 5 min)
