@@ -248,7 +248,8 @@ let state = {
   references: [],
   currentDay: new Date().toISOString().split('T')[0], // For day-by-day meal navigation
   currentWorkoutDay: new Date().toISOString().split('T')[0], // For day-by-day workout navigation
-  customMeals: [] // User-defined meals with nutrition info
+  customMeals: [], // User-defined meals with nutrition info
+  progressPhotos: [] // Progress photos with date and metadata
 };
 
 // Chart holder
@@ -319,7 +320,8 @@ const initialUsers = (function() {
         shoulders: 112
       }],
       goals: { weight: 75, bodyFat: 15, muscleMass: 32 },
-      customPrograms: {}
+      customPrograms: {},
+      progressPhotos: []
     },
     valentina: {
       id: 'valentina',
@@ -382,7 +384,8 @@ const initialUsers = (function() {
         shoulders: 96
       }],
       goals: { weight: 60, bodyFat: 22, muscleMass: 23 },
-      customPrograms: {}
+      customPrograms: {},
+      progressPhotos: []
     }
   };
 })();
@@ -640,6 +643,13 @@ const commonFoods = {
 };
 
 /* ----------------------------- Utilities ----------------------------- */
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 function parseNumber(value) {
   if (!value && value !== 0) return 0;
   const n = parseFloat(String(value).replace(/[^\d.-]/g, ''));
@@ -795,6 +805,76 @@ async function saveCustomMeals() {
   saveLS('ft_custom_meals', state.customMeals);
 }
 
+/* ----------------------------- Progress Photos Management -----------------------------
+   Load and save progress photos from/to IndexedDB settings store and localStorage fallback
+-------------------------------------------------------------------------------------------- */
+async function loadProgressPhotos() {
+  const user = state.users[state.activeUser];
+  if (!user) return;
+  
+  if (!user.progressPhotos) {
+    user.progressPhotos = [];
+  }
+  state.progressPhotos = user.progressPhotos;
+}
+
+async function saveProgressPhotos() {
+  const user = state.users[state.activeUser];
+  if (!user) return;
+  
+  user.progressPhotos = state.progressPhotos;
+  addOrUpdateUser(user);
+}
+
+function handleAddProgressPhoto(e) {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const date = formData.get('photoDate');
+  const notes = formData.get('photoNotes');
+  const fileInput = document.querySelector('input[name="photoFile"]');
+  const file = fileInput.files[0];
+  
+  if (!date || !file) {
+    alert('Data e foto são obrigatórios');
+    return;
+  }
+  
+  // Check file size (limit to 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    alert('A foto é muito grande. Máximo 5MB.');
+    return;
+  }
+  
+  // Read the file as base64
+  const reader = new FileReader();
+  reader.onload = async function(event) {
+    const photoData = {
+      id: 'photo_' + Date.now(),
+      date: date,
+      notes: notes || '',
+      imageData: event.target.result,
+      uploadedAt: new Date().toISOString()
+    };
+    
+    state.progressPhotos.push(photoData);
+    await saveProgressPhotos();
+    
+    showNotification('✅ Foto de progresso adicionada com sucesso!', 'success');
+    e.target.reset();
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleDeleteProgressPhoto(photoId) {
+  if (!confirm('Deseja excluir esta foto de progresso?')) return;
+  
+  state.progressPhotos = state.progressPhotos.filter(p => p.id !== photoId);
+  saveProgressPhotos();
+  showNotification('✅ Foto excluída', 'success');
+  render();
+}
+
 /* ----------------------------- Soft-delete / Archive workflow -----------------------------
    Instead of permanently deleting, we move to 'archive' store with metadata:
      { id, originStore, originId, type, payload, deletedAt, deletedBy }
@@ -845,6 +925,65 @@ function removeUserPermanentlyFromArchive(archiveId) {
   // Will delete entry permanently from archive - only after explicit confirmation
   if (!confirm('Excluir permanentemente este item do arquivo? Esta ação NÃO pode ser desfeita.')) return;
   dbDelete(STORE_ARCHIVE, archiveId).then(() => alert('Item excluído permanentemente do archive')).catch(err => alert('Erro ao excluir: ' + err));
+}
+
+/* ----------------------------- Exercise History and Analytics ----------------------------- */
+function getExerciseHistory(user, exerciseName) {
+  if (!user.workoutHistory) return [];
+  
+  return user.workoutHistory
+    .filter(w => w.exercise === exerciseName)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function getAllUniqueExercises(user) {
+  if (!user.workoutHistory) return [];
+  
+  const exercises = new Set();
+  user.workoutHistory.forEach(w => {
+    if (w.exercise) exercises.add(w.exercise);
+  });
+  
+  return Array.from(exercises).sort();
+}
+
+function getExerciseStats(user, exerciseName) {
+  const history = getExerciseHistory(user, exerciseName);
+  
+  if (history.length === 0) {
+    return {
+      totalWorkouts: 0,
+      firstWorkout: null,
+      lastWorkout: null,
+      maxWeight: 0,
+      maxReps: 0,
+      maxVolume: 0
+    };
+  }
+  
+  let maxWeight = 0;
+  let maxReps = 0;
+  let maxVolume = 0;
+  
+  history.forEach(w => {
+    const weight = parseNumber(w.weight);
+    const reps = parseNumber(w.reps);
+    const sets = parseNumber(w.sets);
+    const volume = weight * reps * sets;
+    
+    if (weight > maxWeight) maxWeight = weight;
+    if (reps > maxReps) maxReps = reps;
+    if (volume > maxVolume) maxVolume = volume;
+  });
+  
+  return {
+    totalWorkouts: history.length,
+    firstWorkout: history[0].date,
+    lastWorkout: history[history.length - 1].date,
+    maxWeight: maxWeight,
+    maxReps: maxReps,
+    maxVolume: maxVolume
+  };
 }
 
 /* ----------------------------- Handlers (workout / meal / metrics) ----------------------------- */
@@ -1632,9 +1771,9 @@ function render() {
 
     <div class="max-w-7xl mx-auto px-4 py-6">
       <div class="flex flex-wrap gap-3 mb-6">
-        ${['dashboard','treino','nutricao','alimentacao','evolucao','comparacao','ciencia'].map(tab => `
+        ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao','comparacao','ciencia'].map(tab => `
           <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
-            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : tab === 'comparacao' ? '⚖️ Comparação' : '🔬 Ciência'}
+            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : tab === 'comparacao' ? '⚖️ Comparação' : '🔬 Ciência'}
           </button>
         `).join('')}
       </div>
@@ -1642,6 +1781,8 @@ function render() {
       <main>
         ${state.activeTab === 'dashboard' ? renderDashboard(currentUser, latestMetrics) : ''}
         ${state.activeTab === 'treino' ? renderTreino(currentUser) : ''}
+        ${state.activeTab === 'exercicios' ? renderExercicios(currentUser) : ''}
+        ${state.activeTab === 'fotos' ? renderFotosProgresso(currentUser) : ''}
         ${state.activeTab === 'nutricao' ? renderNutricao(currentUser) : ''}
         ${state.activeTab === 'alimentacao' ? renderAlimentacao() : ''}
         ${state.activeTab === 'evolucao' ? renderEvolucao(bodyMetrics, currentUser) : ''}
@@ -1660,6 +1801,11 @@ function render() {
   // after injecting DOM, hook forms / draw chart if needed
   if (state.activeTab === 'evolucao') {
     renderMuscleEvolutionChart(bodyMetrics, currentUser.id);
+  }
+  
+  // Load progress photos for current user
+  if (state.activeTab === 'fotos') {
+    loadProgressPhotos();
   }
 
   // attach metric form listener if exists
@@ -1688,6 +1834,12 @@ function render() {
     
     // attach workout delete buttons using event delegation
     attachWorkoutDeleteButtons();
+  }
+  
+  // attach progress photo form if in fotos tab
+  if (state.activeTab === 'fotos') {
+    const photoForm = document.getElementById('progressPhotoForm');
+    if (photoForm) photoForm.addEventListener('submit', handleAddProgressPhoto);
   }
 }
 
@@ -2744,6 +2896,230 @@ function renderCiencia() {
   `;
 }
 
+function renderExercicios(user) {
+  const exercises = getAllUniqueExercises(user);
+  const selectedExercise = state.selectedExercise || (exercises.length > 0 ? exercises[0] : null);
+  
+  if (!selectedExercise && exercises.length === 0) {
+    return `
+      <div class="bg-slate-800 p-6 rounded">
+        <h3 class="font-bold text-xl mb-4">💪 Histórico por Exercício</h3>
+        <p class="text-slate-400">Nenhum exercício registrado ainda. Vá para a aba Treinos e registre alguns exercícios primeiro.</p>
+      </div>
+    `;
+  }
+  
+  const history = selectedExercise ? getExerciseHistory(user, selectedExercise) : [];
+  const stats = selectedExercise ? getExerciseStats(user, selectedExercise) : {};
+  
+  return `
+    <div class="space-y-6">
+      <!-- Exercise Selector -->
+      <div class="bg-slate-800 p-4 rounded">
+        <h3 class="font-bold text-xl mb-4">💪 Histórico por Exercício</h3>
+        <div class="mb-4">
+          <label class="block text-sm text-slate-300 mb-2">Selecione um exercício:</label>
+          <select onchange="state.selectedExercise=this.value; render();" class="w-full md:w-1/2 px-4 py-2 rounded bg-slate-700 text-white">
+            ${exercises.map(ex => `<option value="${ex}" ${ex === selectedExercise ? 'selected' : ''}>${ex}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      
+      <!-- Exercise Stats -->
+      <div class="bg-gradient-to-r from-purple-700 to-indigo-800 p-6 rounded-xl">
+        <h4 class="font-bold text-xl mb-4">📊 Estatísticas de ${selectedExercise}</h4>
+        <div class="grid md:grid-cols-4 gap-4">
+          <div class="bg-white/10 backdrop-blur p-4 rounded-lg">
+            <p class="text-sm text-purple-200 mb-1">Total de Treinos</p>
+            <p class="text-3xl font-bold">${stats.totalWorkouts}</p>
+          </div>
+          <div class="bg-white/10 backdrop-blur p-4 rounded-lg">
+            <p class="text-sm text-purple-200 mb-1">Carga Máxima</p>
+            <p class="text-3xl font-bold">${stats.maxWeight}</p>
+            <p class="text-xs text-purple-300">kg</p>
+          </div>
+          <div class="bg-white/10 backdrop-blur p-4 rounded-lg">
+            <p class="text-sm text-purple-200 mb-1">Reps Máximo</p>
+            <p class="text-3xl font-bold">${stats.maxReps}</p>
+          </div>
+          <div class="bg-white/10 backdrop-blur p-4 rounded-lg">
+            <p class="text-sm text-purple-200 mb-1">Volume Máximo</p>
+            <p class="text-3xl font-bold">${Math.round(stats.maxVolume)}</p>
+            <p class="text-xs text-purple-300">kg total</p>
+          </div>
+        </div>
+        ${stats.firstWorkout ? `
+          <div class="mt-4 text-sm text-purple-200">
+            <p>Primeiro treino: ${new Date(stats.firstWorkout).toLocaleDateString('pt-BR')}</p>
+            <p>Último treino: ${new Date(stats.lastWorkout).toLocaleDateString('pt-BR')}</p>
+          </div>
+        ` : ''}
+      </div>
+      
+      <!-- History Table -->
+      <div class="bg-slate-800 p-4 rounded">
+        <h4 class="font-bold text-lg mb-4">📋 Histórico Completo</h4>
+        ${history.length === 0 ? 
+          '<p class="text-slate-400">Nenhum registro encontrado para este exercício.</p>' :
+          `<div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-slate-600">
+                  <th class="py-2 px-2 text-left">Data</th>
+                  <th class="py-2 px-2 text-left">Séries</th>
+                  <th class="py-2 px-2 text-left">Reps</th>
+                  <th class="py-2 px-2 text-left">Carga (kg)</th>
+                  <th class="py-2 px-2 text-left">Volume</th>
+                  <th class="py-2 px-2 text-left">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${history.slice().reverse().map(log => {
+                  const weight = parseNumber(log.weight);
+                  const reps = parseNumber(log.reps);
+                  const sets = parseNumber(log.sets);
+                  const volume = weight * reps * sets;
+                  
+                  return `
+                    <tr class="border-b border-slate-700 hover:bg-slate-700">
+                      <td class="py-2 px-2">${new Date(log.date).toLocaleDateString('pt-BR')}</td>
+                      <td class="py-2 px-2">${log.sets}</td>
+                      <td class="py-2 px-2">${log.reps}</td>
+                      <td class="py-2 px-2">${log.weight}</td>
+                      <td class="py-2 px-2">${volume > 0 ? Math.round(volume) + ' kg' : '-'}</td>
+                      <td class="py-2 px-2">
+                        <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
+                        <button onclick="handleDeleteWorkout(${log.id})" class="text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>`
+        }
+      </div>
+      
+      <!-- Progression Chart -->
+      ${history.length >= 2 ? `
+        <div class="bg-slate-800 p-4 rounded">
+          <h4 class="font-bold text-lg mb-4">📈 Progressão de Carga</h4>
+          <canvas id="exerciseProgressionChart" height="100"></canvas>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderFotosProgresso(user) {
+  if (!user.progressPhotos) user.progressPhotos = [];
+  
+  const photos = user.progressPhotos.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+  return `
+    <div class="space-y-6">
+      <!-- Upload Form -->
+      <div class="bg-slate-800 p-6 rounded">
+        <h3 class="font-bold text-xl mb-4">📸 Adicionar Foto de Progresso</h3>
+        <form id="progressPhotoForm" class="space-y-4">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">Data da foto:</label>
+              <input type="date" name="photoDate" value="${new Date().toISOString().split('T')[0]}" required class="w-full px-4 py-2 rounded bg-slate-700 text-white" />
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">Notas (opcional):</label>
+              <input type="text" name="photoNotes" placeholder="Ex: Após 3 meses de treino" class="w-full px-4 py-2 rounded bg-slate-700 text-white" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">Selecione a foto:</label>
+            <input type="file" name="photoFile" accept="image/*" required class="w-full px-4 py-2 rounded bg-slate-700 text-white" />
+            <p class="text-xs text-slate-400 mt-1">Tamanho máximo: 5MB. Formatos: JPG, PNG, WEBP</p>
+          </div>
+          <button type="submit" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded font-semibold">📸 Adicionar Foto</button>
+        </form>
+      </div>
+      
+      <!-- Photos Grid -->
+      <div class="bg-slate-800 p-6 rounded">
+        <h3 class="font-bold text-xl mb-4">🖼️ Galeria de Progresso</h3>
+        ${photos.length === 0 ? 
+          '<p class="text-slate-400">Nenhuma foto adicionada ainda. Use o formulário acima para adicionar sua primeira foto de progresso!</p>' :
+          `<div class="grid md:grid-cols-3 gap-4">
+            ${photos.map(photo => `
+              <div class="bg-slate-700 p-3 rounded">
+                <img src="${photo.imageData}" alt="Foto de ${escapeHtml(photo.date)}" class="w-full h-64 object-cover rounded mb-3" />
+                <div class="space-y-1">
+                  <p class="font-bold text-lg">${new Date(photo.date).toLocaleDateString('pt-BR')}</p>
+                  ${photo.notes ? `<p class="text-sm text-slate-300">${escapeHtml(photo.notes)}</p>` : ''}
+                  <p class="text-xs text-slate-400">Adicionada em ${new Date(photo.uploadedAt).toLocaleDateString('pt-BR')}</p>
+                  <button onclick="handleDeleteProgressPhoto('${photo.id}')" class="mt-2 bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-sm w-full">🗑️ Excluir</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>`
+        }
+      </div>
+      
+      <!-- Comparison Tool -->
+      ${photos.length >= 2 ? `
+        <div class="bg-slate-800 p-6 rounded">
+          <h3 class="font-bold text-xl mb-4">⚖️ Comparar Fotos</h3>
+          <p class="text-slate-300 text-sm mb-4">Selecione duas fotos para compará-las lado a lado:</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">Foto 1 (Antes):</label>
+              <select id="comparePhoto1" class="w-full px-4 py-2 rounded bg-slate-700 text-white">
+                <option value="">Selecione...</option>
+                ${photos.map(p => `<option value="${p.id}">${new Date(p.date).toLocaleDateString('pt-BR')} ${p.notes ? '- ' + escapeHtml(p.notes) : ''}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">Foto 2 (Depois):</label>
+              <select id="comparePhoto2" class="w-full px-4 py-2 rounded bg-slate-700 text-white">
+                <option value="">Selecione...</option>
+                ${photos.map(p => `<option value="${p.id}">${new Date(p.date).toLocaleDateString('pt-BR')} ${p.notes ? '- ' + escapeHtml(p.notes) : ''}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <button onclick="compareProgressPhotos()" class="mt-4 bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded font-semibold">👁️ Comparar</button>
+          
+          <div id="comparisonResult" class="mt-6 hidden">
+            <div class="grid md:grid-cols-2 gap-4">
+              <div id="compareImg1Container"></div>
+              <div id="compareImg2Container"></div>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+      
+      <!-- Tips -->
+      <div class="bg-gradient-to-r from-cyan-900 to-blue-900 p-6 rounded">
+        <h4 class="font-bold text-lg mb-3">💡 Dicas para Fotos de Progresso</h4>
+        <ul class="space-y-2 text-sm text-slate-200">
+          <li class="flex items-start gap-2">
+            <span class="text-green-400 flex-shrink-0">✓</span>
+            <span><strong>Mesma iluminação:</strong> Tire fotos sempre no mesmo local e horário para comparação justa.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400 flex-shrink-0">✓</span>
+            <span><strong>Mesma pose:</strong> Use poses consistentes (frente, lado, costas) em todas as fotos.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400 flex-shrink-0">✓</span>
+            <span><strong>Frequência:</strong> Tire fotos a cada 2-4 semanas para ver progresso real.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400 flex-shrink-0">✓</span>
+            <span><strong>Privacidade:</strong> Suas fotos ficam armazenadas localmente no seu navegador.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
 /* ----------------------------- Chart rendering ----------------------------- */
 function renderMuscleEvolutionChart(bodyMetrics, userId) {
   const canvas = document.getElementById('muscleChart');
@@ -2771,12 +3147,59 @@ function renderMuscleEvolutionChart(bodyMetrics, userId) {
   muscleChart = new Chart(canvas, config);
 }
 
+function compareProgressPhotos() {
+  const photo1Id = document.getElementById('comparePhoto1')?.value;
+  const photo2Id = document.getElementById('comparePhoto2')?.value;
+  
+  if (!photo1Id || !photo2Id) {
+    alert('Selecione duas fotos para comparar');
+    return;
+  }
+  
+  if (photo1Id === photo2Id) {
+    alert('Selecione fotos diferentes para comparar');
+    return;
+  }
+  
+  const user = state.users[state.activeUser];
+  const photo1 = user.progressPhotos.find(p => p.id === photo1Id);
+  const photo2 = user.progressPhotos.find(p => p.id === photo2Id);
+  
+  if (!photo1 || !photo2) {
+    alert('Fotos não encontradas');
+    return;
+  }
+  
+  const resultDiv = document.getElementById('comparisonResult');
+  const img1Container = document.getElementById('compareImg1Container');
+  const img2Container = document.getElementById('compareImg2Container');
+  
+  img1Container.innerHTML = `
+    <div class="bg-slate-700 p-3 rounded">
+      <img src="${photo1.imageData}" alt="Foto 1" class="w-full h-96 object-cover rounded mb-3" />
+      <p class="font-bold text-lg">${new Date(photo1.date).toLocaleDateString('pt-BR')}</p>
+      ${photo1.notes ? `<p class="text-sm text-slate-300">${escapeHtml(photo1.notes)}</p>` : ''}
+    </div>
+  `;
+  
+  img2Container.innerHTML = `
+    <div class="bg-slate-700 p-3 rounded">
+      <img src="${photo2.imageData}" alt="Foto 2" class="w-full h-96 object-cover rounded mb-3" />
+      <p class="font-bold text-lg">${new Date(photo2.date).toLocaleDateString('pt-BR')}</p>
+      ${photo2.notes ? `<p class="text-sm text-slate-300">${escapeHtml(photo2.notes)}</p>` : ''}
+    </div>
+  `;
+  
+  resultDiv.classList.remove('hidden');
+}
+
 /* ----------------------------- Init and safety ----------------------------- */
 window.addEventListener('beforeunload', () => { try { saveAllToDB(); } catch (e) { } });
 
 (async function initApp() {
   await loadAllFromDB();
   await loadCustomMeals(); // Load custom meals from IndexedDB/localStorage
+  await loadProgressPhotos(); // Load progress photos from user data
   
   // Ensure default users exist (do not overwrite)
   if (!state.users.pedro) state.users.pedro = initialUsers.pedro;
