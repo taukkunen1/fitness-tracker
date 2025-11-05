@@ -22,3 +22,13 @@ npm-debug.log*
 # Backup
 *.backup
 *.bak
+*.txt
+*.old
+
+# Scripts de deploy manual (usar GitHub Actions)
+update-site.sh
+update-site.bat
+
+# Versões antigas de workflows
+*_Version*.yml
+github_workflows_*
