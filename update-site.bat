@@ -22,6 +22,21 @@ REM Solicitar informacoes
 set /p GITHUB_USER="Digite seu usuario do GitHub: "
 set /p REPO_NAME="Digite o nome do repositorio: "
 
+REM Validar entrada para prevenir command injection
+echo %GITHUB_USER%| findstr /R "^[a-zA-Z0-9_-]*$" >nul
+if %errorlevel% neq 0 (
+    echo [ERRO] Nome de usuario invalido! Use apenas letras, numeros, _ e -
+    pause
+    exit /b 1
+)
+
+echo %REPO_NAME%| findstr /R "^[a-zA-Z0-9_-]*$" >nul
+if %errorlevel% neq 0 (
+    echo [ERRO] Nome de repositorio invalido! Use apenas letras, numeros, _ e -
+    pause
+    exit /b 1
+)
+
 REM Clonar repositorio (se nao existir)
 if not exist "%REPO_NAME%" (
     echo.

@@ -20,6 +20,17 @@ fi
 read -p "📝 Digite seu usuário do GitHub: " GITHUB_USER
 read -p "📝 Digite o nome do repositório: " REPO_NAME
 
+# Validar entrada para prevenir command injection
+if [[ ! "$GITHUB_USER" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo "❌ Nome de usuário inválido! Use apenas letras, números, _ e -"
+    exit 1
+fi
+
+if [[ ! "$REPO_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo "❌ Nome de repositório inválido! Use apenas letras, números, _ e -"
+    exit 1
+fi
+
 # Clonar repositório (se não existir)
 if [ ! -d "$REPO_NAME" ]; then
     echo "📦 Clonando repositório..."
