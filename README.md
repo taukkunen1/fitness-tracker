@@ -1,10 +1,46 @@
 # 💪 Fitness Tracker Pro
 
-Sistema comparativo de treino e nutrição baseado em evidências científicas, com suporte para múltiplos usuários e análise de diferenças fisiológicas.
+## ⚠️ AVISO LEGAL - TODOS OS DIREITOS RESERVADOS
 
-![Status](https://img.shields.io/badge/status-active-success.svg)
+**Copyright © 2025 taukkunen1 - Fitness Tracker Pro**
+
+🔒 **CÓDIGO PROPRIETÁRIO E PROTEGIDO**
+
+Este repositório e todo seu conteúdo (código-fonte, documentação, design, conceitos) 
+são **propriedade privada** e estão protegidos por leis de direitos autorais.
+
+### ❌ PROIBIÇÕES ABSOLUTAS:
+
+- ❌ **NÃO** faça fork deste repositório
+- ❌ **NÃO** clone ou baixe o código
+- ❌ **NÃO** copie ou reproduza qualquer parte do código
+- ❌ **NÃO** use conceitos ou design em outros projetos
+- ❌ **NÃO** faça engenharia reversa
+- ❌ **NÃO** redistribua ou compartilhe o código
+
+### ⚖️ CONSEQUÊNCIAS LEGAIS:
+
+Violações serão tratadas com máximo rigor legal, incluindo:
+- Ações judiciais civis e criminais
+- Pedidos de indenização por danos
+- Remoção forçada de conteúdo copiado
+- Banimento de plataformas
+
+### 📖 VISUALIZAÇÃO PERMITIDA:
+
+Este README é público apenas para **demonstração de conceito**.  
+O código-fonte é **privado e confidencial**.
+
+---
+
+![Status](https://img.shields.io/badge/status-private-red.svg)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![License](https://img.shields.io/badge/license-PROPRIETARY-red.svg)
+![Protection](https://img.shields.io/badge/protection-MAXIMUM-critical.svg)
+
+---
+
+Sistema comparativo de treino e nutrição baseado em evidências científicas, com suporte para múltiplos usuários e análise de diferenças fisiológicas.
 
 ## 🌐 Demo ao Vivo
 
@@ -51,11 +87,11 @@ Sistema comparativo de treino e nutrição baseado em evidências científicas, 
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **React 18** - Framework JavaScript
-- **Recharts** - Biblioteca de gráficos
+- **JavaScript Vanilla** - Código proprietário otimizado
+- **Chart.js** - Visualização de dados
 - **Tailwind CSS** - Framework de estilos
-- **LocalStorage** - Armazenamento local de dados
-- **GitHub Pages** - Hospedagem gratuita
+- **IndexedDB** - Armazenamento local avançado
+- **Uso Local** - Aplicação offline-first
 
 ## 📚 Referências Científicas
 
@@ -77,19 +113,14 @@ Este projeto é baseado em pesquisas científicas atualizadas:
    "Sex-based differences in skeletal muscle kinetics and fiber-type composition"  
    *Pflügers Archiv - European Journal of Physiology*
 
-## 🚀 Como Usar
+## 🚀 Acesso
 
-### 1. Acesso Direto
-Simplesmente acesse o site hospedado no GitHub Pages.
+### ⚠️ ACESSO RESTRITO
 
-### 2. Instalação Local (Opcional)
-```bash
-# Clone o repositório
-git clone https://github.com/SEU-USUARIO/fitness-tracker.git
+Este é um projeto **privado para uso pessoal**.  
+Não há instalação pública ou distribuição disponível.
 
-# Abra o arquivo index.html no navegador
-# Não precisa de servidor - funciona direto!
-```
+**Código-fonte e implementação são confidenciais.**
 
 ## 📱 Compatibilidade
 
@@ -107,77 +138,72 @@ git clone https://github.com/SEU-USUARIO/fitness-tracker.git
 
 ⚠️ **Atenção**: Limpar dados do navegador apaga o histórico. Faça backups regulares!
 
-## 🔄 Atualizações
+## 🎯 Roadmap (Desenvolvimento Privado)
 
-### Para Atualizar o Site:
+Funcionalidades em desenvolvimento no ambiente privado:
 
-1. **Pelo GitHub (Fácil)**
-   - Edite o arquivo `index.html` direto no GitHub
-   - Cole o código atualizado
-   - Commit → Aguarde 1-2 minutos
+- Exportação de dados para Excel/CSV
+- Sistema de backup avançado
+- Calculadora de 1RM (repetição máxima)
+- Gerador de dietas automático
+- PWA completo
+- Notificações de treino
+- Análises avançadas
+- Recursos exclusivos
 
-2. **Via Git (Avançado)**
-   ```bash
-   git pull origin main
-   # Edite index.html
-   git add index.html
-   git commit -m "Update: descrição"
-   git push origin main
-   ```
+## 🤝 Contribuições
 
-3. **Scripts Automáticos**
-   - Use `update-site.sh` (Linux/Mac)
-   - Use `update-site.bat` (Windows)
+**⚠️ CONTRIBUIÇÕES NÃO SÃO ACEITAS**
 
-## 🎯 Roadmap Futuro
+Este é um projeto **privado e proprietário**.  
+Não aceitamos pull requests, forks ou contribuições externas.
 
-- [ ] Exportação de dados para Excel/CSV
-- [ ] Integração com Google Drive para backup
-- [ ] Calculadora de 1RM (repetição máxima)
-- [ ] Gerador de dietas automático
-- [ ] Modo offline (PWA)
-- [ ] Notificações de treino
-- [ ] Integração com wearables
-- [ ] Modo escuro/claro toggle
-
-## 🤝 Contribuindo
-
-Sugestões e melhorias são bem-vindas! Para contribuir:
-
-1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/MinhaFeature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona MinhaFeature'`)
-4. Push para a branch (`git push origin feature/MinhaFeature`)
-5. Abra um Pull Request
+Para sugestões de funcionalidades, entre em contato diretamente através do GitHub.
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+**LICENÇA PROPRIETÁRIA - TODOS OS DIREITOS RESERVADOS**
+
+Este projeto está sob licença proprietária restritiva.  
+Veja o arquivo `LICENSE` para detalhes completos das restrições.
 
 ## 👨‍⚕️ Autor
 
-**Dr. Pedro**  
-Médico e entusiasta de fitness baseado em evidências
+**taukkunen1**  
+Desenvolvedor e entusiasta de fitness baseado em evidências
 
-Desenvolvido com auxílio de Claude AI (Anthropic)
-
-## ⭐ Apoie o Projeto
-
-Se este projeto te ajudou, considere dar uma ⭐ no GitHub!
+**© 2025 - Todos os direitos reservados**
 
 ---
 
 ## 📞 Contato
 
-Para dúvidas, sugestões ou reportar bugs:
-- Abra uma [Issue](https://github.com/SEU-USUARIO/fitness-tracker/issues)
-- Ou entre em contato direto
+**⚠️ SOMENTE PARA ASSUNTOS AUTORIZADOS**
+
+Para questões relacionadas a:
+- Licenciamento comercial
+- Permissões especiais de uso
+- Parcerias autorizadas
+
+Entre em contato através do GitHub.
+
+**NÃO** para:
+- ❌ Pedidos de código-fonte
+- ❌ Solicitações de fork/clone
+- ❌ Requisições de cópia ou reprodução
 
 ---
 
-**Última atualização:** 02 de Novembro de 2025  
-**Versão:** 1.0.0
+**Última atualização:** 05 de Novembro de 2025  
+**Versão:** 1.0.0 (Proprietária)  
+**Status:** Privado e Protegido 🔒
 
 ---
 
-**Disclaimer:** Este sistema é para fins educacionais e de acompanhamento pessoal. Sempre consulte profissionais de saúde antes de iniciar novos programas de exercícios ou dietas.
+## ⚖️ AVISO LEGAL IMPORTANTE
+
+**Disclaimer:** Este sistema é para fins educacionais e de acompanhamento pessoal privado. Sempre consulte profissionais de saúde antes de iniciar novos programas de exercícios ou dietas.
+
+**Proteção Legal:** Este repositório é monitorado. Violações de direitos autorais serão processadas. Uso não autorizado é crime previsto em lei (Lei 9.609/98 - Lei do Software e Lei 9.610/98 - Lei de Direitos Autorais).
+
+**Código-fonte confidencial e protegido por direitos autorais © 2025**
