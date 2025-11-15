@@ -2693,6 +2693,38 @@ function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '', categ
   render();
 }
 
+// New function to handle workout logging with individual sets
+function handleLogWorkoutWithSets(exerciseName, setsData, category = '') {
+  const user = state.users[state.activeUser];
+  if (!user) return alert('Nenhum usuário ativo');
+  
+  // Calculate total volume
+  const totalVolume = setsData.reduce((sum, set) => sum + set.volume, 0);
+  
+  const newLog = {
+    id: Date.now(),
+    date: state.currentWorkoutDay,
+    time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    exercise: exerciseName,
+    category: category || '',
+    // New structure: store individual sets
+    individualSets: setsData, // Array of {setNumber, reps, weight, volume}
+    totalSets: setsData.length,
+    totalVolume: totalVolume,
+    completed: true,
+    // Keep legacy fields for backwards compatibility
+    sets: setsData.length.toString(),
+    reps: setsData.map(s => s.reps).join('/'),
+    weight: setsData.map(s => s.weight).join('/')
+  };
+  
+  if (!user.workoutHistory) user.workoutHistory = [];
+  user.workoutHistory.unshift(newLog);
+  addOrUpdateUser(user);
+  
+  render();
+}
+
 function handleEditWorkout(id) {
   const user = state.users[state.activeUser];
   if (!user.workoutHistory) user.workoutHistory = [];
@@ -2864,39 +2896,176 @@ function showWorkoutExercises(templateId) {
         <h5 class="font-semibold text-lg mb-3">${exercise.name}</h5>
         ${exercise.notes ? `<p class="text-slate-400 text-sm mb-3">💡 ${exercise.notes}</p>` : ''}
         
-        <form onsubmit="handleQuickExerciseLog(event, '${exercise.name}', '${templateId}')" class="grid grid-cols-4 gap-3">
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Séries</label>
-            <select name="sets" class="w-full px-3 py-2 rounded bg-slate-600 text-white" ${isMobility ? '' : 'required'}>
-              <option value="">-</option>
-              ${[1,2,3,4,5].map(n => `<option value="${n}" ${exercise.sets === n ? 'selected' : ''}>${n}</option>`).join('')}
-            </select>
+        <form onsubmit="handleQuickExerciseLog(event, '${exercise.name}', '${templateId}')" class="space-y-3">
+          <div class="text-sm text-purple-300 font-semibold mb-2">Registre as 3 séries:</div>
+          
+          <!-- Série 1 -->
+          <div class="grid grid-cols-3 gap-2 bg-slate-600/50 p-2 rounded">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Série 1 - Reps</label>
+              <input 
+                type="number" 
+                name="reps1" 
+                min="1" 
+                max="50"
+                placeholder="Ex: 12" 
+                class="w-full px-2 py-2 rounded bg-slate-600 text-white text-sm"
+                ${isMobility ? '' : 'required'}
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Carga (kg)</label>
+              <input 
+                type="number" 
+                name="weight1" 
+                min="0" 
+                max="500" 
+                step="0.5"
+                placeholder="Ex: 50" 
+                class="w-full px-2 py-2 rounded bg-slate-600 text-white text-sm"
+                ${isMobility ? '' : 'required'}
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Volume</label>
+              <input 
+                type="text" 
+                name="volume1" 
+                readonly
+                placeholder="Auto" 
+                class="w-full px-2 py-2 rounded bg-slate-700 text-slate-300 text-sm"
+              />
+            </div>
           </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Repetições</label>
-            <select name="reps" class="w-full px-3 py-2 rounded bg-slate-600 text-white" ${isMobility ? '' : 'required'}>
-              <option value="">-</option>
-              ${[...Array(20)].map((_, i) => `<option value="${i+1}" ${(exercise.reps === (i+1).toString() || (exercise.reps === '3' && i+1 === 3) || (!exercise.reps && i+1 === 3)) ? 'selected' : ''}>${i+1}</option>`).join('')}
-            </select>
+          
+          <!-- Série 2 -->
+          <div class="grid grid-cols-3 gap-2 bg-slate-600/50 p-2 rounded">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Série 2 - Reps</label>
+              <input 
+                type="number" 
+                name="reps2" 
+                min="1" 
+                max="50"
+                placeholder="Ex: 10" 
+                class="w-full px-2 py-2 rounded bg-slate-600 text-white text-sm"
+                ${isMobility ? '' : 'required'}
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Carga (kg)</label>
+              <input 
+                type="number" 
+                name="weight2" 
+                min="0" 
+                max="500" 
+                step="0.5"
+                placeholder="Ex: 52.5" 
+                class="w-full px-2 py-2 rounded bg-slate-600 text-white text-sm"
+                ${isMobility ? '' : 'required'}
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Volume</label>
+              <input 
+                type="text" 
+                name="volume2" 
+                readonly
+                placeholder="Auto" 
+                class="w-full px-2 py-2 rounded bg-slate-700 text-slate-300 text-sm"
+              />
+            </div>
           </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Peso (kg)</label>
-            <input 
-              type="number" 
-              name="weight" 
-              min="1" 
-              max="300" 
-              step="0.5"
-              placeholder="0" 
-              class="w-full px-3 py-2 rounded bg-slate-600 text-white"
-            />
+          
+          <!-- Série 3 -->
+          <div class="grid grid-cols-3 gap-2 bg-slate-600/50 p-2 rounded">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Série 3 - Reps</label>
+              <input 
+                type="number" 
+                name="reps3" 
+                min="1" 
+                max="50"
+                placeholder="Ex: 8" 
+                class="w-full px-2 py-2 rounded bg-slate-600 text-white text-sm"
+                ${isMobility ? '' : 'required'}
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Carga (kg)</label>
+              <input 
+                type="number" 
+                name="weight3" 
+                min="0" 
+                max="500" 
+                step="0.5"
+                placeholder="Ex: 55" 
+                class="w-full px-2 py-2 rounded bg-slate-600 text-white text-sm"
+                ${isMobility ? '' : 'required'}
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Volume</label>
+              <input 
+                type="text" 
+                name="volume3" 
+                readonly
+                placeholder="Auto" 
+                class="w-full px-2 py-2 rounded bg-slate-700 text-slate-300 text-sm"
+              />
+            </div>
           </div>
-          <div class="flex items-end">
-            <button type="submit" class="w-full bg-green-600 hover:bg-green-500 px-3 py-2 rounded font-semibold">
-              ✓ Registrar
-            </button>
+          
+          <!-- Volume Total -->
+          <div class="bg-purple-900/30 p-3 rounded border border-purple-500/50">
+            <div class="flex justify-between items-center">
+              <span class="text-purple-300 font-semibold">Volume Total:</span>
+              <span id="totalVolume_${index}" class="text-2xl font-bold text-purple-200">0 kg</span>
+            </div>
           </div>
+          
+          <button type="submit" class="w-full bg-green-600 hover:bg-green-500 px-4 py-3 rounded font-semibold">
+            ✓ Registrar Exercício
+          </button>
         </form>
+        
+        <script>
+          // Auto-calculate volumes for exercise ${index}
+          (function() {
+            const form = document.currentScript.previousElementSibling;
+            const inputs = {
+              reps1: form.querySelector('[name="reps1"]'),
+              weight1: form.querySelector('[name="weight1"]'),
+              volume1: form.querySelector('[name="volume1"]'),
+              reps2: form.querySelector('[name="reps2"]'),
+              weight2: form.querySelector('[name="weight2"]'),
+              volume2: form.querySelector('[name="volume2"]'),
+              reps3: form.querySelector('[name="reps3"]'),
+              weight3: form.querySelector('[name="weight3"]'),
+              volume3: form.querySelector('[name="volume3"]')
+            };
+            
+            function updateVolumes() {
+              let total = 0;
+              for (let i = 1; i <= 3; i++) {
+                const reps = parseFloat(inputs['reps' + i].value) || 0;
+                const weight = parseFloat(inputs['weight' + i].value) || 0;
+                const volume = reps * weight;
+                inputs['volume' + i].value = volume > 0 ? volume.toFixed(1) + ' kg' : '';
+                total += volume;
+              }
+              const totalElem = document.getElementById('totalVolume_${index}');
+              if (totalElem) {
+                totalElem.textContent = total > 0 ? total.toFixed(1) + ' kg' : '0 kg';
+              }
+            }
+            
+            // Add listeners
+            ['reps1', 'weight1', 'reps2', 'weight2', 'reps3', 'weight3'].forEach(name => {
+              inputs[name].addEventListener('input', updateVolumes);
+            });
+          })();
+        </script>
       </div>
     `;
   });
@@ -2927,18 +3096,44 @@ function handleQuickExerciseLog(event, exerciseName, templateId) {
   event.preventDefault();
   
   const form = event.target;
-  const sets = form.sets.value || '-';
-  const reps = form.reps.value || '-';
-  const weight = form.weight.value || '-';
   
-  // Log the workout
-  handleLogWorkout(exerciseName, sets, reps, weight, templates[templateId].name);
+  // Collect data for 3 individual sets
+  const setsData = [];
+  for (let i = 1; i <= 3; i++) {
+    const reps = form['reps' + i].value;
+    const weight = form['weight' + i].value;
+    
+    if (reps && weight) {
+      setsData.push({
+        setNumber: i,
+        reps: parseFloat(reps),
+        weight: parseFloat(weight),
+        volume: parseFloat(reps) * parseFloat(weight)
+      });
+    }
+  }
+  
+  if (setsData.length === 0) {
+    showNotification('⚠️ Preencha pelo menos uma série com repetições e carga', 'error');
+    return;
+  }
+  
+  // Log the workout with individual sets
+  handleLogWorkoutWithSets(exerciseName, setsData, templates[templateId].name);
+  
+  // Calculate total volume for display
+  const totalVolume = setsData.reduce((sum, set) => sum + set.volume, 0);
   
   // Show success message
-  showNotification(`✅ ${exerciseName} registrado!`, 'success');
+  showNotification(`✅ ${exerciseName} registrado! ${setsData.length} séries • Volume total: ${totalVolume.toFixed(1)} kg`, 'success');
   
   // Reset form
   form.reset();
+  // Reset volume displays
+  for (let i = 1; i <= 3; i++) {
+    const volumeInput = form['volume' + i];
+    if (volumeInput) volumeInput.value = '';
+  }
 }
 
 // Register all exercises from a template at once
@@ -4102,35 +4297,180 @@ function render() {
 
 function renderDashboard(user, latest) {
   const notes = buildReferenceNotesForNutrition();
+  const bodyMetrics = user.bodyMetrics || [];
+  
+  // Calculate trends (last 2 measurements for comparison)
+  const previous = bodyMetrics.length >= 2 ? bodyMetrics[bodyMetrics.length - 2] : null;
+  const getTrend = (current, prev, inverse = false) => {
+    if (!prev || !current) return { icon: '➖', color: 'text-slate-400', text: 'Sem dados' };
+    const diff = current - prev;
+    if (Math.abs(diff) < 0.1) return { icon: '➖', color: 'text-slate-400', text: 'Estável' };
+    const isPositive = inverse ? diff < 0 : diff > 0;
+    return {
+      icon: isPositive ? '📈' : '📉',
+      color: isPositive ? 'text-green-400' : 'text-red-400',
+      text: `${isPositive ? '+' : ''}${diff.toFixed(1)}`
+    };
+  };
+  
+  const weightTrend = getTrend(latest.weight, previous?.weight);
+  const bodyFatTrend = getTrend(latest.bodyFat, previous?.bodyFat, true); // Lower is better
+  const muscleTrend = getTrend(latest.muscleMass, previous?.muscleMass);
+  
+  // Calculate progress towards goals
+  const weightProgress = user.goals?.weight ? Math.min(100, Math.abs((latest.weight / user.goals.weight) * 100)) : 0;
+  const muscleProgress = user.goals?.muscleMass ? Math.min(100, Math.abs((latest.muscleMass / user.goals.muscleMass) * 100)) : 0;
+  
+  // Recent workout stats
+  const recentWorkouts = (user.workoutHistory || []).filter(w => {
+    const workoutDate = new Date(w.date);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return workoutDate >= sevenDaysAgo;
+  });
+  
+  const weeklyVolume = recentWorkouts.reduce((sum, w) => {
+    if (w.totalVolume) return sum + w.totalVolume;
+    const weight = parseNumber(w.weight);
+    const reps = parseNumber(w.reps);
+    const sets = parseNumber(w.sets);
+    return sum + (weight * reps * sets);
+  }, 0);
+  
   return `
     <div class="space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
-        <div class="md:col-span-2 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white shadow-xl">
-          <p class="text-blue-200 text-sm mb-2">PESO ATUAL</p>
-          <p class="text-4xl font-bold">${latest.weight} kg</p>
-          <p class="text-blue-200 text-xs mt-2">Meta: ${user.goals.weight} kg</p>
+      <!-- Quick Stats with Trends (Principle: Information Hierarchy) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Primary Metric: Weight -->
+        <div class="md:col-span-1 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white shadow-xl">
+          <div class="flex justify-between items-start mb-2">
+            <p class="text-blue-200 text-sm">PESO ATUAL</p>
+            <span class="${weightTrend.color} text-2xl">${weightTrend.icon}</span>
+          </div>
+          <p class="text-5xl font-bold mb-1">${latest.weight}</p>
+          <p class="text-blue-200 text-sm">kg</p>
+          <div class="mt-4 pt-4 border-t border-blue-400/30">
+            <div class="flex justify-between text-xs text-blue-200 mb-1">
+              <span>Meta: ${user.goals?.weight || '-'} kg</span>
+              <span>${weightProgress.toFixed(0)}%</span>
+            </div>
+            <div class="w-full bg-blue-900/50 rounded-full h-2">
+              <div class="bg-blue-300 h-2 rounded-full transition-all duration-300" style="width: ${weightProgress}%"></div>
+            </div>
+            <p class="text-xs text-blue-300 mt-2">${weightTrend.text}</p>
+          </div>
         </div>
-        <div class="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-6">
-          <p class="text-red-200 text-sm mb-2">GORDURA</p>
-          <p class="text-4xl font-bold">${latest.bodyFat}%</p>
-        </div>
-        <div class="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-6">
-          <p class="text-green-200 text-sm mb-2">MASSA MUSCULAR</p>
-          <p class="text-4xl font-bold">${latest.muscleMass} kg</p>
-        </div>
-        <div class="bg-gradient-to-br from-yellow-600 to-amber-700 rounded-2xl p-6">
-          <p class="text-yellow-200 text-sm mb-2">METABOLISMO BASAL</p>
-          <p class="text-2xl font-bold">${latest.bmr || '-' } kcal</p>
-        </div>
-        <div class="bg-gradient-to-br from-cyan-600 to-sky-700 rounded-2xl p-6">
-          <p class="text-cyan-200 text-sm mb-2">ÁGUA</p>
-          <p class="text-2xl font-bold">${latest.waterWeight || 0} kg (${latest.waterPercent || 0}%)</p>
+        
+        <!-- Secondary Metrics: Body Composition -->
+        <div class="grid grid-cols-2 gap-4 md:col-span-2">
+          <div class="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5">
+            <div class="flex justify-between items-start mb-2">
+              <p class="text-red-200 text-xs">GORDURA</p>
+              <span class="${bodyFatTrend.color} text-xl">${bodyFatTrend.icon}</span>
+            </div>
+            <p class="text-4xl font-bold">${latest.bodyFat}%</p>
+            <p class="text-xs text-red-300 mt-1">${bodyFatTrend.text}</p>
+          </div>
+          
+          <div class="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-5">
+            <div class="flex justify-between items-start mb-2">
+              <p class="text-green-200 text-xs">MASSA MUSCULAR</p>
+              <span class="${muscleTrend.color} text-xl">${muscleTrend.icon}</span>
+            </div>
+            <p class="text-4xl font-bold">${latest.muscleMass}</p>
+            <p class="text-xs text-green-200">kg</p>
+            <p class="text-xs text-green-300 mt-1">${muscleTrend.text}</p>
+          </div>
+          
+          <div class="bg-gradient-to-br from-yellow-600 to-amber-700 rounded-2xl p-5">
+            <p class="text-yellow-200 text-xs mb-2">METABOLISMO</p>
+            <p class="text-3xl font-bold">${latest.bmr || '-'}</p>
+            <p class="text-xs text-yellow-200">kcal/dia</p>
+            <p class="text-xs text-yellow-300 mt-1">Taxa basal</p>
+          </div>
+          
+          <div class="bg-gradient-to-br from-cyan-600 to-sky-700 rounded-2xl p-5">
+            <p class="text-cyan-200 text-xs mb-2">HIDRATAÇÃO</p>
+            <p class="text-3xl font-bold">${latest.waterWeight || 0}</p>
+            <p class="text-xs text-cyan-200">kg (${latest.waterPercent || 0}%)</p>
+            <p class="text-xs text-cyan-300 mt-1">Água corporal</p>
+          </div>
         </div>
       </div>
-
+      
+      <!-- Actionable Insights (Principle: Task-appropriate insights) -->
+      <div class="bg-gradient-to-br from-purple-900/50 to-indigo-900/50 p-6 rounded-2xl border-2 border-purple-500/30">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="text-3xl">💡</span>
+          <h3 class="text-2xl font-bold text-purple-300">Insights da Semana</h3>
+        </div>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="bg-black/20 p-4 rounded-lg">
+            <p class="text-sm text-purple-200 mb-1">Treinos esta semana</p>
+            <p class="text-3xl font-bold">${recentWorkouts.length}</p>
+            <p class="text-xs text-purple-300 mt-2">${recentWorkouts.length >= 3 ? '✅ Ótimo ritmo!' : '⚠️ Meta: 3-5 treinos/semana'}</p>
+          </div>
+          <div class="bg-black/20 p-4 rounded-lg">
+            <p class="text-sm text-purple-200 mb-1">Volume semanal</p>
+            <p class="text-3xl font-bold">${Math.round(weeklyVolume)}</p>
+            <p class="text-xs text-purple-300 mt-2">kg total levantado</p>
+          </div>
+          <div class="bg-black/20 p-4 rounded-lg">
+            <p class="text-sm text-purple-200 mb-1">Próxima medição</p>
+            <p class="text-xl font-bold">${bodyMetrics.length > 0 ? Math.max(0, 7 - Math.floor((Date.now() - new Date(latest.date).getTime()) / (1000 * 60 * 60 * 24))) : '-'}</p>
+            <p class="text-xs text-purple-300 mt-2">dias (recomendado semanal)</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Contextual Help (Principle: Reduce cognitive load) -->
       <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
-        <h3 class="text-2xl font-bold mb-3">Notas científicas</h3>
-        <p class="text-slate-300 text-sm">${notes || 'Importe referências na aba CIÊNCIA para ver notas científicas aplicadas.'}</p>
+        <div class="flex items-start gap-4">
+          <span class="text-4xl">📚</span>
+          <div class="flex-1">
+            <h3 class="text-xl font-bold mb-2 text-slate-200">Base Científica</h3>
+            <p class="text-slate-300 text-sm mb-3">${notes || 'Configure referências científicas para ver recomendações personalizadas baseadas em estudos.'}</p>
+            <div class="grid md:grid-cols-2 gap-3">
+              <div class="bg-slate-700/50 p-3 rounded">
+                <p class="text-xs text-slate-400 mb-1">💪 Proteína recomendada</p>
+                <p class="text-lg font-bold">${Math.round(latest.weight * 1.8)} - ${Math.round(latest.weight * 2.2)}g/dia</p>
+                <p class="text-xs text-slate-400">1.8-2.2g/kg (Phillips 2022)</p>
+              </div>
+              <div class="bg-slate-700/50 p-3 rounded">
+                <p class="text-xs text-slate-400 mb-1">🔥 Deficit/Surplus calórico</p>
+                <p class="text-lg font-bold">${user.goals?.weight > latest.weight ? '+300-500' : '-300-500'} kcal</p>
+                <p class="text-xs text-slate-400">Para ${user.goals?.weight > latest.weight ? 'ganho' : 'perda'} saudável</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Quick Actions (Principle: Facilitate task completion) -->
+      <div class="bg-gradient-to-r from-slate-800 to-slate-900 p-6 rounded-2xl border border-slate-700">
+        <h3 class="text-xl font-bold mb-4">⚡ Ações Rápidas</h3>
+        <div class="grid md:grid-cols-4 gap-3">
+          <button onclick="state.activeTab='treino'; render();" class="bg-purple-600 hover:bg-purple-500 p-4 rounded-lg text-left transition-colors">
+            <p class="text-2xl mb-2">🏋️</p>
+            <p class="font-semibold">Registrar Treino</p>
+            <p class="text-xs text-purple-200 mt-1">Adicione exercícios</p>
+          </button>
+          <button onclick="state.activeTab='alimentacao'; render();" class="bg-green-600 hover:bg-green-500 p-4 rounded-lg text-left transition-colors">
+            <p class="text-2xl mb-2">🍽️</p>
+            <p class="font-semibold">Registrar Refeição</p>
+            <p class="text-xs text-green-200 mt-1">Log de nutrição</p>
+          </button>
+          <button onclick="state.activeTab='evolucao'; render();" class="bg-blue-600 hover:bg-blue-500 p-4 rounded-lg text-left transition-colors">
+            <p class="text-2xl mb-2">📊</p>
+            <p class="font-semibold">Adicionar Medidas</p>
+            <p class="text-xs text-blue-200 mt-1">Bioimpedância</p>
+          </button>
+          <button onclick="state.activeTab='fotos'; render();" class="bg-orange-600 hover:bg-orange-500 p-4 rounded-lg text-left transition-colors">
+            <p class="text-2xl mb-2">📸</p>
+            <p class="font-semibold">Foto Progresso</p>
+            <p class="text-xs text-orange-200 mt-1">Acompanhe visualmente</p>
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -4196,19 +4536,55 @@ function renderTreino(user) {
       <h3 class="font-bold text-xl mb-3">📋 Histórico de ${dateLabel}</h3>
       ${selectedDayWorkouts.length === 0 ? 
         `<p class="text-slate-400">Nenhum treino registrado neste dia. Selecione um treino acima e registre seus exercícios.</p>` :
-        `<div class="space-y-2">
-          ${selectedDayWorkouts.map(log => `
-            <div class="flex justify-between items-center bg-slate-700 p-3 rounded">
-              <div class="flex-1">
-                <p class="font-semibold">${log.exercise || log.workout}</p>
-                <p class="text-slate-300 text-xs">${log.category ? `${log.category} • ` : ''}${log.time}${log.sets && log.sets !== '-' ? ` • ${log.sets}x${log.reps}` : ''}${log.weight && log.weight !== '-' ? ` • ${log.weight}kg` : ''}</p>
+        `<div class="space-y-3">
+          ${selectedDayWorkouts.map(log => {
+            // Check if this workout has individual sets data
+            const hasIndividualSets = log.individualSets && log.individualSets.length > 0;
+            
+            return `
+            <div class="bg-slate-700 p-4 rounded-lg border-l-4 border-purple-500">
+              <div class="flex justify-between items-start mb-2">
+                <div class="flex-1">
+                  <p class="font-bold text-lg text-purple-300">${log.exercise || log.workout}</p>
+                  <p class="text-slate-400 text-xs">${log.category ? `${log.category} • ` : ''}${log.time}</p>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300" title="Editar">✏️</button>
+                  <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
+                </div>
               </div>
-              <div class="flex gap-2">
-                <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300" title="Editar séries/reps/carga">✏️</button>
-                <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
-              </div>
+              
+              ${hasIndividualSets ? `
+                <!-- New: Individual Sets Display -->
+                <div class="mt-3 bg-slate-600/50 p-3 rounded">
+                  <h5 class="text-sm font-semibold text-purple-200 mb-2">Séries Realizadas:</h5>
+                  <div class="space-y-2">
+                    ${log.individualSets.map(set => `
+                      <div class="flex items-center justify-between bg-slate-700/50 p-2 rounded">
+                        <span class="text-sm font-semibold text-purple-300">Série ${set.setNumber}</span>
+                        <div class="flex gap-4 text-sm">
+                          <span class="text-slate-300">${set.reps} reps</span>
+                          <span class="text-blue-300 font-semibold">${set.weight} kg</span>
+                          <span class="text-green-300 font-semibold">Vol: ${set.volume.toFixed(1)} kg</span>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                  <div class="mt-3 pt-3 border-t border-slate-500 flex justify-between items-center">
+                    <span class="text-sm font-semibold text-purple-200">Volume Total:</span>
+                    <span class="text-xl font-bold text-green-400">${log.totalVolume.toFixed(1)} kg</span>
+                  </div>
+                </div>
+              ` : `
+                <!-- Legacy: Old Display Format -->
+                <p class="text-slate-300 text-sm mt-2">
+                  ${log.sets && log.sets !== '-' ? `${log.sets} séries × ${log.reps} reps` : ''}
+                  ${log.weight && log.weight !== '-' ? ` • ${log.weight} kg` : ''}
+                </p>
+              `}
             </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>`
       }
     </div>
@@ -6370,41 +6746,56 @@ function renderExercicios(user) {
           <h4 class="font-bold text-lg mb-4">🏋️ Todos os Treinos de ${dateLabel}</h4>
           ${workoutsOnDate.length === 0 ? 
             '<p class="text-slate-400">Nenhum treino registrado nesta data.</p>' :
-            `<div class="overflow-x-auto">
-              <table class="w-full text-sm">
-                <thead>
-                  <tr class="border-b border-slate-600">
-                    <th class="py-2 px-2 text-left">Exercício</th>
-                    <th class="py-2 px-2 text-left">Séries</th>
-                    <th class="py-2 px-2 text-left">Reps</th>
-                    <th class="py-2 px-2 text-left">Carga (kg)</th>
-                    <th class="py-2 px-2 text-left">Volume</th>
-                    <th class="py-2 px-2 text-left">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${workoutsOnDate.map(log => {
-                    const weight = parseNumber(log.weight);
-                    const reps = parseNumber(log.reps);
-                    const sets = parseNumber(log.sets);
-                    const volume = weight * reps * sets;
+            `<div class="space-y-3">
+              ${workoutsOnDate.map(log => {
+                const hasIndividualSets = log.individualSets && log.individualSets.length > 0;
+                
+                return `
+                  <div class="bg-slate-700 p-4 rounded-lg border-l-4 border-blue-500">
+                    <div class="flex justify-between items-start mb-2">
+                      <div class="flex-1">
+                        <p class="font-bold text-lg text-blue-300">${log.exercise}</p>
+                        <p class="text-slate-400 text-xs">${log.time}</p>
+                      </div>
+                      <div class="flex gap-2">
+                        <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
+                        <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
+                      </div>
+                    </div>
                     
-                    return `
-                      <tr class="border-b border-slate-700 hover:bg-slate-700">
-                        <td class="py-2 px-2 font-semibold text-blue-300">${log.exercise}</td>
-                        <td class="py-2 px-2">${log.sets}</td>
-                        <td class="py-2 px-2">${log.reps}</td>
-                        <td class="py-2 px-2">${log.weight}</td>
-                        <td class="py-2 px-2">${volume > 0 ? Math.round(volume) + ' kg' : '-'}</td>
-                        <td class="py-2 px-2">
-                          <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
-                          <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
-                        </td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
+                    ${hasIndividualSets ? `
+                      <!-- Individual Sets Display -->
+                      <div class="mt-3 bg-slate-600/50 p-3 rounded">
+                        <div class="grid grid-cols-3 gap-2 mb-3">
+                          ${log.individualSets.map(set => `
+                            <div class="bg-slate-700 p-3 rounded text-center">
+                              <div class="text-xs text-slate-400 mb-1">Série ${set.setNumber}</div>
+                              <div class="text-sm font-semibold text-white mb-1">${set.reps} reps × ${set.weight} kg</div>
+                              <div class="text-xs text-green-400 font-bold">Vol: ${set.volume.toFixed(1)} kg</div>
+                            </div>
+                          `).join('')}
+                        </div>
+                        <div class="pt-3 border-t border-slate-500 flex justify-between items-center">
+                          <span class="text-sm font-semibold text-blue-200">Volume Total:</span>
+                          <span class="text-xl font-bold text-green-400">${log.totalVolume.toFixed(1)} kg</span>
+                        </div>
+                      </div>
+                    ` : `
+                      <!-- Legacy Format -->
+                      <div class="mt-2 text-sm text-slate-300">
+                        ${log.sets} séries × ${log.reps} reps${log.weight && log.weight !== '-' ? ` • ${log.weight} kg` : ''}
+                        ${(() => {
+                          const weight = parseNumber(log.weight);
+                          const reps = parseNumber(log.reps);
+                          const sets = parseNumber(log.sets);
+                          const volume = weight * reps * sets;
+                          return volume > 0 ? ` • Volume: ${Math.round(volume)} kg` : '';
+                        })()}
+                      </div>
+                    `}
+                  </div>
+                `;
+              }).join('')}
               
               <!-- Summary Stats -->
               <div class="mt-4 p-4 bg-gradient-to-r from-purple-700 to-indigo-800 rounded-lg">
@@ -6417,6 +6808,25 @@ function renderExercicios(user) {
                   <div class="bg-white/10 backdrop-blur p-3 rounded">
                     <p class="text-sm text-purple-200 mb-1">Volume Total</p>
                     <p class="text-2xl font-bold">${Math.round(workoutsOnDate.reduce((sum, log) => {
+                      // Use new totalVolume if available, otherwise calculate from legacy fields
+                      if (log.totalVolume) {
+                        return sum + log.totalVolume;
+                      }
+                      const weight = parseNumber(log.weight);
+                      const reps = parseNumber(log.reps);
+                      const sets = parseNumber(log.sets);
+                      return sum + (weight * reps * sets);
+                    }, 0))} kg</p>
+                  </div>
+                  <div class="bg-white/10 backdrop-blur p-3 rounded">
+                    <p class="text-sm text-purple-200 mb-1">Exercícios Únicos</p>
+                    <p class="text-2xl font-bold">${new Set(workoutsOnDate.map(w => w.exercise)).size}</p>
+                  </div>
+                </div>
+              </div>
+            </div>`
+          }
+        </div>
                       const weight = parseNumber(log.weight);
                       const reps = parseNumber(log.reps);
                       const sets = parseNumber(log.sets);
@@ -6490,39 +6900,58 @@ function renderExercicios(user) {
         <h4 class="font-bold text-lg mb-4">📋 Histórico Completo</h4>
         ${history.length === 0 ? 
           '<p class="text-slate-400">Nenhum registro encontrado para este exercício.</p>' :
-          `<div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-slate-600">
-                  <th class="py-2 px-2 text-left">Data</th>
-                  <th class="py-2 px-2 text-left">Séries</th>
-                  <th class="py-2 px-2 text-left">Reps</th>
-                  <th class="py-2 px-2 text-left">Carga (kg)</th>
-                  <th class="py-2 px-2 text-left">Volume</th>
-                  <th class="py-2 px-2 text-left">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${history.slice().reverse().map(log => {
-                  const weight = parseNumber(log.weight);
-                  const reps = parseNumber(log.reps);
-                  const sets = parseNumber(log.sets);
-                  const volume = weight * reps * sets;
+          `<div class="space-y-3">
+            ${history.slice().reverse().map(log => {
+              const hasIndividualSets = log.individualSets && log.individualSets.length > 0;
+              
+              return `
+                <div class="bg-slate-700 p-4 rounded-lg border-l-4 border-purple-500">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="flex-1">
+                      <p class="font-bold text-lg text-purple-300">${new Date(log.date).toLocaleDateString('pt-BR')}</p>
+                      <p class="text-slate-400 text-xs">${log.time}</p>
+                    </div>
+                    <div class="flex gap-2">
+                      <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
+                      <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
+                    </div>
+                  </div>
                   
-                  return `
-                    <tr class="border-b border-slate-700 hover:bg-slate-700">
-                      <td class="py-2 px-2">${new Date(log.date).toLocaleDateString('pt-BR')}</td>
-                      <td class="py-2 px-2">${log.sets}</td>
-                      <td class="py-2 px-2">${log.reps}</td>
-                      <td class="py-2 px-2">${log.weight}</td>
-                      <td class="py-2 px-2">${volume > 0 ? Math.round(volume) + ' kg' : '-'}</td>
-                      <td class="py-2 px-2">
-                        <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
-                        <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
-                      </td>
-                    </tr>
-                  `;
-                }).join('')}
+                  ${hasIndividualSets ? `
+                    <!-- Individual Sets Display -->
+                    <div class="mt-3 bg-slate-600/50 p-3 rounded">
+                      <div class="grid grid-cols-3 gap-2 mb-3">
+                        ${log.individualSets.map(set => `
+                          <div class="bg-slate-700 p-3 rounded text-center">
+                            <div class="text-xs text-slate-400 mb-1">Série ${set.setNumber}</div>
+                            <div class="text-sm font-semibold text-white mb-1">${set.reps} reps × ${set.weight} kg</div>
+                            <div class="text-xs text-green-400 font-bold">Vol: ${set.volume.toFixed(1)} kg</div>
+                          </div>
+                        `).join('')}
+                      </div>
+                      <div class="pt-3 border-t border-slate-500 flex justify-between items-center">
+                        <span class="text-sm font-semibold text-purple-200">Volume Total:</span>
+                        <span class="text-xl font-bold text-green-400">${log.totalVolume.toFixed(1)} kg</span>
+                      </div>
+                    </div>
+                  ` : `
+                    <!-- Legacy Format -->
+                    <div class="mt-2 text-sm text-slate-300">
+                      ${log.sets} séries × ${log.reps} reps${log.weight && log.weight !== '-' ? ` • ${log.weight} kg` : ''}
+                      ${(() => {
+                        const weight = parseNumber(log.weight);
+                        const reps = parseNumber(log.reps);
+                        const sets = parseNumber(log.sets);
+                        const volume = weight * reps * sets;
+                        return volume > 0 ? ` • Volume: ${Math.round(volume)} kg` : '';
+                      })()}
+                    </div>
+                  `}
+                </div>
+              `;
+            }).join('')}
+          </div>`
+        }
               </tbody>
             </table>
           </div>`
