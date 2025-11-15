@@ -2,6 +2,19 @@
 
 Este guia fornece instruções completas para configurar HTTPS/SSL em produção para o sistema Pilgrim.
 
+## 📋 Checklist Rápido
+
+Antes de começar, consulte o **[DEPLOYMENT-CHECKLIST.md](../../DEPLOYMENT-CHECKLIST.md)** para uma lista completa de verificação.
+
+**Scripts Disponíveis**:
+- `scripts/verify-ssl.sh <domain>` - Validação automática de HTTPS
+
+**Arquivos de Configuração**:
+- `nginx.conf` - Configuração completa para servidor próprio com HTTPS
+- `nginx-docker.conf` - Configuração simplificada para Docker/Render
+- `docker-compose.yml` - Deploy local com Let's Encrypt
+- `Dockerfile` - Build otimizado com headers de segurança
+
 ## Visão Geral
 
 HTTPS (HyperText Transfer Protocol Secure) é essencial para:
@@ -373,6 +386,60 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 ```
 
 Para incluir no HSTS Preload List: https://hstspreload.org/
+
+## Validação Automática
+
+### Script de Verificação SSL
+
+Use o script `verify-ssl.sh` para validação completa:
+
+```bash
+# Tornar executável
+chmod +x scripts/verify-ssl.sh
+
+# Executar teste
+./scripts/verify-ssl.sh seu-dominio.com
+
+# Exemplos
+./scripts/verify-ssl.sh taukkunen1.github.io/fitness-tracker
+./scripts/verify-ssl.sh fitness-tracker.onrender.com
+```
+
+O script verifica:
+- ✅ Acessibilidade HTTPS (porta 443)
+- ✅ Redirecionamento HTTP → HTTPS
+- ✅ Validade do certificado SSL
+- ✅ Headers de segurança
+- ✅ Versão do TLS (1.2 ou 1.3)
+- ✅ Mixed content
+- ✅ Tempo de resposta
+- ✅ Nota estimada de segurança
+
+**Saída esperada**:
+```
+Score: 7/8 (87%)
+✓ Excellent! HTTPS configuration is secure.
+```
+
+### GitHub Actions Workflow
+
+Um workflow automático valida HTTPS a cada push:
+
+**Arquivo**: `.github/workflows/https-validation.yml`
+
+**Executa**:
+- Validação de HTTPS no GitHub Pages
+- Verificação de certificado SSL
+- Validação de configurações nginx
+- Checagem de headers de segurança
+- Detecção de mixed content
+- Geração de relatório de segurança
+
+**Visualizar resultados**:
+1. Acesse o repositório no GitHub
+2. Clique em "Actions"
+3. Selecione "HTTPS Security Validation"
+4. Veja o último run e baixe o artifact "security-report"
 
 ## Conclusão
 

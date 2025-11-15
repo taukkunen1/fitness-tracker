@@ -9,8 +9,15 @@ COPY README.md /usr/share/nginx/html/
 # Copy documentation if needed (optional)
 COPY docs /usr/share/nginx/html/docs/
 
+# Copy custom nginx configuration with security headers
+COPY nginx-docker.conf /etc/nginx/nginx.conf
+
 # Expose port 80
 EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
