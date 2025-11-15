@@ -2,7 +2,7 @@
 
 ## 📋 Resumo Executivo
 
-Este documento descreve o processo de unificação das branches do repositório Fitness Tracker Pro, consolidando todas as funcionalidades e melhorias desenvolvidas em diferentes branches para criar uma base de código unificada.
+Este documento descreve o processo de unificação das branches do repositório Pilgrim, consolidando todas as funcionalidades e melhorias desenvolvidas em diferentes branches para criar uma base de código unificada.
 
 **Data:** 05/11/2025  
 **Status:** ✅ Concluído

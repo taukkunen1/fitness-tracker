@@ -1,4 +1,4 @@
-# 💪 Fitness Tracker Pro
+# 🚶‍♂️ Pilgrim
 
 Sistema de acompanhamento de treino e nutrição baseado em evidências científicas.
 
@@ -42,3 +42,56 @@ Veja o arquivo `LICENSE` para detalhes.
 ---
 
 **Disclaimer:** Este sistema é para fins educacionais. Sempre consulte profissionais de saúde antes de iniciar novos programas de exercícios ou dietas.
+
+---
+
+## 🔐 Configuração HTTPS em Produção
+
+### GitHub Pages (github.io)
+O GitHub Pages fornece HTTPS automaticamente para domínios `*.github.io`. Nenhuma configuração adicional é necessária.
+
+### Domínio Customizado
+Para usar um domínio customizado com HTTPS:
+
+1. **Configurar domínio no GitHub:**
+   - Vá em Settings > Pages
+   - Em "Custom domain", adicione seu domínio
+   - Marque "Enforce HTTPS"
+
+2. **Obter certificado SSL (Let's Encrypt):**
+   - O GitHub Pages gera automaticamente certificados Let's Encrypt para domínios customizados
+   - O processo leva alguns minutos após configurar o domínio
+
+3. **Configurar DNS:**
+   - Adicione registro A ou CNAME apontando para GitHub Pages
+   - Para apex domain: registros A para `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
+   - Para subdomain: registro CNAME para `<username>.github.io`
+
+4. **Testar conexão HTTPS:**
+   ```bash
+   curl -I https://seu-dominio.com
+   ```
+
+5. **Verificar segurança:**
+   - Teste em [SSL Labs](https://www.ssllabs.com/ssltest/)
+   - Certificado deve ser válido e com nota A ou A+
+
+### Redirecionamento HTTP → HTTPS
+O GitHub Pages redireciona automaticamente HTTP para HTTPS quando "Enforce HTTPS" está habilitado.
+
+Para servidores próprios, adicione no `.htaccess` ou configuração do servidor:
+```apache
+# Apache
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+```
+
+```nginx
+# Nginx
+server {
+    listen 80;
+    server_name seu-dominio.com;
+    return 301 https://$server_name$request_uri;
+}
+```

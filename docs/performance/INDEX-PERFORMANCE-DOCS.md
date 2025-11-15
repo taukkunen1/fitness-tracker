@@ -1,6 +1,6 @@
 # 📚 Índice - Documentação de Performance
 
-Navegue facilmente pela documentação completa de otimização de performance do Fitness Tracker Pro.
+Navegue facilmente pela documentação completa de otimização de performance do Pilgrim.
 
 ---
 
@@ -332,7 +332,7 @@ START → SUMMARY (5 min) → README (skip ou rápido)
 
 ---
 
-**Criado por:** Fitness Tracker Pro Team  
+**Criado por:** Pilgrim Team  
 **Data:** 2025-11-05  
 **Versão:** 1.0.0  
 **Licença:** Mesma do projeto principal

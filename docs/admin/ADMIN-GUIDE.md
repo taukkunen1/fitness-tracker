@@ -1,8 +1,8 @@
-# 👑 Guia do Administrador - Fitness Tracker Pro
+# 👑 Guia do Administrador - Pilgrim
 
 ## 📋 Visão Geral
 
-O Fitness Tracker Pro agora possui um sistema completo de administração que permite gerenciar tarefas, coletar feedback de usuários e monitorar a segurança do sistema.
+O Pilgrim agora possui um sistema completo de administração que permite gerenciar tarefas, coletar feedback de usuários e monitorar a segurança do sistema.
 
 ## 🔐 Como se Tornar Administrador
 
@@ -285,4 +285,4 @@ Funcionalidades planejadas:
 **Versão:** 1.0.0  
 **Status:** Produção
 
-© 2025 Fitness Tracker Pro - Todos os direitos reservados
+© 2025 Pilgrim - Todos os direitos reservados

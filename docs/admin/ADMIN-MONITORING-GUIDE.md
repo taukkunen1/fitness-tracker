@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-O Fitness Tracker Pro agora inclui um sistema completo de monitoramento de acessos para administradores. Este sistema permite acompanhar em tempo real o uso do site, visualizar estatísticas detalhadas e exportar dados para análise.
+O Pilgrim agora inclui um sistema completo de monitoramento de acessos para administradores. Este sistema permite acompanhar em tempo real o uso do site, visualizar estatísticas detalhadas e exportar dados para análise.
 
 ## 🔐 Acesso ao Painel
 
