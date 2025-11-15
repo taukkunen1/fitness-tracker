@@ -2667,7 +2667,7 @@ function getExerciseStats(user, exerciseName) {
 }
 
 /* ----------------------------- Handlers (workout / meal / metrics) ----------------------------- */
-function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '', category = '') {
+function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '', category = '', setsDetails = null) {
   const user = state.users[state.activeUser];
   if (!user) return alert('Nenhum usuário ativo');
   
@@ -2680,6 +2680,7 @@ function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '', categ
     sets: sets || '-',
     reps: reps || '-',
     weight: weight || '-',
+    setsDetails: setsDetails || null, // New field for detailed sets information
     completed: true
   };
   
