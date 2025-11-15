@@ -1484,124 +1484,51 @@ const initialUsers = (function() {
      Wang 2024 (creatine supplementation support).
    ---------------------------------------------------------------------------- */
 const templates = {
-  fullbody_3x: {
-    id: 'fullbody_3x',
-    name: 'Full-Body 3x/semana (40–60 min)',
-    description: 'Frequência 3x/semana, foco em hipertrofia com volume moderado. (Base: Morton 2021, Schoenfeld 2023)',
+  peitinho_direito: {
+    id: 'peitinho_direito',
+    name: 'Peitinho direito cresça já',
+    description: 'Treino focado em peito, costas, ombros e braços - Importado do Heavy App',
     sessions: {
       A: {
-        name: 'Full A — Quadríceps / Peito (45–55 min)',
+        name: 'Peitinho direito cresça já',
         exercises: [
-          { name: 'Aquecimento: 5–8 min bike / mobilidade', sets: 1, reps: '8–10 (leve)', rest: 30, notes: 'Ativação geral' },
-          { name: 'Agachamento (Back Squat)', sets: 4, reps: '6–8', rest: 90, estimatedTimeMin: 16, notes: 'Prioridade: força/hipertrofia; progressão semanal' },
-          { name: 'Supino Reto', sets: 4, reps: '6–8', rest: 90, estimatedTimeMin: 12, notes: 'Priorize técnica, aumente carga gradualmente' },
-          { name: 'Remada Curvada', sets: 3, reps: '8–10', rest: 60, estimatedTimeMin: 8, notes: 'Equilibrar empurrar/puxar' },
-          { name: 'Extensora (isolamento)', sets: 2, reps: '12–15', rest: 45, estimatedTimeMin: 4, notes: 'Finalizar quadríceps' },
-          { name: 'Panturrilha em pé', sets: 3, reps: '12–20', rest: 30, estimatedTimeMin: 4, notes: 'Alta rep para resistência' }
+          { name: 'Incline Bench Press (Dumbbell)', sets: 3, reps: '12', rest: 60, notes: '' },
+          { name: 'Chest Fly (Machine)', sets: 3, reps: '10', rest: 60, notes: 'Rest 1min 0s' },
+          { name: 'Lat Pulldown (Cable)', sets: 3, reps: '15', rest: 60, notes: 'Barra map média - Rest 1min 0s' },
+          { name: 'Iso-Lateral Row (Machine)', sets: 6, reps: '10', rest: 60, notes: 'Direito x Esquerdo - Rest 1min 0s' },
+          { name: 'Arnold Press (Dumbbell)', sets: 3, reps: '8', rest: 60, notes: 'Rest 1min 0s' },
+          { name: 'Hammer Curl (Dumbbell)', sets: 3, reps: '10', rest: 60, notes: 'Rest 1min 0s' },
+          { name: 'Bicep Curl (Cable)', sets: 3, reps: '10', rest: 60, notes: 'Rest 1min 0s' },
+          { name: 'Rope Straight Arm Pulldown', sets: 3, reps: '10', rest: 60, notes: 'Rest 1min 0s' },
+          { name: 'Skullcrusher (Dumbbell)', sets: 3, reps: '10', rest: 60, notes: 'Rest 1min 0s' }
         ],
-        notes: 'Se tempo apertado, combine Remada e Extensora em superset para economizar tempo.'
-      },
-      B: {
-        name: 'Full B — Posterior / Ombros (45–55 min)',
-        exercises: [
-          { name: 'Aquecimento: 5–8 min remo leve / mobilidade posterior', sets: 1, reps: '8–12 (leve)', rest: 30 },
-          { name: 'Stiff / Romanian Deadlift', sets: 3, reps: '6–8', rest: 90, estimatedTimeMin: 12, notes: 'Trabalhar posterior de coxa e glúteo' },
-          { name: 'Desenvolvimento (Barra ou Halteres)', sets: 3, reps: '8–10', rest: 75, estimatedTimeMin: 10 },
-          { name: 'Puxada Frente / Pull-up (assistida se necessário)', sets: 3, reps: '6–10', rest: 90, estimatedTimeMin: 10 },
-          { name: 'Elevação Lateral', sets: 3, reps: '12–15', rest: 45, estimatedTimeMin: 6, notes: 'Estresse metabólico controlado' },
-          { name: 'Abdominais (prancha / crunch)', sets: 3, reps: '12–20', rest: 30, estimatedTimeMin: 5 }
-        ],
-        notes: 'Use técnicas de estresse metabólico (supersets ou drops) pontualmente, conforme Curovic (2025).'
-      },
-      C: {
-        name: 'Full C — Glúteos / Complementares (40–50 min)',
-        exercises: [
-          { name: 'Aquecimento: ativação glútea (band walk, bridges) 5–8 min', sets: 1, reps: '8–12' },
-          { name: 'Hip Thrust', sets: 4, reps: '8–12', rest: 90, estimatedTimeMin: 16, notes: 'Prioridade para glúteos' },
-          { name: 'Remada Sentada / Machine Row', sets: 3, reps: '8–12', rest: 75, estimatedTimeMin: 8 },
-          { name: 'Supino Inclinado', sets: 3, reps: '8–12', rest: 75, estimatedTimeMin: 8 },
-          { name: 'Rosca Direta (bíceps) / Tríceps Corda', sets: 2, reps: '10–12', rest: 45, estimatedTimeMin: 5 }
-        ],
-        notes: 'Dia de ênfase — foco em qualidade de execução no Hip Thrust.'
+        notes: 'Treino completo de upper body - Dados importados do Heavy App'
       }
     },
-    referencesTags: ['training','hypertrophy','volume']
+    referencesTags: ['training','upper-body','heavy-app']
   },
 
-  ppl_3x: {
-    id: 'ppl_3x',
-    name: 'PPL 3x/semana (Push / Pull / Legs)',
-    description: 'Padrão clássico PPL adaptado para 3x/semana (cada sessão semanal).',
+  treino_pernas: {
+    id: 'treino_pernas',
+    name: 'Treino de Pernas',
+    description: 'Treino completo de membros inferiores - Importado do Heavy App',
     sessions: {
-      Push: {
-        name: 'Push (≈45–60 min)',
+      A: {
+        name: 'Treino de Pernas',
         exercises: [
-          { name: 'Aquecimento 5–8 min' },
-          { name: 'Supino Reto', sets: 4, reps: '6–8', rest: 90 },
-          { name: 'Desenvolvimento (DB/Barra)', sets: 3, reps: '8–10', rest: 75 },
-          { name: 'Supino Inclinado / Dips', sets: 3, reps: '8–12', rest: 75 },
-          { name: 'Elevação Lateral', sets: 3, reps: '12–15', rest: 45 },
-          { name: 'Tríceps Corda', sets: 3, reps: '10–12', rest: 45 }
-        ]
-      },
-      Pull: {
-        name: 'Pull (≈45–60 min)',
-        exercises: [
-          { name: 'Aquecimento 5–8 min' },
-          { name: 'Barra Fixa / Puxada', sets: 4, reps: '6–10', rest: 90 },
-          { name: 'Remada Curvada', sets: 4, reps: '8–10', rest: 90 },
-          { name: 'Face Pull', sets: 3, reps: '12–15', rest: 45 },
-          { name: 'Rosca Bíceps', sets: 3, reps: '8–12', rest: 60 }
-        ]
-      },
-      Legs: {
-        name: 'Legs (≈45–60 min)',
-        exercises: [
-          { name: 'Aquecimento 5–8 min' },
-          { name: 'Agachamento (Back / Front)', sets: 4, reps: '6–8', rest: 90 },
-          { name: 'Leg Press', sets: 3, reps: '10–15', rest: 75 },
-          { name: 'Romanian / Stiff', sets: 3, reps: '8–12', rest: 90 },
-          { name: 'Panturrilha (sentado/ em pé)', sets: 4, reps: '12–20', rest: 45 }
-        ]
+          { name: 'Leg Press Horizontal (Machine)', sets: 3, reps: '8-12', rest: 90, notes: 'Rest 1min 30s' },
+          { name: 'Hack Squat (Machine)', sets: 3, reps: '10', rest: 90, notes: 'Rest 1min 30s' },
+          { name: 'Lying Leg Curl (Machine)', sets: 3, reps: '12', rest: 90, notes: 'Rest 1min 30s' },
+          { name: 'Hip Adduction (Machine)', sets: 3, reps: '15', rest: 90, notes: 'Rest 1min 30s' },
+          { name: 'Hip Abduction (Machine)', sets: 3, reps: '15', rest: 60, notes: '' },
+          { name: 'Seated Calf Raise', sets: 3, reps: '15', rest: 90, notes: 'Rest 1min 30s' },
+          { name: 'Squat (Barbell)', sets: 3, reps: '10', rest: 60, notes: '' },
+          { name: 'Leg Extension (Machine)', sets: 3, reps: '15', rest: 60, notes: '' }
+        ],
+        notes: 'Treino completo de lower body - Dados importados do Heavy App'
       }
     },
-    referencesTags: ['training','specificity','volume']
-  },
-
-  upper_lower_full: {
-    id: 'upper_lower_full',
-    name: 'Upper / Lower / Full (Híbrido)',
-    description: 'Upper / Lower / Full — equilíbrio entre volume e recuperação.',
-    sessions: {
-      Upper: {
-        name: 'Upper (≈45–60 min)',
-        exercises: [
-          { name: 'Supino Reto', sets: 3, reps: '6–8', rest: 90 },
-          { name: 'Remada Curvada', sets: 3, reps: '8–10', rest: 90 },
-          { name: 'Desenvolvimento', sets: 3, reps: '8–10', rest: 75 },
-          { name: 'Elevação Lateral', sets: 3, reps: '12–15', rest: 45 },
-          { name: 'Rosca / Tríceps', sets: 3, reps: '8–12', rest: 60 }
-        ]
-      },
-      Lower: {
-        name: 'Lower (≈45–60 min)',
-        exercises: [
-          { name: 'Agachamento', sets: 4, reps: '6–8', rest: 90 },
-          { name: 'Stiff / RDL', sets: 3, reps: '8–12', rest: 90 },
-          { name: 'Hip Thrust', sets: 3, reps: '8–12', rest: 90 },
-          { name: 'Panturrilha', sets: 3, reps: '12–20', rest: 45 }
-        ]
-      },
-      Full: {
-        name: 'Full (leve / recuperação) (≈40 min)',
-        exercises: [
-          { name: 'Hip Thrust / Goblet Squat', sets: 3, reps: '8–12', rest: 60 },
-          { name: 'Puxada / Push-up', sets: 3, reps: '8–12', rest: 60 },
-          { name: 'Core e mobilidade', sets: 3, reps: '12–20', rest: 30 }
-        ]
-      }
-    },
-    referencesTags: ['training','hypertrophy']
+    referencesTags: ['training','legs','heavy-app']
   }
 };
 
@@ -6632,12 +6559,76 @@ window.addEventListener('beforeunload', () => { try { saveAllToDB(); } catch (e)
   
   await saveAllToDB();
   
-  // Try to restore session
-  const sessionValid = await validateSession();
-  
-  if (sessionValid) {
-    await loadProgressPhotos();
+  // Auto-create and login as Pedro admin (per requirements)
+  // Check if Pedro admin account exists
+  let pedroAccount = await dbGet(STORE_ACCOUNTS, 'Pedro');
+  if (!pedroAccount) {
+    try {
+      // Create Pedro admin account with specified credentials
+      const salt = generateSalt();
+      const passwordHash = await hashPassword('123456', salt);
+      
+      pedroAccount = {
+        username: 'Pedro',
+        email: 'pedro@fitness-tracker.com',
+        passwordHash,
+        salt,
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        linkedProfiles: ['pedro'],
+        twoFactorEnabled: false,
+        accountLocked: false,
+        role: 'admin'
+      };
+      
+      await dbPut(STORE_ACCOUNTS, pedroAccount);
+      console.log('✅ Pedro admin account created successfully');
+    } catch (err) {
+      console.error('Failed to create Pedro admin account:', err);
+    }
   }
+  
+  // Auto-login as Pedro (bypass authentication screen)
+  if (!authState.isAuthenticated) {
+    try {
+      // Create session directly without going through login
+      authState.isAuthenticated = true;
+      authState.currentAccount = {
+        username: 'Pedro',
+        email: pedroAccount.email,
+        createdAt: pedroAccount.createdAt,
+        linkedProfiles: pedroAccount.linkedProfiles || ['pedro'],
+        role: 'admin'
+      };
+      authState.sessionToken = generateToken();
+      authState.csrfToken = generateToken();
+      
+      // Store session
+      const session = {
+        token: authState.sessionToken,
+        csrf: authState.csrfToken,
+        username: 'Pedro',
+        role: 'admin',
+        createdAt: Date.now(),
+        expiresAt: Date.now() + SECURITY_CONFIG.SESSION_TIMEOUT_MS
+      };
+      
+      saveLS('ft_session', session);
+      
+      // Update last login
+      pedroAccount.lastLogin = new Date().toISOString();
+      await dbPut(STORE_ACCOUNTS, pedroAccount);
+      
+      // Log page access
+      await logPageAccess().catch(err => console.error('Failed to log page access', err));
+      
+      console.log('✅ Auto-logged in as Pedro (admin)');
+    } catch (err) {
+      console.error('Failed to auto-login as Pedro:', err);
+    }
+  }
+  
+  await loadProgressPhotos();
   
   render();
 })();
