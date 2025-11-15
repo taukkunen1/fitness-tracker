@@ -3068,9 +3068,6 @@ function render() {
 
     <div class="max-w-7xl mx-auto px-4 py-6">
       <div class="flex flex-wrap gap-3 mb-6">
-        ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao','developer'].map(tab => `
-          <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
-            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : '👨‍💻 Developer'}
         ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao'].map(tab => `
           <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
             ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : '📈 Evolução'}
@@ -5694,7 +5691,10 @@ function renderAdminChangelog() {
           <span>Histórico de Versões</span>
         </h3>
 
-        ${changelogData.map((version, index) => `
+        ${changelogData.map((version, index) => {
+          const dateOptions = { day: '2-digit', month: 'long', year: 'numeric' };
+          const formattedDate = new Date(version.date).toLocaleDateString('pt-BR', dateOptions);
+          return `
           <div class="bg-slate-800 rounded-lg border-l-4 ${
             version.type === 'major' ? 'border-red-500' : 
             version.type === 'minor' ? 'border-blue-500' : 
@@ -5708,11 +5708,7 @@ function renderAdminChangelog() {
                   ${getVersionTypeBadge(version.type)}
                   ${index === 0 ? '<span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-600 text-white animate-pulse">ATUAL</span>' : ''}
                 </div>
-                <span class="text-slate-400 text-sm">${new Date(version.date).toLocaleDateString('pt-BR', { 
-                  day: '2-digit', 
-                  month: 'long', 
-                  year: 'numeric' 
-                })}</span>
+                <span class="text-slate-400 text-sm">${formattedDate}</span>
               </div>
               <h5 class="text-lg font-semibold text-purple-300">${version.title}</h5>
             </div>
@@ -5731,7 +5727,8 @@ function renderAdminChangelog() {
               </div>
             </div>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
 
       <!-- Future Versions -->
