@@ -9,7 +9,8 @@ COPY README.md /usr/share/nginx/html/
 # Copy documentation if needed (optional)
 COPY docs /usr/share/nginx/html/docs/
 
-# Copy custom nginx configuration with security headers
+# Remove default nginx config and copy custom nginx configuration with security headers
+RUN rm -f /etc/nginx/conf.d/default.conf
 COPY nginx-docker.conf /etc/nginx/nginx.conf
 
 # Expose port 80
