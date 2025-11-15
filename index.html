@@ -1484,51 +1484,54 @@ const initialUsers = (function() {
      Wang 2024 (creatine supplementation support).
    ---------------------------------------------------------------------------- */
 const templates = {
-  peitinho_direito: {
-    id: 'peitinho_direito',
-    name: 'Peitinho direito cresça já',
-    description: 'Treino focado em peito, costas, ombros e braços - Importado do Heavy App',
+  treino_1: {
+    id: 'treino_1',
+    name: 'Treino 1 - Upper Body',
+    description: 'Peitoral, Costas, Ombros, Bíceps e Tríceps',
     sessions: {
       A: {
-        name: 'Peitinho direito cresça já',
+        name: 'Treino 1',
         exercises: [
-          { name: 'Incline Bench Press (Dumbbell)', sets: 3, reps: '12', rest: 60, notes: '' },
-          { name: 'Chest Fly (Machine)', sets: 3, reps: '10', rest: 60, notes: 'Rest 1min 0s' },
-          { name: 'Lat Pulldown (Cable)', sets: 3, reps: '15', rest: 60, notes: 'Barra map média - Rest 1min 0s' },
-          { name: 'Iso-Lateral Row (Machine)', sets: 6, reps: '10', rest: 60, notes: 'Direito x Esquerdo - Rest 1min 0s' },
-          { name: 'Arnold Press (Dumbbell)', sets: 3, reps: '8', rest: 60, notes: 'Rest 1min 0s' },
-          { name: 'Hammer Curl (Dumbbell)', sets: 3, reps: '10', rest: 60, notes: 'Rest 1min 0s' },
-          { name: 'Bicep Curl (Cable)', sets: 3, reps: '10', rest: 60, notes: 'Rest 1min 0s' },
-          { name: 'Rope Straight Arm Pulldown', sets: 3, reps: '10', rest: 60, notes: 'Rest 1min 0s' },
-          { name: 'Skullcrusher (Dumbbell)', sets: 3, reps: '10', rest: 60, notes: 'Rest 1min 0s' }
+          { name: 'Mobilidade Torácica em Pé', sets: 2, reps: '', rest: 60, notes: 'Mobilidade não precisa de reps' },
+          { name: 'Supino Inclinado com Halteres', sets: 3, reps: '8-12', rest: 90, notes: '' },
+          { name: 'Crucifixo na Máquina', sets: 3, reps: '10-12', rest: 60, notes: '' },
+          { name: 'Puxada na Barra Frente', sets: 3, reps: '8-12', rest: 90, notes: '' },
+          { name: 'Remada Unilateral na Máquina', sets: 3, reps: '10-12', rest: 60, notes: '' },
+          { name: 'Bi-set: Desenvolvimento Arnold + Elevação Lateral', sets: 3, reps: '8-12', rest: 90, notes: 'Bi-set completo conta como 1 série' },
+          { name: 'Bi-set: Rosca Alternada + Rosca Polia Baixa', sets: 3, reps: '10-12', rest: 60, notes: 'Bi-set completo conta como 1 série' },
+          { name: 'Bi-set: Tríceps Testa Polia Alta + Tríceps Corda', sets: 3, reps: '10-12', rest: 60, notes: 'Bi-set completo conta como 1 série' }
         ],
-        notes: 'Treino completo de upper body - Dados importados do Heavy App'
+        notes: 'Treino completo de upper body',
+        primaryMuscles: ['Peitoral', 'Dorsal', 'Ombros', 'Bíceps', 'Tríceps']
       }
     },
-    referencesTags: ['training','upper-body','heavy-app']
+    referencesTags: ['training','upper-body']
   },
 
-  treino_pernas: {
-    id: 'treino_pernas',
-    name: 'Treino de Pernas',
-    description: 'Treino completo de membros inferiores - Importado do Heavy App',
+  treino_2: {
+    id: 'treino_2',
+    name: 'Treino 2 - Lower Body',
+    description: 'Pernas, Glúteo, Panturrilha e Abdome',
     sessions: {
       A: {
-        name: 'Treino de Pernas',
+        name: 'Treino 2',
         exercises: [
-          { name: 'Leg Press Horizontal (Machine)', sets: 3, reps: '8-12', rest: 90, notes: 'Rest 1min 30s' },
-          { name: 'Hack Squat (Machine)', sets: 3, reps: '10', rest: 90, notes: 'Rest 1min 30s' },
-          { name: 'Lying Leg Curl (Machine)', sets: 3, reps: '12', rest: 90, notes: 'Rest 1min 30s' },
-          { name: 'Hip Adduction (Machine)', sets: 3, reps: '15', rest: 90, notes: 'Rest 1min 30s' },
-          { name: 'Hip Abduction (Machine)', sets: 3, reps: '15', rest: 60, notes: '' },
-          { name: 'Seated Calf Raise', sets: 3, reps: '15', rest: 90, notes: 'Rest 1min 30s' },
-          { name: 'Squat (Barbell)', sets: 3, reps: '10', rest: 60, notes: '' },
-          { name: 'Leg Extension (Machine)', sets: 3, reps: '15', rest: 60, notes: '' }
+          { name: 'Mobilidade - Quadril (lateral)', sets: 2, reps: '', rest: 60, notes: 'Mobilidade não precisa de reps' },
+          { name: 'Mobilidade Quadril Cócoras', sets: 2, reps: '', rest: 60, notes: 'Mobilidade não precisa de reps' },
+          { name: 'Agachamento (multi)', sets: 3, reps: '8-12', rest: 120, notes: '' },
+          { name: 'Leg Press Horizontal (Subindo A Carga)', sets: 3, reps: '8-12', rest: 90, notes: 'Aumentar carga progressivamente' },
+          { name: 'Agachamento (hack)', sets: 3, reps: '10-12', rest: 90, notes: '' },
+          { name: 'Mesa Flexora (simultânea)', sets: 3, reps: '10-12', rest: 60, notes: '' },
+          { name: 'Cadeira Abdutora', sets: 3, reps: '12-15', rest: 60, notes: '' },
+          { name: 'Cadeira Adutora', sets: 3, reps: '12-15', rest: 60, notes: '' },
+          { name: 'Cadeira Extensora (simultânea)', sets: 3, reps: '10-12', rest: 60, notes: '' },
+          { name: 'Panturrilha (sentado)', sets: 3, reps: '15-20', rest: 60, notes: '' }
         ],
-        notes: 'Treino completo de lower body - Dados importados do Heavy App'
+        notes: 'Treino completo de lower body',
+        primaryMuscles: ['Abdutores', 'Anterior de coxa', 'Dorsal', 'Glúteo', 'Panturrilha', 'Posterior de coxa', 'Quadríceps']
       }
     },
-    referencesTags: ['training','legs','heavy-app']
+    referencesTags: ['training','legs','lower-body']
   }
 };
 
@@ -2172,6 +2175,101 @@ function goToTodayWorkout() {
   state.currentWorkoutDay = new Date().toISOString().split('T')[0];
   render();
 }
+
+// Show workout exercises form for registration
+function showWorkoutExercises(templateId) {
+  const template = templates[templateId];
+  if (!template) return;
+  
+  const session = template.sessions.A;
+  const formDiv = document.getElementById('workoutExercisesForm');
+  const exercisesList = document.getElementById('exercisesList');
+  
+  let html = `
+    <div class="bg-gradient-to-r from-purple-900 to-slate-800 p-4 rounded-lg mb-4">
+      <h4 class="font-bold text-xl text-purple-300 mb-2">${template.name}</h4>
+      <p class="text-slate-300">${template.description}</p>
+    </div>
+    <div class="space-y-4">
+  `;
+  
+  session.exercises.forEach((exercise, index) => {
+    const isMobility = exercise.name.toLowerCase().includes('mobilidade');
+    html += `
+      <div class="bg-slate-700 p-4 rounded-lg">
+        <h5 class="font-semibold text-lg mb-3">${exercise.name}</h5>
+        ${exercise.notes ? `<p class="text-slate-400 text-sm mb-3">💡 ${exercise.notes}</p>` : ''}
+        
+        <form onsubmit="handleQuickExerciseLog(event, '${exercise.name}', '${templateId}')" class="grid grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Séries</label>
+            <select name="sets" class="w-full px-3 py-2 rounded bg-slate-600 text-white" ${isMobility ? '' : 'required'}>
+              <option value="">-</option>
+              ${[1,2,3,4,5].map(n => `<option value="${n}" ${exercise.sets === n ? 'selected' : ''}>${n}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Repetições</label>
+            <select name="reps" class="w-full px-3 py-2 rounded bg-slate-600 text-white" ${isMobility ? '' : 'required'}>
+              <option value="">-</option>
+              ${[...Array(20)].map((_, i) => `<option value="${i+1}" ${exercise.reps === (i+1) ? 'selected' : ''}>${i+1}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Peso (kg)</label>
+            <input 
+              type="number" 
+              name="weight" 
+              min="1" 
+              max="300" 
+              step="0.5"
+              placeholder="0" 
+              class="w-full px-3 py-2 rounded bg-slate-600 text-white"
+            />
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="w-full bg-green-600 hover:bg-green-500 px-3 py-2 rounded font-semibold">
+              ✓ Registrar
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  exercisesList.innerHTML = html;
+  formDiv.classList.remove('hidden');
+  
+  // Scroll to form
+  formDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Hide workout exercises form
+function hideWorkoutExercises() {
+  const formDiv = document.getElementById('workoutExercisesForm');
+  formDiv.classList.add('hidden');
+}
+
+// Handle quick exercise log from the form
+function handleQuickExerciseLog(event, exerciseName, templateId) {
+  event.preventDefault();
+  
+  const form = event.target;
+  const sets = form.sets.value || '-';
+  const reps = form.reps.value || '-';
+  const weight = form.weight.value || '-';
+  
+  // Log the workout
+  handleLogWorkout(exerciseName, sets, reps, weight, templates[templateId].name);
+  
+  // Show success message
+  showNotification(`✅ ${exerciseName} registrado!`, 'success');
+  
+  // Reset form
+  form.reset();
+}
+
 
 /* ----------------------------- Exercise Library ----------------------------- */
 const EXERCISE_LIBRARY = [
@@ -3123,13 +3221,6 @@ function renderTreino(user) {
   const isToday = state.currentWorkoutDay === new Date().toISOString().split('T')[0];
   const dateLabel = isToday ? 'Hoje' : displayDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' });
   
-  // Group exercises by category
-  const categorizedExercises = {};
-  EXERCISE_LIBRARY.forEach(ex => {
-    if (!categorizedExercises[ex.category]) categorizedExercises[ex.category] = [];
-    categorizedExercises[ex.category].push(ex);
-  });
-  
   return `
     <!-- Day Navigation -->
     <div class="bg-slate-800 p-4 rounded mb-6">
@@ -3144,69 +3235,41 @@ function renderTreino(user) {
       ${!isToday ? `<div class="mt-2 text-center"><button onclick="goToTodayWorkout()" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Ir para Hoje</button></div>` : ''}
     </div>
 
-    <!-- Custom Workout Form -->
-    <div class="bg-slate-800 p-4 rounded mb-6">
-      <h3 class="font-bold text-xl mb-3">➕ Adicionar Exercício Personalizado</h3>
-      <form id="customWorkoutForm" class="space-y-3">
-        <div class="grid md:grid-cols-4 gap-3">
-          <input type="text" name="customExercise" placeholder="Nome do exercício" required class="px-3 py-2 rounded bg-slate-700 text-white" />
-          <input type="text" name="customSets" placeholder="Séries (ex: 3)" class="px-3 py-2 rounded bg-slate-700 text-white" />
-          <input type="text" name="customReps" placeholder="Repetições (ex: 12)" class="px-3 py-2 rounded bg-slate-700 text-white" />
-          <input type="text" name="customWeight" placeholder="Carga (kg)" class="px-3 py-2 rounded bg-slate-700 text-white" />
-        </div>
-        <button type="submit" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded font-semibold">Adicionar Exercício</button>
-      </form>
-      <p class="text-slate-300 text-sm mt-2">O exercício será registrado para ${dateLabel}.</p>
-    </div>
-
-    <!-- Exercise Library by Category -->
-    <div class="bg-slate-800 p-4 rounded mb-6">
-      <h3 class="font-bold text-xl mb-4">💪 Biblioteca de Exercícios</h3>
-      <div class="grid md:grid-cols-2 gap-4">
-        ${Object.keys(categorizedExercises).map(category => `
-          <div class="bg-slate-700 p-3 rounded">
-            <h4 class="font-semibold text-lg mb-2 text-purple-300">${category}</h4>
-            <div class="space-y-2">
-              ${categorizedExercises[category].map(ex => `
-                <div class="flex justify-between items-center bg-slate-800 p-2 rounded">
-                  <div>
-                    <p class="font-medium">${ex.name}</p>
-                    <p class="text-xs text-slate-400">${ex.equipment}</p>
-                  </div>
-                  <button data-exercise="${ex.name}" data-category="${category}" class="workout-register-btn bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">Registrar</button>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-
     <!-- Workout Templates -->
     <div class="bg-slate-800 p-4 rounded mb-6">
-      <h3 class="font-bold text-xl mb-3">📋 Templates de Treino</h3>
-      <div class="grid md:grid-cols-3 gap-3">
+      <h3 class="font-bold text-xl mb-3">🏋️ Selecione seu Treino</h3>
+      <div class="grid md:grid-cols-2 gap-4">
         ${Object.values(templates).map(t => `
-          <div class="bg-slate-700 p-3 rounded">
-            <p class="font-bold text-lg">${t.name}</p>
-            <p class="text-slate-300 text-sm mb-2">${t.description}</p>
-            <button onclick="applyTemplateToUser('${t.id}','${user.id}')" class="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-sm w-full">Aplicar Template</button>
-            <details class="mt-2">
-              <summary class="text-sm text-blue-300 cursor-pointer">Ver exercícios</summary>
-              <div class="mt-2 text-xs text-slate-300">
-                ${Object.keys(t.sessions).map(k=>`<strong>${k} — ${t.sessions[k].name}</strong><br/>${t.sessions[k].exercises.map(e=>`• ${e.name} ${e.sets?(' — ' + e.sets + ' x ' + e.reps):''}`).join('<br/>')}<br/><br/>`).join('')}
+          <div class="bg-gradient-to-br from-slate-700 to-slate-800 p-4 rounded-lg border border-purple-500/30">
+            <h4 class="font-bold text-xl mb-2 text-purple-300">${t.name}</h4>
+            <p class="text-slate-300 text-sm mb-3">${t.description}</p>
+            ${t.sessions.A.primaryMuscles ? `
+              <div class="mb-3 flex flex-wrap gap-1">
+                ${t.sessions.A.primaryMuscles.map(m => `<span class="text-xs px-2 py-1 bg-purple-900/50 text-purple-200 rounded">${m}</span>`).join('')}
               </div>
-            </details>
+            ` : ''}
+            <button onclick="showWorkoutExercises('${t.id}')" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded text-sm w-full font-semibold">
+              📋 Ver e Registrar Exercícios
+            </button>
           </div>
         `).join('')}
       </div>
+    </div>
+
+    <!-- Workout Exercise Form (Hidden by default, shown when template selected) -->
+    <div id="workoutExercisesForm" class="hidden bg-slate-800 p-4 rounded mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-xl">💪 Registrar Exercícios</h3>
+        <button onclick="hideWorkoutExercises()" class="text-red-400 hover:text-red-300">✕ Fechar</button>
+      </div>
+      <div id="exercisesList"></div>
     </div>
 
     <!-- Workout History for Selected Day -->
     <div class="bg-slate-800 p-4 rounded">
       <h3 class="font-bold text-xl mb-3">📋 Histórico de ${dateLabel}</h3>
       ${selectedDayWorkouts.length === 0 ? 
-        `<p class="text-slate-400">Nenhum treino registrado neste dia.</p>` :
+        `<p class="text-slate-400">Nenhum treino registrado neste dia. Selecione um treino acima e registre seus exercícios.</p>` :
         `<div class="space-y-2">
           ${selectedDayWorkouts.map(log => `
             <div class="flex justify-between items-center bg-slate-700 p-3 rounded">
