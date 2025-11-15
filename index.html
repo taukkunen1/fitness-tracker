@@ -2190,7 +2190,14 @@ function showWorkoutExercises(templateId) {
     `;
   });
   
-  html += '</div>';
+  html += `
+    <div class="mt-6 p-4 bg-gradient-to-r from-green-700 to-emerald-800 rounded-lg">
+      <button onclick="handleRegisterAllExercises('${templateId}')" class="w-full bg-white text-green-800 hover:bg-green-100 px-6 py-3 rounded-lg font-bold text-lg">
+        ✅ Registrar Todos os Exercícios
+      </button>
+      <p class="text-sm text-green-100 mt-2 text-center">Registra todos os exercícios acima de uma vez com os valores informados</p>
+    </div>
+  </div>`;
   exercisesList.innerHTML = html;
   formDiv.classList.remove('hidden');
   
@@ -2221,6 +2228,44 @@ function handleQuickExerciseLog(event, exerciseName, templateId) {
   
   // Reset form
   form.reset();
+}
+
+// Register all exercises from a template at once
+function handleRegisterAllExercises(templateId) {
+  const template = templates[templateId];
+  if (!template) return;
+  
+  const exercisesList = document.getElementById('exercisesList');
+  const forms = exercisesList.querySelectorAll('form');
+  
+  let registeredCount = 0;
+  let skippedCount = 0;
+  
+  forms.forEach((form, index) => {
+    const sets = form.sets.value;
+    const reps = form.reps.value;
+    const weight = form.weight.value || '-';
+    
+    // Only register if sets and reps are filled
+    if (sets && reps) {
+      const exercise = template.sessions.A.exercises[index];
+      if (exercise) {
+        handleLogWorkout(exercise.name, sets, reps, weight, template.name);
+        registeredCount++;
+      }
+    } else {
+      skippedCount++;
+    }
+  });
+  
+  if (registeredCount > 0) {
+    showNotification(`✅ ${registeredCount} exercício(s) registrado(s)!${skippedCount > 0 ? ` (${skippedCount} pulado(s) por falta de dados)` : ''}`, 'success');
+    
+    // Reset all forms
+    forms.forEach(form => form.reset());
+  } else {
+    showNotification('⚠️ Nenhum exercício foi registrado. Preencha pelo menos séries e repetições.', 'warning');
+  }
 }
 
 
@@ -3153,6 +3198,11 @@ function render() {
     attachWorkoutButtons();
     
     // attach workout delete buttons using event delegation
+    attachWorkoutDeleteButtons();
+  }
+  
+  // attach workout delete buttons if in exercicios tab
+  if (state.activeTab === 'exercicios') {
     attachWorkoutDeleteButtons();
   }
   
@@ -4533,7 +4583,7 @@ function renderEvolucao(bodyMetrics, user) {
                       <td class="py-2 px-2 text-center">${workout.avgHeartRate ? workout.avgHeartRate + ' bpm' : '-'}</td>
                       <td class="py-2 px-2 text-center">${intensityEmoji}</td>
                       <td class="py-2 px-2 text-center">
-                        <button onclick="event.stopPropagation(); handleDeleteWorkout('${workout.id}')" class="text-red-400 hover:text-red-300" title="Excluir treino">🗑️</button>
+                        <button onclick="event.stopPropagation(); handleDeleteWorkoutLog('${workout.id}')" class="text-red-400 hover:text-red-300" title="Excluir treino">🗑️</button>
                       </td>
                     </tr>
                   `;
@@ -4802,8 +4852,8 @@ function setupWorkoutFormListeners() {
   endTimeInput.addEventListener('change', updateDuration);
 }
 
-// Delete workout
-async function handleDeleteWorkout(workoutId) {
+// Delete workout log (detailed workout with duration, calories, etc.)
+async function handleDeleteWorkoutLog(workoutId) {
   if (!confirm('Deseja realmente excluir este treino?')) return;
   
   const user = state.users[state.activeUser];
@@ -4920,6 +4970,22 @@ function renderComparacao() {
       `).join('')}
     </div>
   `;
+}
+
+function handleDeleteComparison(comparisonId) {
+  if (!confirm('Deseja excluir esta comparação?')) return;
+  
+  // Remove from state.comparisons
+  state.comparisons = state.comparisons.filter(c => c.id !== comparisonId);
+  
+  // Save to database
+  dbPut(STORE_COMPARISONS, state.comparisons).then(() => {
+    showNotification('✅ Comparação excluída!', 'success');
+    render();
+  }).catch(err => {
+    console.error('Error deleting comparison:', err);
+    showNotification('❌ Erro ao excluir comparação', 'error');
+  });
 }
 
 function renderCiencia() {
@@ -5142,7 +5208,7 @@ function renderExercicios(user) {
                       <td class="py-2 px-2">${volume > 0 ? Math.round(volume) + ' kg' : '-'}</td>
                       <td class="py-2 px-2">
                         <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
-                        <button onclick="handleDeleteWorkout(${log.id})" class="text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
+                        <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
                       </td>
                     </tr>
                   `;
