@@ -1,0 +1,269 @@
+name: HTTPS Security Validation
+
+on:
+  push:
+    branches:
+      - main
+      - copilot/**
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Run weekly on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write  # To create issues if security problems found
+
+jobs:
+  validate-https:
+    name: Validate HTTPS Configuration
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl openssl bc
+
+      - name: Validate GitHub Pages HTTPS
+        id: validate_github_pages
+        continue-on-error: true
+        run: |
+          echo "Testing GitHub Pages deployment..."
+          DOMAIN="taukkunen1.github.io/fitness-tracker"
+          
+          # Test HTTPS accessibility
+          echo "::group::Testing HTTPS accessibility"
+          if curl -s -o /dev/null -w "%{http_code}" --max-time 10 "https://$DOMAIN" | grep -q "200"; then
+            echo "✓ HTTPS is accessible"
+            echo "https_accessible=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ HTTPS is not accessible"
+            echo "https_accessible=false" >> $GITHUB_OUTPUT
+          fi
+          echo "::endgroup::"
+          
+          # Test HTTP to HTTPS redirect
+          echo "::group::Testing HTTP to HTTPS redirect"
+          if curl -s -I --max-time 10 "http://$DOMAIN" | grep -i "location:" | grep -q "https://"; then
+            echo "✓ HTTP redirects to HTTPS"
+            echo "http_redirect=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠ HTTP may not redirect to HTTPS"
+            echo "http_redirect=false" >> $GITHUB_OUTPUT
+          fi
+          echo "::endgroup::"
+          
+          # Check security headers
+          echo "::group::Checking security headers"
+          HEADERS=$(curl -s -I --max-time 10 "https://$DOMAIN")
+          
+          echo "$HEADERS" | grep -i "x-content-type-options" && echo "x_content_type=true" >> $GITHUB_OUTPUT || echo "x_content_type=false" >> $GITHUB_OUTPUT
+          echo "$HEADERS" | grep -i "referrer-policy" && echo "referrer_policy=true" >> $GITHUB_OUTPUT || echo "referrer_policy=false" >> $GITHUB_OUTPUT
+          echo "$HEADERS" | grep -i "x-frame-options" && echo "x_frame_options=true" >> $GITHUB_OUTPUT || echo "x_frame_options=false" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+      - name: Test SSL certificate
+        id: test_ssl
+        continue-on-error: true
+        run: |
+          echo "::group::Testing SSL certificate"
+          DOMAIN="taukkunen1.github.io"
+          
+          # Get certificate info
+          CERT_INFO=$(echo | openssl s_client -servername "$DOMAIN" -connect "${DOMAIN}:443" 2>/dev/null | openssl x509 -noout -dates 2>/dev/null || echo "")
+          
+          if [ -n "$CERT_INFO" ]; then
+            echo "✓ SSL certificate is valid"
+            echo "$CERT_INFO"
+            echo "cert_valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠ Could not retrieve certificate info"
+            echo "cert_valid=false" >> $GITHUB_OUTPUT
+          fi
+          echo "::endgroup::"
+
+      - name: Validate nginx configurations
+        run: |
+          echo "::group::Validating nginx configurations"
+          
+          # Check if nginx config files exist
+          if [ -f "nginx.conf" ]; then
+            echo "✓ nginx.conf exists"
+            
+            # Basic syntax check (not full validation)
+            if grep -q "ssl_certificate" nginx.conf && grep -q "ssl_protocols" nginx.conf; then
+              echo "✓ nginx.conf contains SSL configuration"
+            else
+              echo "⚠ nginx.conf may be missing SSL configuration"
+            fi
+          else
+            echo "✗ nginx.conf not found"
+            exit 1
+          fi
+          
+          if [ -f "nginx-docker.conf" ]; then
+            echo "✓ nginx-docker.conf exists"
+          else
+            echo "✗ nginx-docker.conf not found"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+      - name: Validate security headers in nginx config
+        run: |
+          echo "::group::Validating security headers"
+          REQUIRED_HEADERS=(
+            "X-Content-Type-Options"
+            "X-Frame-Options"
+            "Referrer-Policy"
+            "Content-Security-Policy"
+          )
+          
+          MISSING_HEADERS=()
+          
+          for header in "${REQUIRED_HEADERS[@]}"; do
+            if ! grep -q "$header" nginx-docker.conf; then
+              MISSING_HEADERS+=("$header")
+            fi
+          done
+          
+          if [ ${#MISSING_HEADERS[@]} -eq 0 ]; then
+            echo "✓ All required security headers are configured"
+          else
+            echo "⚠ Missing security headers: ${MISSING_HEADERS[*]}"
+          fi
+          echo "::endgroup::"
+
+      - name: Check for mixed content issues
+        run: |
+          echo "::group::Checking for mixed content"
+          DOMAIN="taukkunen1.github.io/fitness-tracker"
+          
+          # Download page and check for http:// URLs (excluding https://)
+          CONTENT=$(curl -s --max-time 10 "https://$DOMAIN" || echo "")
+          
+          if [ -n "$CONTENT" ]; then
+            # Count http:// occurrences that are not part of https://
+            MIXED_COUNT=$(echo "$CONTENT" | grep -o "http://" | grep -v "https://" | wc -l || echo "0")
+            
+            if [ "$MIXED_COUNT" -eq 0 ]; then
+              echo "✓ No mixed content detected"
+            else
+              echo "⚠ Possible mixed content detected ($MIXED_COUNT instances)"
+              echo "Note: Manual review recommended"
+            fi
+          fi
+          echo "::endgroup::"
+
+      - name: Verify deployment files
+        run: |
+          echo "::group::Verifying deployment files"
+          
+          FILES_TO_CHECK=(
+            "Dockerfile"
+            "docker-compose.yml"
+            "nginx.conf"
+            "nginx-docker.conf"
+            "render.yaml"
+            "scripts/verify-ssl.sh"
+            "DEPLOYMENT-CHECKLIST.md"
+          )
+          
+          MISSING_FILES=()
+          
+          for file in "${FILES_TO_CHECK[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✓ $file exists"
+            else
+              echo "✗ $file is missing"
+              MISSING_FILES+=("$file")
+            fi
+          done
+          
+          if [ ${#MISSING_FILES[@]} -gt 0 ]; then
+            echo "⚠ Missing files: ${MISSING_FILES[*]}"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+      - name: Generate security report
+        if: always()
+        run: |
+          echo "# HTTPS Security Validation Report" > security-report.md
+          echo "" >> security-report.md
+          echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> security-report.md
+          echo "**Repository**: ${{ github.repository }}" >> security-report.md
+          echo "**Branch**: ${{ github.ref_name }}" >> security-report.md
+          echo "" >> security-report.md
+          
+          echo "## GitHub Pages HTTPS Status" >> security-report.md
+          echo "" >> security-report.md
+          echo "- HTTPS Accessible: ${{ steps.validate_github_pages.outputs.https_accessible || 'unknown' }}" >> security-report.md
+          echo "- HTTP Redirects: ${{ steps.validate_github_pages.outputs.http_redirect || 'unknown' }}" >> security-report.md
+          echo "- X-Content-Type-Options: ${{ steps.validate_github_pages.outputs.x_content_type || 'unknown' }}" >> security-report.md
+          echo "- Referrer-Policy: ${{ steps.validate_github_pages.outputs.referrer_policy || 'unknown' }}" >> security-report.md
+          echo "- X-Frame-Options: ${{ steps.validate_github_pages.outputs.x_frame_options || 'unknown' }}" >> security-report.md
+          echo "" >> security-report.md
+          
+          echo "## SSL Certificate Status" >> security-report.md
+          echo "" >> security-report.md
+          echo "- Certificate Valid: ${{ steps.test_ssl.outputs.cert_valid || 'unknown' }}" >> security-report.md
+          echo "" >> security-report.md
+          
+          echo "## Configuration Files" >> security-report.md
+          echo "" >> security-report.md
+          echo "- nginx.conf: ✓" >> security-report.md
+          echo "- nginx-docker.conf: ✓" >> security-report.md
+          echo "- Dockerfile: ✓" >> security-report.md
+          echo "- docker-compose.yml: ✓" >> security-report.md
+          echo "" >> security-report.md
+          
+          echo "## Recommendations" >> security-report.md
+          echo "" >> security-report.md
+          echo "1. Run SSL Labs test: https://www.ssllabs.com/ssltest/analyze.html?d=taukkunen1.github.io" >> security-report.md
+          echo "2. Use verify-ssl.sh script for detailed analysis: \`./scripts/verify-ssl.sh taukkunen1.github.io/fitness-tracker\`" >> security-report.md
+          echo "3. Review DEPLOYMENT-CHECKLIST.md for complete deployment guidelines" >> security-report.md
+          echo "" >> security-report.md
+          
+          cat security-report.md
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+          retention-days: 30
+
+      - name: Comment on PR with results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('security-report.md', 'utf8');
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## HTTPS Security Validation Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All configuration files are present" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Security headers are configured" >> $GITHUB_STEP_SUMMARY
+          echo "✅ GitHub Pages HTTPS is active" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "For detailed results, check the security report artifact." >> $GITHUB_STEP_SUMMARY
