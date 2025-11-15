@@ -1916,6 +1916,19 @@ function getAllUniqueExercises(user) {
   return Array.from(exercises).sort();
 }
 
+function getWorkoutsByDate(user, date) {
+  if (!user.workoutHistory) return [];
+  
+  return user.workoutHistory
+    .filter(w => w.date === date)
+    .sort((a, b) => {
+      // Sort by exercise name for consistent ordering
+      if (a.exercise < b.exercise) return -1;
+      if (a.exercise > b.exercise) return 1;
+      return 0;
+    });
+}
+
 function getExerciseStats(user, exerciseName) {
   const history = getExerciseHistory(user, exerciseName);
   
@@ -5117,7 +5130,7 @@ function renderDeveloper(user) {
 
 function renderExercicios(user) {
   const exercises = getAllUniqueExercises(user);
-  const selectedExercise = state.selectedExercise || (exercises.length > 0 ? exercises[0] : null);
+  const selectedExercise = state.selectedExercise || (exercises.length > 0 ? 'MOSTRAR_TODOS' : null);
   
   if (!selectedExercise && exercises.length === 0) {
     return `
@@ -5128,6 +5141,124 @@ function renderExercicios(user) {
     `;
   }
   
+  // Handle "Mostrar Todos" special case
+  if (selectedExercise === 'MOSTRAR_TODOS') {
+    // Initialize currentWorkoutDay if not set
+    if (!state.currentWorkoutDay) {
+      state.currentWorkoutDay = new Date().toISOString().split('T')[0];
+    }
+    
+    const workoutsOnDate = getWorkoutsByDate(user, state.currentWorkoutDay);
+    const dateLabel = new Date(state.currentWorkoutDay + 'T12:00:00').toLocaleDateString('pt-BR');
+    
+    return `
+      <div class="space-y-6">
+        <!-- Exercise Selector -->
+        <div class="bg-slate-800 p-4 rounded">
+          <h3 class="font-bold text-xl mb-4">💪 Histórico por Exercício</h3>
+          <div class="mb-4">
+            <label class="block text-sm text-slate-300 mb-2">Selecione um exercício:</label>
+            <select onchange="state.selectedExercise=this.value; render();" class="w-full md:w-1/2 px-4 py-2 rounded bg-slate-700 text-white">
+              <option value="MOSTRAR_TODOS" selected>📅 Mostrar Todos (por data)</option>
+              ${exercises.map(ex => `<option value="${ex}">${ex}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        
+        <!-- Date Selector for "Mostrar Todos" -->
+        <div class="bg-gradient-to-r from-blue-700 to-cyan-800 p-6 rounded-xl">
+          <h4 class="font-bold text-xl mb-4">📅 Selecione a Data</h4>
+          <div class="flex items-center gap-4">
+            <button onclick="state.currentWorkoutDay = new Date(new Date(state.currentWorkoutDay + 'T12:00:00').getTime() - 86400000).toISOString().split('T')[0]; render();" 
+                    class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded font-semibold">
+              ◀ Anterior
+            </button>
+            <input type="date" value="${state.currentWorkoutDay}" 
+                   onchange="state.currentWorkoutDay=this.value; render();" 
+                   class="px-4 py-2 rounded bg-slate-700 text-white flex-1 max-w-xs" />
+            <button onclick="state.currentWorkoutDay = new Date(new Date(state.currentWorkoutDay + 'T12:00:00').getTime() + 86400000).toISOString().split('T')[0]; render();" 
+                    class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded font-semibold">
+              Próximo ▶
+            </button>
+            <button onclick="state.currentWorkoutDay = new Date().toISOString().split('T')[0]; render();" 
+                    class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded font-semibold">
+              Hoje
+            </button>
+          </div>
+        </div>
+        
+        <!-- Workouts on Selected Date -->
+        <div class="bg-slate-800 p-4 rounded">
+          <h4 class="font-bold text-lg mb-4">🏋️ Todos os Treinos de ${dateLabel}</h4>
+          ${workoutsOnDate.length === 0 ? 
+            '<p class="text-slate-400">Nenhum treino registrado nesta data.</p>' :
+            `<div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-slate-600">
+                    <th class="py-2 px-2 text-left">Exercício</th>
+                    <th class="py-2 px-2 text-left">Séries</th>
+                    <th class="py-2 px-2 text-left">Reps</th>
+                    <th class="py-2 px-2 text-left">Carga (kg)</th>
+                    <th class="py-2 px-2 text-left">Volume</th>
+                    <th class="py-2 px-2 text-left">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${workoutsOnDate.map(log => {
+                    const weight = parseNumber(log.weight);
+                    const reps = parseNumber(log.reps);
+                    const sets = parseNumber(log.sets);
+                    const volume = weight * reps * sets;
+                    
+                    return `
+                      <tr class="border-b border-slate-700 hover:bg-slate-700">
+                        <td class="py-2 px-2 font-semibold text-blue-300">${log.exercise}</td>
+                        <td class="py-2 px-2">${log.sets}</td>
+                        <td class="py-2 px-2">${log.reps}</td>
+                        <td class="py-2 px-2">${log.weight}</td>
+                        <td class="py-2 px-2">${volume > 0 ? Math.round(volume) + ' kg' : '-'}</td>
+                        <td class="py-2 px-2">
+                          <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
+                          <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+              
+              <!-- Summary Stats -->
+              <div class="mt-4 p-4 bg-gradient-to-r from-purple-700 to-indigo-800 rounded-lg">
+                <h5 class="font-bold mb-2">📊 Resumo do Treino</h5>
+                <div class="grid md:grid-cols-3 gap-4 text-center">
+                  <div class="bg-white/10 backdrop-blur p-3 rounded">
+                    <p class="text-sm text-purple-200 mb-1">Total de Exercícios</p>
+                    <p class="text-2xl font-bold">${workoutsOnDate.length}</p>
+                  </div>
+                  <div class="bg-white/10 backdrop-blur p-3 rounded">
+                    <p class="text-sm text-purple-200 mb-1">Volume Total</p>
+                    <p class="text-2xl font-bold">${Math.round(workoutsOnDate.reduce((sum, log) => {
+                      const weight = parseNumber(log.weight);
+                      const reps = parseNumber(log.reps);
+                      const sets = parseNumber(log.sets);
+                      return sum + (weight * reps * sets);
+                    }, 0))} kg</p>
+                  </div>
+                  <div class="bg-white/10 backdrop-blur p-3 rounded">
+                    <p class="text-sm text-purple-200 mb-1">Exercícios Únicos</p>
+                    <p class="text-2xl font-bold">${new Set(workoutsOnDate.map(w => w.exercise)).size}</p>
+                  </div>
+                </div>
+              </div>
+            </div>`
+          }
+        </div>
+      </div>
+    `;
+  }
+  
+  // Regular exercise view
   const history = selectedExercise ? getExerciseHistory(user, selectedExercise) : [];
   const stats = selectedExercise ? getExerciseStats(user, selectedExercise) : {};
   
@@ -5139,6 +5270,7 @@ function renderExercicios(user) {
         <div class="mb-4">
           <label class="block text-sm text-slate-300 mb-2">Selecione um exercício:</label>
           <select onchange="state.selectedExercise=this.value; render();" class="w-full md:w-1/2 px-4 py-2 rounded bg-slate-700 text-white">
+            <option value="MOSTRAR_TODOS">📅 Mostrar Todos (por data)</option>
             ${exercises.map(ex => `<option value="${ex}" ${ex === selectedExercise ? 'selected' : ''}>${ex}</option>`).join('')}
           </select>
         </div>
