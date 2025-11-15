@@ -1,8 +1,8 @@
-# 🚀 Guia de Performance - Fitness Tracker Pro
+# 🚀 Guia de Performance - Pilgrim
 
 ## 📚 Documentação Completa
 
-Este conjunto de documentos apresenta **estratégias exclusivas de otimização de performance** que diferenciam o Fitness Tracker Pro de outros aplicativos fitness no mercado.
+Este conjunto de documentos apresenta **estratégias exclusivas de otimização de performance** que diferenciam o Pilgrim de outros aplicativos fitness no mercado.
 
 ---
 
@@ -281,14 +281,14 @@ runPerformanceBenchmark()
 
 ## ⚖️ Licença
 
-Este projeto e sua documentação seguem a mesma licença do Fitness Tracker Pro.  
+Este projeto e sua documentação seguem a mesma licença do Pilgrim.  
 Consulte [LICENSE](./LICENSE) para detalhes.
 
 ---
 
 ## 🎯 Conclusão
 
-Este conjunto de otimizações transforma o Fitness Tracker Pro em uma aplicação de **classe mundial** em termos de performance, competindo diretamente com apps nativos.
+Este conjunto de otimizações transforma o Pilgrim em uma aplicação de **classe mundial** em termos de performance, competindo diretamente com apps nativos.
 
 **Principais benefícios:**
 - ✨ Experiência de usuário premium
@@ -306,5 +306,5 @@ Este conjunto de otimizações transforma o Fitness Tracker Pro em uma aplicaç�
 **Versão:** 1.0.0  
 **Status:** ✅ Documentação completa | ⏳ Implementação em progresso
 
-**Criado por:** Fitness Tracker Pro Team  
+**Criado por:** Pilgrim Team  
 **Baseado em:** Best practices da indústria + inovações exclusivas

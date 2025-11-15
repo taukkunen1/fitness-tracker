@@ -1,4 +1,4 @@
-# 💪 Fitness Tracker Pro
+# 🚶‍♂️ Pilgrim
 
 Sistema completo e seguro de acompanhamento de treino e nutrição baseado em evidências científicas, com autenticação, painel administrativo e recursos avançados de monitoramento.
 

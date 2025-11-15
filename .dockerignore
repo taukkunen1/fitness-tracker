@@ -1,0 +1,27 @@
+# Git files
+.git
+.github
+.gitignore
+
+# Documentation files that don't need to be in the container
+docs/deployment/*.sh
+docs/deployment/*.bat
+
+# Security and analysis docs (keep docs/ for reference)
+SECURITY.md
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
