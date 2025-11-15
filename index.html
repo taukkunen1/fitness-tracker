@@ -2865,38 +2865,84 @@ function showWorkoutExercises(templateId) {
         <h5 class="font-semibold text-lg mb-3">${exercise.name}</h5>
         ${exercise.notes ? `<p class="text-slate-400 text-sm mb-3">💡 ${exercise.notes}</p>` : ''}
         
-        <form onsubmit="handleQuickExerciseLog(event, '${exercise.name}', '${templateId}')" class="grid grid-cols-4 gap-3">
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Séries</label>
-            <select name="sets" class="w-full px-3 py-2 rounded bg-slate-600 text-white" ${isMobility ? '' : 'required'}>
-              <option value="">-</option>
-              ${[1,2,3,4,5].map(n => `<option value="${n}" ${exercise.sets === n ? 'selected' : ''}>${n}</option>`).join('')}
-            </select>
+        <form onsubmit="handleQuickExerciseLog(event, '${exercise.name}', '${templateId}')" class="space-y-3">
+          <!-- Série 1 -->
+          <div class="bg-slate-600/50 p-3 rounded">
+            <p class="text-xs font-semibold text-purple-300 mb-2">Série 1</p>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Reps</label>
+                <input type="number" name="set1_reps" min="1" max="50" placeholder="Ex: 10" 
+                       class="w-full px-2 py-2 rounded bg-slate-700 text-white text-sm" ${isMobility ? '' : 'required'} />
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Peso (kg)</label>
+                <input type="number" name="set1_weight" min="0" max="300" step="0.5" placeholder="Ex: 20" 
+                       class="w-full px-2 py-2 rounded bg-slate-700 text-white text-sm" ${isMobility ? '' : 'required'} />
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Volume</label>
+                <input type="text" readonly class="w-full px-2 py-2 rounded bg-slate-800 text-green-300 text-sm font-semibold" 
+                       id="volume_${exercise.name.replace(/[^a-z0-9]/gi, '_')}_1" value="0 kg" />
+              </div>
+            </div>
           </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Repetições</label>
-            <select name="reps" class="w-full px-3 py-2 rounded bg-slate-600 text-white" ${isMobility ? '' : 'required'}>
-              <option value="">-</option>
-              ${[...Array(20)].map((_, i) => `<option value="${i+1}" ${(exercise.reps === (i+1).toString() || (exercise.reps === '3' && i+1 === 3) || (!exercise.reps && i+1 === 3)) ? 'selected' : ''}>${i+1}</option>`).join('')}
-            </select>
+          
+          <!-- Série 2 -->
+          <div class="bg-slate-600/50 p-3 rounded">
+            <p class="text-xs font-semibold text-purple-300 mb-2">Série 2</p>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Reps</label>
+                <input type="number" name="set2_reps" min="1" max="50" placeholder="Ex: 10" 
+                       class="w-full px-2 py-2 rounded bg-slate-700 text-white text-sm" ${isMobility ? '' : 'required'} />
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Peso (kg)</label>
+                <input type="number" name="set2_weight" min="0" max="300" step="0.5" placeholder="Ex: 20" 
+                       class="w-full px-2 py-2 rounded bg-slate-700 text-white text-sm" ${isMobility ? '' : 'required'} />
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Volume</label>
+                <input type="text" readonly class="w-full px-2 py-2 rounded bg-slate-800 text-green-300 text-sm font-semibold" 
+                       id="volume_${exercise.name.replace(/[^a-z0-9]/gi, '_')}_2" value="0 kg" />
+              </div>
+            </div>
           </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Peso (kg)</label>
-            <input 
-              type="number" 
-              name="weight" 
-              min="1" 
-              max="300" 
-              step="0.5"
-              placeholder="0" 
-              class="w-full px-3 py-2 rounded bg-slate-600 text-white"
-            />
+          
+          <!-- Série 3 -->
+          <div class="bg-slate-600/50 p-3 rounded">
+            <p class="text-xs font-semibold text-purple-300 mb-2">Série 3</p>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Reps</label>
+                <input type="number" name="set3_reps" min="1" max="50" placeholder="Ex: 10" 
+                       class="w-full px-2 py-2 rounded bg-slate-700 text-white text-sm" ${isMobility ? '' : 'required'} />
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Peso (kg)</label>
+                <input type="number" name="set3_weight" min="0" max="300" step="0.5" placeholder="Ex: 20" 
+                       class="w-full px-2 py-2 rounded bg-slate-700 text-white text-sm" ${isMobility ? '' : 'required'} />
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Volume</label>
+                <input type="text" readonly class="w-full px-2 py-2 rounded bg-slate-800 text-green-300 text-sm font-semibold" 
+                       id="volume_${exercise.name.replace(/[^a-z0-9]/gi, '_')}_3" value="0 kg" />
+              </div>
+            </div>
           </div>
-          <div class="flex items-end">
-            <button type="submit" class="w-full bg-green-600 hover:bg-green-500 px-3 py-2 rounded font-semibold">
-              ✓ Registrar
-            </button>
+          
+          <!-- Volume Total -->
+          <div class="bg-gradient-to-r from-green-700 to-emerald-800 p-3 rounded">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-semibold">Volume Total:</span>
+              <span class="text-xl font-bold text-green-300" id="total_volume_${exercise.name.replace(/[^a-z0-9]/gi, '_')}">0 kg</span>
+            </div>
           </div>
+          
+          <button type="submit" class="w-full bg-green-600 hover:bg-green-500 px-4 py-3 rounded font-semibold">
+            ✓ Registrar Exercício
+          </button>
         </form>
       </div>
     `;
@@ -2913,6 +2959,43 @@ function showWorkoutExercises(templateId) {
   exercisesList.innerHTML = html;
   formDiv.classList.remove('hidden');
   
+  // Add event listeners for real-time volume calculation
+  setTimeout(() => {
+    session.exercises.forEach((exercise) => {
+      const cleanName = exercise.name.replace(/[^a-z0-9]/gi, '_');
+      for (let i = 1; i <= 3; i++) {
+        const repsInput = document.querySelector(`input[name="set${i}_reps"]`);
+        const weightInput = document.querySelector(`input[name="set${i}_weight"]`);
+        if (repsInput && weightInput) {
+          const updateVolume = () => {
+            const reps = parseFloat(repsInput.value) || 0;
+            const weight = parseFloat(weightInput.value) || 0;
+            const volume = reps * weight;
+            const volumeField = document.getElementById(`volume_${cleanName}_${i}`);
+            if (volumeField) {
+              volumeField.value = volume > 0 ? `${volume.toFixed(1)} kg` : '0 kg';
+            }
+            
+            // Update total volume
+            let totalVolume = 0;
+            for (let j = 1; j <= 3; j++) {
+              const r = parseFloat(document.querySelector(`input[name="set${j}_reps"]`)?.value) || 0;
+              const w = parseFloat(document.querySelector(`input[name="set${j}_weight"]`)?.value) || 0;
+              totalVolume += r * w;
+            }
+            const totalField = document.getElementById(`total_volume_${cleanName}`);
+            if (totalField) {
+              totalField.textContent = totalVolume > 0 ? `${totalVolume.toFixed(1)} kg` : '0 kg';
+            }
+          };
+          
+          repsInput.addEventListener('input', updateVolume);
+          weightInput.addEventListener('input', updateVolume);
+        }
+      }
+    });
+  }, 100);
+  
   // Scroll to form
   formDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -2928,18 +3011,62 @@ function handleQuickExerciseLog(event, exerciseName, templateId) {
   event.preventDefault();
   
   const form = event.target;
-  const sets = form.sets.value || '-';
-  const reps = form.reps.value || '-';
-  const weight = form.weight.value || '-';
   
-  // Log the workout
-  handleLogWorkout(exerciseName, sets, reps, weight, templates[templateId].name);
+  // Collect data for all 3 sets
+  const setsDetails = [];
+  let totalVolume = 0;
+  let hasAnyData = false;
   
-  // Show success message
-  showNotification(`✅ ${exerciseName} registrado!`, 'success');
+  for (let i = 1; i <= 3; i++) {
+    const reps = parseFloat(form[`set${i}_reps`]?.value) || 0;
+    const weight = parseFloat(form[`set${i}_weight`]?.value) || 0;
+    
+    if (reps > 0 || weight > 0) {
+      hasAnyData = true;
+      const volume = reps * weight;
+      setsDetails.push({
+        setNumber: i,
+        reps: reps,
+        weight: weight,
+        volume: volume
+      });
+      totalVolume += volume;
+    }
+  }
+  
+  if (!hasAnyData) {
+    alert('Por favor, preencha pelo menos uma série com repetições e peso.');
+    return;
+  }
+  
+  // For backward compatibility, store summary in old format
+  const avgReps = Math.round(setsDetails.reduce((sum, s) => sum + s.reps, 0) / setsDetails.length);
+  const avgWeight = (setsDetails.reduce((sum, s) => sum + s.weight, 0) / setsDetails.length).toFixed(1);
+  
+  // Log the workout with detailed sets information
+  handleLogWorkout(
+    exerciseName, 
+    setsDetails.length.toString(), 
+    avgReps.toString(), 
+    avgWeight, 
+    templates[templateId].name,
+    setsDetails  // Pass the detailed sets data
+  );
+  
+  // Show success message with volume
+  showNotification(`✅ ${exerciseName} registrado! Volume total: ${totalVolume.toFixed(1)} kg`, 'success');
   
   // Reset form
   form.reset();
+  
+  // Reset volume displays
+  const cleanName = exerciseName.replace(/[^a-z0-9]/gi, '_');
+  for (let i = 1; i <= 3; i++) {
+    const volumeField = document.getElementById(`volume_${cleanName}_${i}`);
+    if (volumeField) volumeField.value = '0 kg';
+  }
+  const totalField = document.getElementById(`total_volume_${cleanName}`);
+  if (totalField) totalField.textContent = '0 kg';
 }
 
 // Register all exercises from a template at once
@@ -4197,19 +4324,62 @@ function renderTreino(user) {
       <h3 class="font-bold text-xl mb-3">📋 Histórico de ${dateLabel}</h3>
       ${selectedDayWorkouts.length === 0 ? 
         `<p class="text-slate-400">Nenhum treino registrado neste dia. Selecione um treino acima e registre seus exercícios.</p>` :
-        `<div class="space-y-2">
-          ${selectedDayWorkouts.map(log => `
-            <div class="flex justify-between items-center bg-slate-700 p-3 rounded">
-              <div class="flex-1">
-                <p class="font-semibold">${log.exercise || log.workout}</p>
-                <p class="text-slate-300 text-xs">${log.category ? `${log.category} • ` : ''}${log.time}${log.sets && log.sets !== '-' ? ` • ${log.sets}x${log.reps}` : ''}${log.weight && log.weight !== '-' ? ` • ${log.weight}kg` : ''}</p>
+        `<div class="space-y-3">
+          ${selectedDayWorkouts.map(log => {
+            // Check if we have detailed sets information
+            const hasSetsDetails = log.setsDetails && log.setsDetails.length > 0;
+            
+            let setsDisplay = '';
+            let totalVolume = 0;
+            
+            if (hasSetsDetails) {
+              // Display individual sets with volumes
+              setsDisplay = '<div class="mt-2 space-y-1">';
+              log.setsDetails.forEach(set => {
+                setsDisplay += `
+                  <div class="flex justify-between items-center text-xs bg-slate-800 p-2 rounded">
+                    <span class="text-purple-300 font-semibold">Série ${set.setNumber}:</span>
+                    <span class="text-slate-300">${set.reps} reps × ${set.weight} kg</span>
+                    <span class="text-green-400 font-semibold">= ${set.volume.toFixed(1)} kg</span>
+                  </div>
+                `;
+                totalVolume += set.volume;
+              });
+              setsDisplay += `
+                <div class="flex justify-between items-center text-sm bg-gradient-to-r from-green-700 to-emerald-800 p-2 rounded font-bold">
+                  <span>Volume Total:</span>
+                  <span class="text-green-300">${totalVolume.toFixed(1)} kg</span>
+                </div>
+              </div>`;
+            } else {
+              // Old format - calculate simple volume
+              const weight = parseNumber(log.weight);
+              const reps = parseNumber(log.reps);
+              const sets = parseNumber(log.sets);
+              totalVolume = weight * reps * sets;
+            }
+            
+            return `
+              <div class="bg-slate-700 p-3 rounded">
+                <div class="flex justify-between items-center">
+                  <div class="flex-1">
+                    <p class="font-semibold text-lg">${log.exercise || log.workout}</p>
+                    <p class="text-slate-300 text-xs mt-1">
+                      ${log.category ? `${log.category} • ` : ''}${log.time}
+                      ${!hasSetsDetails && log.sets && log.sets !== '-' ? ` • ${log.sets}x${log.reps}` : ''}
+                      ${!hasSetsDetails && log.weight && log.weight !== '-' ? ` • ${log.weight}kg` : ''}
+                      ${!hasSetsDetails && totalVolume > 0 ? ` • Vol: ${Math.round(totalVolume)} kg` : ''}
+                    </p>
+                  </div>
+                  <div class="flex gap-2">
+                    <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300" title="Editar séries/reps/carga">✏️</button>
+                    <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
+                  </div>
+                </div>
+                ${setsDisplay}
               </div>
-              <div class="flex gap-2">
-                <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300" title="Editar séries/reps/carga">✏️</button>
-                <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
-              </div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>`
       }
     </div>
@@ -6371,65 +6541,59 @@ function renderExercicios(user) {
           <h4 class="font-bold text-lg mb-4">🏋️ Todos os Treinos de ${dateLabel}</h4>
           ${workoutsOnDate.length === 0 ? 
             '<p class="text-slate-400">Nenhum treino registrado nesta data.</p>' :
-            `<div class="overflow-x-auto">
-              <table class="w-full text-sm">
-                <thead>
-                  <tr class="border-b border-slate-600">
-                    <th class="py-2 px-2 text-left">Exercício</th>
-                    <th class="py-2 px-2 text-left">Séries</th>
-                    <th class="py-2 px-2 text-left">Reps</th>
-                    <th class="py-2 px-2 text-left">Carga (kg)</th>
-                    <th class="py-2 px-2 text-left">Volume</th>
-                    <th class="py-2 px-2 text-left">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${workoutsOnDate.map(log => {
-                    const weight = parseNumber(log.weight);
-                    const reps = parseNumber(log.reps);
-                    const sets = parseNumber(log.sets);
-                    const volume = weight * reps * sets;
-                    
-                    return `
-                      <tr class="border-b border-slate-700 hover:bg-slate-700">
-                        <td class="py-2 px-2 font-semibold text-blue-300">${log.exercise}</td>
-                        <td class="py-2 px-2">${log.sets}</td>
-                        <td class="py-2 px-2">${log.reps}</td>
-                        <td class="py-2 px-2">${log.weight}</td>
-                        <td class="py-2 px-2">${volume > 0 ? Math.round(volume) + ' kg' : '-'}</td>
-                        <td class="py-2 px-2">
-                          <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
-                          <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
-                        </td>
-                      </tr>
+            `<div class="space-y-3">
+              ${workoutsOnDate.map(log => {
+                const hasSetsDetails = log.setsDetails && log.setsDetails.length > 0;
+                let totalVolume = 0;
+                let setsDisplay = '';
+                
+                if (hasSetsDetails) {
+                  // Display individual sets
+                  setsDisplay = '<div class="mt-2 space-y-1">';
+                  log.setsDetails.forEach(set => {
+                    setsDisplay += `
+                      <div class="flex justify-between items-center text-xs bg-slate-700 p-2 rounded">
+                        <span class="text-purple-300 font-semibold">Série ${set.setNumber}:</span>
+                        <span class="text-slate-300">${set.reps} reps × ${set.weight} kg</span>
+                        <span class="text-green-400 font-semibold">= ${set.volume.toFixed(1)} kg</span>
+                      </div>
                     `;
-                  }).join('')}
-                </tbody>
-              </table>
-              
-              <!-- Summary Stats -->
-              <div class="mt-4 p-4 bg-gradient-to-r from-purple-700 to-indigo-800 rounded-lg">
-                <h5 class="font-bold mb-2">📊 Resumo do Treino</h5>
-                <div class="grid md:grid-cols-3 gap-4 text-center">
-                  <div class="bg-white/10 backdrop-blur p-3 rounded">
-                    <p class="text-sm text-purple-200 mb-1">Total de Exercícios</p>
-                    <p class="text-2xl font-bold">${workoutsOnDate.length}</p>
+                    totalVolume += set.volume;
+                  });
+                  setsDisplay += `
+                    <div class="flex justify-between items-center text-sm bg-gradient-to-r from-green-700 to-emerald-800 p-2 rounded font-bold">
+                      <span>Volume Total:</span>
+                      <span class="text-green-300">${totalVolume.toFixed(1)} kg</span>
+                    </div>
+                  </div>`;
+                } else {
+                  // Old format
+                  const weight = parseNumber(log.weight);
+                  const reps = parseNumber(log.reps);
+                  const sets = parseNumber(log.sets);
+                  totalVolume = weight * reps * sets;
+                }
+                
+                return `
+                  <div class="bg-slate-700 p-3 rounded">
+                    <div class="flex justify-between items-center">
+                      <div class="flex-1">
+                        <p class="font-semibold text-lg text-blue-300">${log.exercise}</p>
+                        ${!hasSetsDetails ? `
+                          <p class="text-slate-300 text-sm mt-1">
+                            ${log.sets} séries × ${log.reps} reps × ${log.weight} kg = ${totalVolume > 0 ? Math.round(totalVolume) + ' kg' : '-'}
+                          </p>
+                        ` : ''}
+                      </div>
+                      <div class="flex gap-2">
+                        <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
+                        <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
+                      </div>
+                    </div>
+                    ${setsDisplay}
                   </div>
-                  <div class="bg-white/10 backdrop-blur p-3 rounded">
-                    <p class="text-sm text-purple-200 mb-1">Volume Total</p>
-                    <p class="text-2xl font-bold">${Math.round(workoutsOnDate.reduce((sum, log) => {
-                      const weight = parseNumber(log.weight);
-                      const reps = parseNumber(log.reps);
-                      const sets = parseNumber(log.sets);
-                      return sum + (weight * reps * sets);
-                    }, 0))} kg</p>
-                  </div>
-                  <div class="bg-white/10 backdrop-blur p-3 rounded">
-                    <p class="text-sm text-purple-200 mb-1">Exercícios Únicos</p>
-                    <p class="text-2xl font-bold">${new Set(workoutsOnDate.map(w => w.exercise)).size}</p>
-                  </div>
-                </div>
-              </div>
+                `;
+              }).join('')}
             </div>`
           }
         </div>
@@ -6491,41 +6655,59 @@ function renderExercicios(user) {
         <h4 class="font-bold text-lg mb-4">📋 Histórico Completo</h4>
         ${history.length === 0 ? 
           '<p class="text-slate-400">Nenhum registro encontrado para este exercício.</p>' :
-          `<div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-slate-600">
-                  <th class="py-2 px-2 text-left">Data</th>
-                  <th class="py-2 px-2 text-left">Séries</th>
-                  <th class="py-2 px-2 text-left">Reps</th>
-                  <th class="py-2 px-2 text-left">Carga (kg)</th>
-                  <th class="py-2 px-2 text-left">Volume</th>
-                  <th class="py-2 px-2 text-left">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${history.slice().reverse().map(log => {
-                  const weight = parseNumber(log.weight);
-                  const reps = parseNumber(log.reps);
-                  const sets = parseNumber(log.sets);
-                  const volume = weight * reps * sets;
-                  
-                  return `
-                    <tr class="border-b border-slate-700 hover:bg-slate-700">
-                      <td class="py-2 px-2">${new Date(log.date).toLocaleDateString('pt-BR')}</td>
-                      <td class="py-2 px-2">${log.sets}</td>
-                      <td class="py-2 px-2">${log.reps}</td>
-                      <td class="py-2 px-2">${log.weight}</td>
-                      <td class="py-2 px-2">${volume > 0 ? Math.round(volume) + ' kg' : '-'}</td>
-                      <td class="py-2 px-2">
-                        <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
-                        <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
-                      </td>
-                    </tr>
+          `<div class="space-y-3">
+            ${history.slice().reverse().map(log => {
+              const hasSetsDetails = log.setsDetails && log.setsDetails.length > 0;
+              let totalVolume = 0;
+              let setsDisplay = '';
+              
+              if (hasSetsDetails) {
+                // Display individual sets
+                setsDisplay = '<div class="mt-2 space-y-1">';
+                log.setsDetails.forEach(set => {
+                  setsDisplay += `
+                    <div class="flex justify-between items-center text-xs bg-slate-700 p-2 rounded">
+                      <span class="text-purple-300 font-semibold">Série ${set.setNumber}:</span>
+                      <span class="text-slate-300">${set.reps} reps × ${set.weight} kg</span>
+                      <span class="text-green-400 font-semibold">= ${set.volume.toFixed(1)} kg</span>
+                    </div>
                   `;
-                }).join('')}
-              </tbody>
-            </table>
+                  totalVolume += set.volume;
+                });
+                setsDisplay += `
+                  <div class="flex justify-between items-center text-sm bg-gradient-to-r from-green-700 to-emerald-800 p-2 rounded font-bold">
+                    <span>Volume Total:</span>
+                    <span class="text-green-300">${totalVolume.toFixed(1)} kg</span>
+                  </div>
+                </div>`;
+              } else {
+                // Old format
+                const weight = parseNumber(log.weight);
+                const reps = parseNumber(log.reps);
+                const sets = parseNumber(log.sets);
+                totalVolume = weight * reps * sets;
+              }
+              
+              return `
+                <div class="bg-slate-700 p-3 rounded">
+                  <div class="flex justify-between items-center">
+                    <div class="flex-1">
+                      <p class="text-sm text-slate-400">${new Date(log.date).toLocaleDateString('pt-BR')}</p>
+                      ${!hasSetsDetails ? `
+                        <p class="text-slate-300 text-sm mt-1">
+                          ${log.sets} séries × ${log.reps} reps × ${log.weight} kg = ${totalVolume > 0 ? Math.round(totalVolume) + ' kg' : '-'}
+                        </p>
+                      ` : ''}
+                    </div>
+                    <div class="flex gap-2">
+                      <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar">✏️</button>
+                      <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir">🗑️</button>
+                    </div>
+                  </div>
+                  ${setsDisplay}
+                </div>
+              `;
+            }).join('')}
           </div>`
         }
       </div>
