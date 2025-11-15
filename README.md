@@ -25,6 +25,11 @@ Sistema completo e seguro de acompanhamento de treino e nutrição baseado em ev
 - **Gerenciamento de Sessões**: Tokens seguros, timeout configurável (24h)
 - **Auditoria Completa**: Logs de todos os eventos de segurança
 - **Roles e Permissões**: Sistema de admin com controle de acesso
+- **🆕 AI-Powered Security**: Detecção inteligente de ameaças baseada em pesquisas 2025
+- **🆕 Adaptive Defense**: Rate limiting dinâmico que se adapta a ameaças
+- **🆕 Zero Trust**: Validação contínua de sessões e controle context-aware
+- **🆕 Privacy-First**: Analytics 100% local sem transmissão de dados
+- **🆕 Security Posture**: Framework DCCI para avaliação holística de segurança
 
 ### 👔 Painel Administrativo (v2.0)
 - **Dashboard Admin**: Visão geral de tarefas, usuários e sistema
@@ -173,6 +178,20 @@ Acesse a pasta [`docs/`](docs/) para:
 ### Segurança Enterprise (v2.0)
 - 🔐 **Criptografia PBKDF2** com 100.000 iterações
 - 🛡️ **Proteção contra Brute Force** (bloqueio após 5 tentativas)
+- ⚡ **Rate Limiting** (máximo 10 req/min)
+- 🔒 **XSS/CSRF Protection** em todas as operações
+- 📊 **Auditoria Completa** de eventos de segurança
+
+### 🆕 Segurança Avançada Baseada em Pesquisas 2025
+O sistema implementa conceitos de pesquisas científicas de ponta:
+
+- 🤖 **AI-Powered Threat Detection**: Detecção inteligente baseada em padrões (LLM concepts)
+- 🔄 **Adaptive Security**: Limites dinâmicos que se ajustam a ameaças em tempo real
+- 🔐 **Zero Trust Architecture**: Validação contínua e controle context-aware
+- 🛡️ **Privacy-Preserving Analytics**: 100% local, zero transmissão externa
+- 📊 **DCCI Framework**: Avaliação holística de postura de segurança
+
+**Documentação Completa**: Ver [docs/security/](docs/security/) para detalhes técnicos e implementações
 - ⚡ **Rate Limiting** (máximo 10 req/min)
 - 🔒 **XSS/CSRF Protection** em todas as operações
 - 📊 **Auditoria Completa** de eventos de segurança

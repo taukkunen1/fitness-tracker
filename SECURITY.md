@@ -2,7 +2,53 @@
 
 ## Visão Geral
 
-Este documento descreve as medidas de segurança implementadas no Fitness Tracker Pro para proteção contra ataques modernos em 2025.
+Este documento descreve as medidas de segurança implementadas no Fitness Tracker Pro para proteção contra ataques modernos em 2025, incluindo recursos avançados baseados em pesquisas científicas de ponta.
+
+## 🎓 Recursos Avançados de Segurança (2025 Research-Based)
+
+O sistema implementa conceitos de pesquisas científicas recentes sobre segurança cibernética:
+
+### Documentação de Pesquisa
+- **[Cybersecurity Research 2025](docs/security/CYBERSECURITY-RESEARCH-2025.md)** - Visão geral das pesquisas e implementações
+- **[Advanced Security Implementation](docs/security/ADVANCED-SECURITY-IMPLEMENTATION.md)** - Guia técnico detalhado
+- **[Zero Trust & Privacy Framework](docs/security/ZERO-TRUST-PRIVACY-FRAMEWORK.md)** - Arquitetura Zero Trust e privacidade
+
+### Recursos Implementados
+
+#### 1. AI-Powered Security Agent
+**Baseado em**: "From Texts to Shields: Convergence of LLMs and Cybersecurity" (Li et al., 2024)
+- Detecção de ameaças baseada em padrões
+- Análise comportamental de anomalias
+- Respostas automatizadas a ameaças
+- Sistema de explicação de decisões de segurança
+
+#### 2. Adaptive Rate Limiting
+**Baseado em**: "Adaptive Cybersecurity: Dynamically Retrainable Firewalls" (Ahmadi, 2024)
+- Limites de taxa dinâmicos baseados em padrões de ameaça
+- Avaliação de nível de ameaça em tempo real
+- Modificação de thresholds em tempo real
+- Aprendizado de padrões de ataque
+
+#### 3. Privacy-Preserving Analytics
+**Baseado em**: "Federated Learning-Driven Cybersecurity Framework for IoT Networks" (Rahmati, 2024)
+- Arquitetura 100% local-first
+- Analytics anonimizados
+- Zero transmissão externa de dados
+- Princípios de privacy-by-design
+
+#### 4. Zero Trust Framework
+**Baseado em**: "Quantum-driven Zero Trust Framework" (Ahmed et al., 2024)
+- Validação contínua de sessão
+- Controle de acesso context-aware
+- Políticas de segurança dinâmicas
+- Revogação baseada em anomalias
+
+#### 5. DCCI Security Posture
+**Baseado em**: "Dynamic Capabilities in Cybersecurity Intelligence" (Pigola, 2024)
+- Dashboard de postura de segurança
+- Métricas multi-dimensionais
+- Avaliação de capacidades
+- Recomendações estratégicas
 
 ## 🛡️ Proteções Implementadas
 
@@ -422,10 +468,18 @@ Para reportar vulnerabilidades de segurança:
 
 ## 📚 Referências
 
+### Pesquisas Acadêmicas 2025
+1. **Li, T., Yang, Y., Pan, Y., Zhu, Q.** (2024). "From Texts to Shields: Convergence of Large Language Models and Cybersecurity". arXiv. [https://arxiv.org/abs/2409.19755](https://arxiv.org/abs/2409.19755)
+2. **Ahmadi, S.** (2024). "Adaptive Cybersecurity: Dynamically Retrainable Firewalls for Real-Time Network Protection". arXiv. [https://arxiv.org/abs/2410.04834](https://arxiv.org/abs/2410.04834)
+3. **Rahmati, M.** (2024). "Federated Learning-Driven Cybersecurity Framework for IoT Networks with Privacy-Preserving and Real-Time Threat Detection". arXiv. [https://arxiv.org/abs/2410.05017](https://arxiv.org/abs/2410.05017)
+4. **Ahmed, S., Shihab, I. F., Khokhar, A.** (2024). "Quantum-driven Zero Trust Framework with Dynamic Anomaly Detection in 7G Technology: A Neural Network Approach". arXiv. [https://arxiv.org/abs/2410.05888](https://arxiv.org/abs/2410.05888)
+5. **Pigola, A.** (2024). "Desenvolver e Investir em Capacidades Dinâmicas nos Negócios para Melhorar a Inteligência de Segurança Cibernética". Prêmio CAPES de Tese. [gov.br](https://www.gov.br/capes/pt-br/assuntos/noticias/tese-sobre-inteligencia-em-seguranca-cibernetica-vence-o-premio-capes-de-tese)
+
 ### Padrões e Frameworks
 - [OWASP Top 10 2021](https://owasp.org/www-project-top-ten/)
 - [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
 - [NIST Digital Identity Guidelines](https://pages.nist.gov/800-63-3/)
+- [NIST Zero Trust Architecture (SP 800-207)](https://csrc.nist.gov/publications/detail/sp/800-207/final)
 
 ### Especificações Técnicas
 - [PBKDF2 RFC 2898](https://www.rfc-editor.org/rfc/rfc2898)
