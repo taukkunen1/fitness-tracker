@@ -1,8 +1,8 @@
-# 🚀 Guia de Otimização de Performance - Fitness Tracker Pro
+# 🚀 Guia de Otimização de Performance - Pilgrim
 
 ## 📋 Sumário Executivo
 
-Este documento apresenta **estratégias exclusivas e avançadas** de otimização de performance para o Fitness Tracker Pro, diferenciando-se de outras aplicações fitness no mercado. As técnicas aqui apresentadas foram desenvolvidas especificamente para aplicações web offline-first com armazenamento local intensivo.
+Este documento apresenta **estratégias exclusivas e avançadas** de otimização de performance para o Pilgrim, diferenciando-se de outras aplicações fitness no mercado. As técnicas aqui apresentadas foram desenvolvidas especificamente para aplicações web offline-first com armazenamento local intensivo.
 
 ---
 
@@ -1450,7 +1450,7 @@ npm run analyze
 
 ## 🎯 Conclusão
 
-Este guia apresenta **10+ estratégias exclusivas** de otimização que diferenciam o Fitness Tracker Pro de outros aplicativos fitness no mercado. A combinação dessas técnicas resulta em:
+Este guia apresenta **10+ estratégias exclusivas** de otimização que diferenciam o Pilgrim de outros aplicativos fitness no mercado. A combinação dessas técnicas resulta em:
 
 ✨ **Performance superior** - 66% mais rápido
 💾 **Menor uso de recursos** - 50% menos memória
@@ -1462,7 +1462,7 @@ Este guia apresenta **10+ estratégias exclusivas** de otimização que diferenc
 
 ---
 
-**Documento criado por:** Fitness Tracker Pro Team  
+**Documento criado por:** Pilgrim Team  
 **Data:** 2025-11-05  
 **Versão:** 1.0.0  
 **Status:** 🔥 Em implementação

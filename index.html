@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Fitness Tracker Pro — Full (verbose)</title>
+  <title>Pilgrim — Fitness Tracker</title>
   
   <!-- ===== SECURITY HEADERS 2025 ===== -->
   <!-- Note: CSP and X-Frame-Options should be set via HTTP headers, not meta tags -->
@@ -14,7 +14,7 @@
   <meta name="referrer" content="no-referrer">
   
   <!-- Copyright e aviso de proteção -->
-  <meta name="copyright" content="© 2025 Fitness Tracker Pro. Todos os direitos reservados." />
+  <meta name="copyright" content="© 2025 Pilgrim. Todos os direitos reservados." />
   <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
   
   <script src="https://cdn.tailwindcss.com"></script>
@@ -46,7 +46,7 @@
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen">
   <!--
-    Fitness Tracker Pro - Versão completa e verbosa (2025-11)
+    Pilgrim - Versão completa e verbosa (2025-11)
     Objetivos desta versão:
     - Restaurar/Manter todas as informações antigas (marmitas, templates, treinos, etc.)
     - Nunca excluir dados permanentemente sem confirmação explícita do usuário;
@@ -1163,7 +1163,7 @@ async function exportSuggestionsToGitHub() {
   }));
   
   // Create markdown file
-  let markdown = '# Sugestões de Usuários - Fitness Tracker Pro\n\n';
+  let markdown = '# Sugestões de Usuários - Pilgrim\n\n';
   markdown += `**Data de Exportação:** ${new Date().toLocaleString('pt-BR')}\n\n`;
   markdown += '---\n\n';
   
@@ -2974,7 +2974,7 @@ function render() {
     <header class="bg-black/40 backdrop-blur-lg border-b border-purple-500/30 sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">💪 Fitness Tracker Pro — Full</h1>
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">🚶‍♂️ Pilgrim</h1>
           <p class="text-purple-300 text-sm mt-1">Usuário: <strong>${authState.currentAccount.username}</strong> | Email: ${authState.currentAccount.email}</p>
         </div>
         <div class="flex gap-2 items-center">
@@ -5312,7 +5312,7 @@ function renderUserSuggestions() {
       <!-- Header -->
       <div class="bg-gradient-to-r from-green-900 to-teal-900 p-6 rounded-xl border border-green-500">
         <h2 class="text-3xl font-bold mb-2">💡 Sugestões e Feedback</h2>
-        <p class="text-green-200">Compartilhe suas ideias para melhorar o Fitness Tracker Pro</p>
+        <p class="text-green-200">Compartilhe suas ideias para melhorar o Pilgrim</p>
       </div>
 
       <!-- Submit Suggestion Form -->
@@ -5465,9 +5465,12 @@ function renderLoginPage() {
       <div class="max-w-md w-full">
         <!-- Logo and Title -->
         <div class="text-center mb-8">
-          <h1 class="text-5xl font-bold mb-2">💪</h1>
+          <div class="text-5xl font-bold mb-2">
+            <!-- Pilgrim journey logo: walking figure with path dots -->
+            <span style="letter-spacing: -0.1em;">🚶‍♂️···⛰️</span>
+          </div>
           <h2 class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
-            Fitness Tracker Pro
+            Pilgrim
           </h2>
           <p class="text-slate-300 text-sm">Sistema seguro de acompanhamento fitness</p>
         </div>
@@ -5644,7 +5647,7 @@ function renderLoginPage() {
             <p class="text-xs mt-1">O primeiro usuário registrado será automaticamente promovido a administrador</p>
           </div>
           <p>🔒 Seus dados ficam armazenados apenas no seu navegador</p>
-          <p>© 2025 Fitness Tracker Pro - Todos os direitos reservados</p>
+          <p>© 2025 Pilgrim - Todos os direitos reservados</p>
         </div>
       </div>
     </div>
@@ -5983,7 +5986,7 @@ async function deleteTaskConfirm(taskId) {
 async function exportTasksToMarkdown() {
   const tasks = await getAllTasks();
   
-  let markdown = '# Roadmap - Fitness Tracker Pro\n\n';
+  let markdown = '# Roadmap - Pilgrim\n\n';
   markdown += `**Data:** ${new Date().toLocaleString('pt-BR')}\n\n`;
   markdown += '---\n\n';
   

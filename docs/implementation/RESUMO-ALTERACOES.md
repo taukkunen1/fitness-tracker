@@ -1,4 +1,4 @@
-# 📋 Resumo das Alterações - Fitness Tracker Pro
+# 📋 Resumo das Alterações - Pilgrim
 
 **Data:** 05 de Novembro de 2025  
 **Status:** ✅ CONCLUÍDO
@@ -256,7 +256,7 @@ Tracking de progressão:
 
 ---
 
-## 🌟 Diferenciais do Fitness Tracker Pro
+## 🌟 Diferenciais do Pilgrim
 
 ### Comparado com concorrentes:
 
@@ -495,7 +495,7 @@ Tracking de progressão:
 
 ## 🎉 Conclusão
 
-O Fitness Tracker Pro agora está:
+O Pilgrim agora está:
 - ✅ **Funcionando perfeitamente** (erro corrigido)
 - ✅ **Mais completo** (calculadora + banco de alimentos)
 - ✅ **Mais educacional** (guias e exemplos)

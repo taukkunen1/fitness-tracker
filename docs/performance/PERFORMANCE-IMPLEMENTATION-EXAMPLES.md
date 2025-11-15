@@ -1,6 +1,6 @@
 # 🔧 Exemplos de Implementação - Otimizações de Performance
 
-Este documento fornece exemplos práticos de como integrar as otimizações do guia principal no Fitness Tracker Pro existente.
+Este documento fornece exemplos práticos de como integrar as otimizações do guia principal no Pilgrim existente.
 
 ---
 
