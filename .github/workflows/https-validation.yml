@@ -16,6 +16,7 @@ on:
 permissions:
   contents: read
   issues: write  # To create issues if security problems found
+  pull-requests: write  # To comment on PRs with security reports
 
 jobs:
   validate-https:
