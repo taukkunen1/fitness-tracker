@@ -1293,15 +1293,15 @@ const initialUsers = (function() {
       bodyMetrics: [{
         id: 'm_pedro_' + now,
         date: new Date().toISOString().split('T')[0],
-        weight: 70.65,
-        bodyFat: 19.9,
+        weight: 68.95,
+        bodyFat: 18.8,
         muscleMass: 28.9,
         visceralFat: 8,
         waterPercent: 55.0,
-        waterWeight: parseFloat((70.65 * 0.55).toFixed(2)),
-        bmr: Math.round(10 * 70.65 + 6.25 * 175 - 5 * 30 + 5),
+        waterWeight: parseFloat((68.95 * 0.55).toFixed(2)),
+        bmr: Math.round(10 * 68.95 + 6.25 * 175 - 5 * 30 + 5),
         muscleSize: 40,
-        bmi: 23.1,
+        bmi: parseFloat((68.95 / ((175/100) * (175/100))).toFixed(1)),
         // Segmented muscle mass (kg) - based on bioimpedance analysis
         muscleMassRightArm: 3.2,
         muscleMassLeftArm: 3.1,
@@ -1330,21 +1330,29 @@ const initialUsers = (function() {
         metabolicAge: 28, // years - metabolic age
         bodyAge: 29, // years - biological/body age
         // Circumferences (cm) - for tracking muscle growth
-        chest: 98,
-        waist: 85,
-        hips: 95,
-        rightArm: 35,
-        leftArm: 34.5,
-        rightThigh: 58,
-        leftThigh: 57.5,
-        rightCalf: 38,
-        leftCalf: 37.5,
-        neck: 38,
-        shoulders: 112
+        chest: 93.5, // Peito
+        waist: 80.5, // Cintura
+        hips: 88.5, // Quadris
+        rightArm: 27, // Bíceps Direito
+        leftArm: 28, // Bíceps Esquerdo
+        rightThigh: 52, // Coxa Direita
+        leftThigh: 51.5, // Coxa Esquerda
+        rightCalf: 35, // Panturrilha Direita
+        leftCalf: 34.5, // Panturrilha Esquerda
+        neck: 36.5, // Pescoço
+        shoulders: 106.5, // Ombro
+        // Additional measurements from bioimpedance
+        rightForearm: 26.5, // Antebraço Direito
+        leftForearm: 26, // Antebraço Esquerdo
+        abdomen: 84.5 // Abdômen
       }],
       goals: { weight: 75, bodyFat: 15, muscleMass: 32 },
       customPrograms: {},
-      progressPhotos: []
+      progressPhotos: [],
+      // API and Developer settings
+      apiKey: 'fa507d87-7469-44d3-ae05-ba394af832d4',
+      webhookUrl: '',
+      webhookAuthHeader: ''
     },
     valentina: {
       id: 'valentina',
@@ -2677,9 +2685,12 @@ function handleAddMetrics(e) {
     // Circumferences
     chest: parseFloat(formData.get('chest')) || 0,
     waist: parseFloat(formData.get('waist')) || 0,
+    abdomen: parseFloat(formData.get('abdomen')) || 0,
     hips: parseFloat(formData.get('hips')) || 0,
     rightArm: parseFloat(formData.get('rightArm')) || 0,
     leftArm: parseFloat(formData.get('leftArm')) || 0,
+    rightForearm: parseFloat(formData.get('rightForearm')) || 0,
+    leftForearm: parseFloat(formData.get('leftForearm')) || 0,
     rightThigh: parseFloat(formData.get('rightThigh')) || 0,
     leftThigh: parseFloat(formData.get('leftThigh')) || 0,
     rightCalf: parseFloat(formData.get('rightCalf')) || 0,
@@ -2711,6 +2722,22 @@ function handleDeleteMetric(metricId) {
     addOrUpdateUser(user);
     showNotification('✅ Medida excluída e movida para archive', 'success');
   });
+}
+
+function handleWebhookFormSubmit(e) {
+  e.preventDefault();
+  const webhookUrl = document.getElementById('webhookUrl').value;
+  const webhookAuthHeader = document.getElementById('webhookAuthHeader').value;
+  
+  const user = state.users[state.activeUser];
+  if (!user) return alert('Usuário não encontrado');
+  
+  user.webhookUrl = webhookUrl;
+  user.webhookAuthHeader = webhookAuthHeader;
+  addOrUpdateUser(user);
+  
+  alert('✅ Webhook configurado com sucesso!');
+  render();
 }
 
 /* ----------------------------- Profiles handlers ----------------------------- */
@@ -2842,6 +2869,53 @@ function exportMuscleEvolutionCSV(userId) {
   a.download = `${userId}_muscle_evolution_${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ----------------------------- API Key and Webhook Management ----------------------------- */
+function generateApiKey(userId) {
+  const user = state.users[userId];
+  if (!user) return alert('Usuário não encontrado');
+  
+  // Generate a UUID v4 style API key
+  const apiKey = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+  
+  user.apiKey = apiKey;
+  addOrUpdateUser(user);
+  alert('✅ API Key gerada com sucesso!');
+  render();
+}
+
+function revokeApiKey(userId) {
+  if (!confirm('Tem certeza que deseja revogar a API Key? Isso pode quebrar integrações existentes.')) return;
+  
+  const user = state.users[userId];
+  if (!user) return alert('Usuário não encontrado');
+  
+  user.apiKey = '';
+  addOrUpdateUser(user);
+  alert('✅ API Key revogada com sucesso!');
+  render();
+}
+
+function copyToClipboard(text) {
+  if (!text) return alert('Nenhum texto para copiar');
+  
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ Copiado para a área de transferência!');
+  }).catch(err => {
+    alert('❌ Erro ao copiar: ' + err);
+  });
+}
+
+function toggleWebhookAuthVisibility() {
+  const input = document.getElementById('webhookAuthHeader');
+  if (!input) return;
+  
+  input.type = input.type === 'password' ? 'text' : 'password';
 }
 
 /* ----------------------------- References helper for UI ----------------------------- */
@@ -2994,6 +3068,9 @@ function render() {
 
     <div class="max-w-7xl mx-auto px-4 py-6">
       <div class="flex flex-wrap gap-3 mb-6">
+        ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao','developer'].map(tab => `
+          <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
+            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : '👨‍💻 Developer'}
         ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao'].map(tab => `
           <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
             ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : '📈 Evolução'}
@@ -3027,6 +3104,7 @@ function render() {
         ${state.activeTab === 'nutricao' ? renderNutricao(currentUser) : ''}
         ${state.activeTab === 'alimentacao' ? renderAlimentacao() : ''}
         ${state.activeTab === 'evolucao' ? renderEvolucao(bodyMetrics, currentUser) : ''}
+        ${state.activeTab === 'developer' ? renderDeveloper(currentUser) : ''}
         ${state.activeTab === 'admin_tasks' && isAdmin() ? renderAdminTasks() : ''}
         ${state.activeTab === 'admin_suggestions' && isAdmin() ? renderAdminSuggestions() : ''}
         ${state.activeTab === 'admin_security' && isAdmin() ? renderAdminSecurity() : ''}
@@ -3107,6 +3185,12 @@ function render() {
     loadAndDisplayUserSuggestions();
     const suggestionForm = document.getElementById('suggestionForm');
     if (suggestionForm) suggestionForm.addEventListener('submit', handleSuggestionFormSubmit);
+  }
+  
+  // Developer tab - webhook form
+  if (state.activeTab === 'developer') {
+    const webhookForm = document.getElementById('webhookForm');
+    if (webhookForm) webhookForm.addEventListener('submit', handleWebhookFormSubmit);
   }
   
   // Log page access for monitoring (only when authenticated)
@@ -4081,15 +4165,18 @@ function renderEvolucao(bodyMetrics, user) {
           <div class="grid md:grid-cols-4 gap-3">
             <input type="number" name="chest" step="0.1" placeholder="Peito" class="px-3 py-2 rounded bg-slate-600 text-white"/>
             <input type="number" name="waist" step="0.1" placeholder="Cintura" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="abdomen" step="0.1" placeholder="Abdômen" class="px-3 py-2 rounded bg-slate-600 text-white"/>
             <input type="number" name="hips" step="0.1" placeholder="Quadril" class="px-3 py-2 rounded bg-slate-600 text-white"/>
             <input type="number" name="shoulders" step="0.1" placeholder="Ombros" class="px-3 py-2 rounded bg-slate-600 text-white"/>
-            <input type="number" name="rightArm" step="0.1" placeholder="Braço Direito" class="px-3 py-2 rounded bg-slate-600 text-white"/>
-            <input type="number" name="leftArm" step="0.1" placeholder="Braço Esquerdo" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="neck" step="0.1" placeholder="Pescoço" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="rightArm" step="0.1" placeholder="Bíceps Direito" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="leftArm" step="0.1" placeholder="Bíceps Esquerdo" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="rightForearm" step="0.1" placeholder="Antebraço Direito" class="px-3 py-2 rounded bg-slate-600 text-white"/>
+            <input type="number" name="leftForearm" step="0.1" placeholder="Antebraço Esquerdo" class="px-3 py-2 rounded bg-slate-600 text-white"/>
             <input type="number" name="rightThigh" step="0.1" placeholder="Coxa Direita" class="px-3 py-2 rounded bg-slate-600 text-white"/>
             <input type="number" name="leftThigh" step="0.1" placeholder="Coxa Esquerda" class="px-3 py-2 rounded bg-slate-600 text-white"/>
             <input type="number" name="rightCalf" step="0.1" placeholder="Panturrilha Direita" class="px-3 py-2 rounded bg-slate-600 text-white"/>
             <input type="number" name="leftCalf" step="0.1" placeholder="Panturrilha Esquerda" class="px-3 py-2 rounded bg-slate-600 text-white"/>
-            <input type="number" name="neck" step="0.1" placeholder="Pescoço" class="px-3 py-2 rounded bg-slate-600 text-white"/>
           </div>
         </div>
 
@@ -4190,8 +4277,12 @@ function renderEvolucao(bodyMetrics, user) {
                   <div class="bg-slate-800 p-3 rounded">
                     <p class="text-slate-400 text-xs mb-2">📏 Circunferências (cm)</p>
                     <p>Peito: ${latest.chest} | Cintura: ${latest.waist}</p>
-                    <p>Braço D: ${latest.rightArm} | E: ${latest.leftArm}</p>
+                    ${latest.abdomen ? `<p>Abdômen: ${latest.abdomen} | Quadril: ${latest.hips}</p>` : `<p>Quadril: ${latest.hips}</p>`}
+                    <p>Ombro: ${latest.shoulders} | Pescoço: ${latest.neck}</p>
+                    <p>Bíceps D: ${latest.rightArm} | E: ${latest.leftArm}</p>
+                    ${latest.rightForearm ? `<p>Antebraço D: ${latest.rightForearm} | E: ${latest.leftForearm}</p>` : ''}
                     <p>Coxa D: ${latest.rightThigh} | E: ${latest.leftThigh}</p>
+                    <p>Panturrilha D: ${latest.rightCalf} | E: ${latest.leftCalf}</p>
                   </div>
                 ` : ''}
                 ${latest.tdee ? `
@@ -4859,6 +4950,102 @@ function renderCiencia() {
             </div>
           </div>
         `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderDeveloper(user) {
+  // Initialize API fields if they don't exist
+  if (!user.apiKey) user.apiKey = '';
+  if (!user.webhookUrl) user.webhookUrl = '';
+  if (!user.webhookAuthHeader) user.webhookAuthHeader = '';
+  
+  return `
+    <div class="space-y-6">
+      <!-- API Key Section -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h3 class="text-2xl font-bold mb-4">👨‍💻 Developer</h3>
+        <p class="text-slate-300 mb-4">Generate an API key to create your own ways of accessing your workout data. Use it at your own risk as we may change the project's structure or discontinue it entirely.</p>
+        <p class="text-slate-300 mb-4">Visit the official documentation for our API here.</p>
+        
+        <div class="bg-slate-700 p-4 rounded-lg mb-4">
+          <label class="block text-sm font-semibold mb-2">Generated API Key:</label>
+          <div class="flex gap-2">
+            <input type="text" id="apiKeyInput" value="${user.apiKey}" readonly class="flex-1 px-4 py-2 rounded bg-slate-600 text-white font-mono" />
+            <button onclick="copyToClipboard('${user.apiKey}')" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-semibold">📋 Copy</button>
+            ${user.apiKey ? `<button onclick="revokeApiKey('${user.id}')" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-semibold">🗑️ Revoke</button>` : ''}
+          </div>
+        </div>
+        
+        ${!user.apiKey ? `
+          <button onclick="generateApiKey('${user.id}')" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-lg font-semibold">
+            🔑 Generate API Key
+          </button>
+        ` : ''}
+      </div>
+      
+      <!-- Webhooks Section -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h3 class="text-2xl font-bold mb-4">🔗 Webhooks</h3>
+        <p class="text-slate-300 mb-4">Subscribe to our webhook and get notified when you save a new workout. When a new workout is created, we will send a POST request to your provided URL with the following JSON payload, and we expect your application to respond with a 200 OK status code within 5 seconds.</p>
+        
+        <div class="bg-slate-700 p-4 rounded-lg mb-4">
+          <pre class="text-sm text-green-300 overflow-x-auto"><code>{
+  "id": "00000000-0000-0000-0000-000000000001",
+  "payload": {
+    "workoutId": "f1085cdb-32b2-4003-967d-53a3af8eaecb"
+  }
+}</code></pre>
+        </div>
+        
+        <form id="webhookForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold mb-2">Url you want to get notified on:</label>
+            <input type="url" id="webhookUrl" value="${user.webhookUrl}" placeholder="https://mywebhook.com/notify" class="w-full px-4 py-2 rounded bg-slate-700 text-white" />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-semibold mb-2">Your authorization header, that we'll send along with the provided url:</label>
+            <div class="flex gap-2">
+              <input type="password" id="webhookAuthHeader" value="${user.webhookAuthHeader}" placeholder="Bearer myauthtoken" class="flex-1 px-4 py-2 rounded bg-slate-700 text-white" />
+              <button type="button" onclick="toggleWebhookAuthVisibility()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded">👁️ show</button>
+            </div>
+          </div>
+          
+          <button type="submit" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-lg font-semibold">
+            📡 Subscribe
+          </button>
+        </form>
+      </div>
+      
+      <!-- API Documentation Section -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h3 class="text-2xl font-bold mb-4">📚 API Documentation</h3>
+        <p class="text-slate-300 mb-4">Use your API key to access your workout data programmatically.</p>
+        
+        <div class="space-y-4">
+          <div class="bg-slate-700 p-4 rounded-lg">
+            <h4 class="font-bold text-lg mb-2">GET /api/workouts</h4>
+            <p class="text-slate-300 text-sm mb-2">Retrieve all workout history for the authenticated user.</p>
+            <pre class="text-xs text-green-300 overflow-x-auto bg-slate-800 p-2 rounded"><code>curl -H "Authorization: Bearer ${user.apiKey || 'YOUR_API_KEY'}" https://api.fitness-tracker.com/workouts</code></pre>
+          </div>
+          
+          <div class="bg-slate-700 p-4 rounded-lg">
+            <h4 class="font-bold text-lg mb-2">GET /api/metrics</h4>
+            <p class="text-slate-300 text-sm mb-2">Retrieve body metrics and bioimpedance data.</p>
+            <pre class="text-xs text-green-300 overflow-x-auto bg-slate-800 p-2 rounded"><code>curl -H "Authorization: Bearer ${user.apiKey || 'YOUR_API_KEY'}" https://api.fitness-tracker.com/metrics</code></pre>
+          </div>
+          
+          <div class="bg-slate-700 p-4 rounded-lg">
+            <h4 class="font-bold text-lg mb-2">POST /api/workouts</h4>
+            <p class="text-slate-300 text-sm mb-2">Create a new workout entry.</p>
+            <pre class="text-xs text-green-300 overflow-x-auto bg-slate-800 p-2 rounded"><code>curl -X POST -H "Authorization: Bearer ${user.apiKey || 'YOUR_API_KEY'}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"exercise":"Bench Press","sets":3,"reps":10,"weight":80}' \\
+  https://api.fitness-tracker.com/workouts</code></pre>
+          </div>
+        </div>
       </div>
     </div>
   `;
