@@ -4583,7 +4583,7 @@ function renderEvolucao(bodyMetrics, user) {
                       <td class="py-2 px-2 text-center">${workout.avgHeartRate ? workout.avgHeartRate + ' bpm' : '-'}</td>
                       <td class="py-2 px-2 text-center">${intensityEmoji}</td>
                       <td class="py-2 px-2 text-center">
-                        <button onclick="event.stopPropagation(); handleDeleteWorkout('${workout.id}')" class="text-red-400 hover:text-red-300" title="Excluir treino">🗑️</button>
+                        <button onclick="event.stopPropagation(); handleDeleteWorkoutLog('${workout.id}')" class="text-red-400 hover:text-red-300" title="Excluir treino">🗑️</button>
                       </td>
                     </tr>
                   `;
@@ -4852,8 +4852,8 @@ function setupWorkoutFormListeners() {
   endTimeInput.addEventListener('change', updateDuration);
 }
 
-// Delete workout
-async function handleDeleteWorkout(workoutId) {
+// Delete workout log (detailed workout with duration, calories, etc.)
+async function handleDeleteWorkoutLog(workoutId) {
   if (!confirm('Deseja realmente excluir este treino?')) return;
   
   const user = state.users[state.activeUser];
