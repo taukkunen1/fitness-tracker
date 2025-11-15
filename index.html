@@ -6,102 +6,12 @@
   <title>Fitness Tracker Pro — Full (verbose)</title>
   
   <!-- ===== SECURITY HEADERS 2025 ===== -->
-  <!-- Content Security Policy -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';">
-  
-  <!-- X-Frame-Options: Prevent clickjacking -->
-  <meta http-equiv="X-Frame-Options" content="DENY">
-  
+  <!-- Note: CSP and X-Frame-Options should be set via HTTP headers, not meta tags -->
   <!-- X-Content-Type-Options: Prevent MIME type sniffing -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   
   <!-- Referrer Policy: Control referer information -->
   <meta name="referrer" content="no-referrer">
-  
-  <!-- Permissions Policy: Restrict browser features -->
-  <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=()">
-  
-  <!-- ===== PROTEÇÕES DE CÓDIGO - 2025 ===== -->
-  <!-- Desabilitar clique direito -->
-  <script>
-    document.addEventListener('contextmenu', e => e.preventDefault());
-  </script>
-  
-  <!-- Desabilitar atalhos de teclado para DevTools -->
-  <script>
-    document.addEventListener('keydown', function(e) {
-      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S
-      if (e.keyCode === 123 || 
-          (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) ||
-          (e.ctrlKey && e.keyCode === 85) ||
-          (e.ctrlKey && e.keyCode === 83)) {
-        e.preventDefault();
-        return false;
-      }
-    });
-  </script>
-  
-  <!-- Proteção contra seleção de texto e cópia -->
-  <style>
-    * {
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-      -webkit-touch-callout: none;
-    }
-    
-    /* Permitir seleção apenas em inputs/textareas para funcionalidade */
-    input, textarea, [contenteditable="true"] {
-      -webkit-user-select: text !important;
-      -moz-user-select: text !important;
-      -ms-user-select: text !important;
-      user-select: text !important;
-    }
-  </style>
-  
-  <!-- Detectar abertura de DevTools -->
-  <script>
-    (function() {
-      var devtools = {isOpen: false, orientation: null};
-      var threshold = 160;
-      var emitEvent = function(isOpen, orientation) {
-        window.dispatchEvent(new CustomEvent('devtoolschange', {
-          detail: {isOpen: isOpen, orientation: orientation}
-        }));
-      };
-      
-      setInterval(function() {
-        var widthThreshold = window.outerWidth - window.innerWidth > threshold;
-        var heightThreshold = window.outerHeight - window.innerHeight > threshold;
-        var orientation = widthThreshold ? 'vertical' : 'horizontal';
-        
-        if (!(heightThreshold && widthThreshold) &&
-            ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) || 
-             widthThreshold || heightThreshold)) {
-          if (!devtools.isOpen || devtools.orientation !== orientation) {
-            emitEvent(true, orientation);
-            console.clear();
-          }
-          devtools.isOpen = true;
-          devtools.orientation = orientation;
-        } else {
-          if (devtools.isOpen) {
-            emitEvent(false, null);
-          }
-          devtools.isOpen = false;
-          devtools.orientation = null;
-        }
-      }, 500);
-      
-      window.addEventListener('devtoolschange', function(e) {
-        if (e.detail.isOpen) {
-          console.clear();
-          document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-size:2rem;color:red;">Acesso não autorizado detectado</div>';
-        }
-      });
-    })();
-  </script>
   
   <!-- Copyright e aviso de proteção -->
   <meta name="copyright" content="© 2025 Fitness Tracker Pro. Todos os direitos reservados." />
@@ -134,7 +44,7 @@
     }
   </style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen" oncopy="return false" oncut="return false" onpaste="return false">
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen">
   <!--
     Fitness Tracker Pro - Versão completa e verbosa (2025-11)
     Objetivos desta versão:
@@ -914,6 +824,41 @@ const TASK_CATEGORIES = {
 // Initialize default tasks (short-term roadmap from problem statement)
 const defaultShortTermTasks = [
   {
+    id: 'task_fix_csp_headers',
+    title: 'CRÍTICO: Corrigir headers CSP inválidos em meta tags',
+    description: 'Headers frame-ancestors e X-Frame-Options em meta tags causam erros no console. Devem ser movidos para headers HTTP do servidor.',
+    category: TASK_CATEGORIES.SHORT_TERM,
+    priority: TASK_PRIORITIES.CRITICAL,
+    status: TASK_STATUSES.DONE,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['bug', 'security', 'console-error'],
+    checklist: [
+      { id: 1, text: 'Remover frame-ancestors de meta tag', done: true },
+      { id: 2, text: 'Remover X-Frame-Options de meta tag', done: true },
+      { id: 3, text: 'Documentar necessidade de headers HTTP no servidor', done: true }
+    ]
+  },
+  {
+    id: 'task_fix_devtools_blocking',
+    title: 'CRÍTICO: Remover código de bloqueio de DevTools',
+    description: 'Código que detecta e bloqueia DevTools causa má experiência do usuário e impede debugging legítimo.',
+    category: TASK_CATEGORIES.SHORT_TERM,
+    priority: TASK_PRIORITIES.CRITICAL,
+    status: TASK_STATUSES.DONE,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['bug', 'usability', 'security'],
+    checklist: [
+      { id: 1, text: 'Remover detecção de DevTools', done: true },
+      { id: 2, text: 'Remover bloqueio de atalhos de teclado', done: true },
+      { id: 3, text: 'Remover bloqueio de clique direito', done: true },
+      { id: 4, text: 'Remover bloqueio de seleção de texto', done: true }
+    ]
+  },
+  {
     id: 'task_deploy_https',
     title: 'Deploy em produção com HTTPS',
     description: 'Configurar deploy em produção com certificado SSL/TLS para acesso seguro via HTTPS',
@@ -930,6 +875,25 @@ const defaultShortTermTasks = [
       { id: 3, text: 'Testar conexão HTTPS', done: false },
       { id: 4, text: 'Redirecionar HTTP para HTTPS', done: false },
       { id: 5, text: 'Verificar segurança com SSL Labs', done: false }
+    ]
+  },
+  {
+    id: 'task_security_monitoring',
+    title: 'Monitorar logs de segurança',
+    description: 'Implementar dashboard de monitoramento de eventos de segurança e tentativas de acesso',
+    category: TASK_CATEGORIES.SHORT_TERM,
+    priority: TASK_PRIORITIES.CRITICAL,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['security', 'monitoring', 'logs'],
+    checklist: [
+      { id: 1, text: 'Criar dashboard de eventos de segurança', done: false },
+      { id: 2, text: 'Implementar alertas de atividade suspeita', done: false },
+      { id: 3, text: 'Adicionar gráficos de tentativas de login', done: false },
+      { id: 4, text: 'Exportar logs para análise', done: false },
+      { id: 5, text: 'Criar relatório semanal de segurança', done: false }
     ]
   },
   {
@@ -969,25 +933,6 @@ const defaultShortTermTasks = [
       { id: 3, text: 'Adicionar votação em sugestões', done: false },
       { id: 4, text: 'Criar página de visualização de sugestões', done: false },
       { id: 5, text: 'Exportar sugestões para GitHub Issues', done: false }
-    ]
-  },
-  {
-    id: 'task_security_monitoring',
-    title: 'Monitorar logs de segurança',
-    description: 'Implementar dashboard de monitoramento de eventos de segurança e tentativas de acesso',
-    category: TASK_CATEGORIES.SHORT_TERM,
-    priority: TASK_PRIORITIES.CRITICAL,
-    status: TASK_STATUSES.TODO,
-    createdAt: new Date().toISOString(),
-    dueDate: null,
-    assignedTo: null,
-    tags: ['security', 'monitoring', 'logs'],
-    checklist: [
-      { id: 1, text: 'Criar dashboard de eventos de segurança', done: false },
-      { id: 2, text: 'Implementar alertas de atividade suspeita', done: false },
-      { id: 3, text: 'Adicionar gráficos de tentativas de login', done: false },
-      { id: 4, text: 'Exportar logs para análise', done: false },
-      { id: 5, text: 'Criar relatório semanal de segurança', done: false }
     ]
   }
 ];
@@ -2951,9 +2896,9 @@ function render() {
 
     <div class="max-w-7xl mx-auto px-4 py-6">
       <div class="flex flex-wrap gap-3 mb-6">
-        ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao','comparacao','ciencia'].map(tab => `
+        ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao'].map(tab => `
           <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
-            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : tab === 'comparacao' ? '⚖️ Comparação' : '🔬 Ciência'}
+            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : '📈 Evolução'}
           </button>
         `).join('')}
         ${isAdmin() ? `
@@ -2984,8 +2929,6 @@ function render() {
         ${state.activeTab === 'nutricao' ? renderNutricao(currentUser) : ''}
         ${state.activeTab === 'alimentacao' ? renderAlimentacao() : ''}
         ${state.activeTab === 'evolucao' ? renderEvolucao(bodyMetrics, currentUser) : ''}
-        ${state.activeTab === 'comparacao' ? renderComparacao() : ''}
-        ${state.activeTab === 'ciencia' ? renderCiencia() : ''}
         ${state.activeTab === 'admin_tasks' && isAdmin() ? renderAdminTasks() : ''}
         ${state.activeTab === 'admin_suggestions' && isAdmin() ? renderAdminSuggestions() : ''}
         ${state.activeTab === 'admin_security' && isAdmin() ? renderAdminSecurity() : ''}
@@ -5803,11 +5746,24 @@ async function loadAndDisplayTasks() {
   document.getElementById('inProgressTasks').textContent = stats.inProgress;
   document.getElementById('todoTasks').textContent = stats.todo;
   
-  // Group by category
+  // Group by category and sort by priority within each category
+  const priorityOrder = {
+    [TASK_PRIORITIES.CRITICAL]: 0,
+    [TASK_PRIORITIES.HIGH]: 1,
+    [TASK_PRIORITIES.MEDIUM]: 2,
+    [TASK_PRIORITIES.LOW]: 3
+  };
+  
   const categories = {
-    [TASK_CATEGORIES.SHORT_TERM]: tasks.filter(t => t.category === TASK_CATEGORIES.SHORT_TERM),
-    [TASK_CATEGORIES.MEDIUM_TERM]: tasks.filter(t => t.category === TASK_CATEGORIES.MEDIUM_TERM),
-    [TASK_CATEGORIES.LONG_TERM]: tasks.filter(t => t.category === TASK_CATEGORIES.LONG_TERM)
+    [TASK_CATEGORIES.SHORT_TERM]: tasks
+      .filter(t => t.category === TASK_CATEGORIES.SHORT_TERM)
+      .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]),
+    [TASK_CATEGORIES.MEDIUM_TERM]: tasks
+      .filter(t => t.category === TASK_CATEGORIES.MEDIUM_TERM)
+      .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]),
+    [TASK_CATEGORIES.LONG_TERM]: tasks
+      .filter(t => t.category === TASK_CATEGORIES.LONG_TERM)
+      .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
   };
   
   let html = '';
