@@ -3071,6 +3071,9 @@ function render() {
         ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao','developer'].map(tab => `
           <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
             ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : '👨‍💻 Developer'}
+        ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao'].map(tab => `
+          <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
+            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : '📈 Evolução'}
           </button>
         `).join('')}
         ${isAdmin() ? `
