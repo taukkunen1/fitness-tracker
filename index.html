@@ -2671,15 +2671,53 @@ function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '', categ
   const user = state.users[state.activeUser];
   if (!user) return alert('Nenhum usuário ativo');
   
+  // New enhanced format: support for detailed sets with individual weights
+  // Ask if user wants to log detailed sets (3 sets with individual weights)
+  const useDetailedSets = confirm('Deseja registrar séries detalhadas com cargas individuais?\n\nSim = Registrar 3 séries com carga individual\nNão = Registro simples');
+  
+  let detailedSets = null;
+  let totalVolume = 0;
+  
+  if (useDetailedSets) {
+    detailedSets = [];
+    for (let i = 1; i <= 3; i++) {
+      const setReps = prompt(`Série ${i} - Quantas repetições?`, reps || '10');
+      if (!setReps) break; // User cancelled
+      
+      const setWeight = prompt(`Série ${i} - Qual a carga (kg)?`, weight || '20');
+      if (setWeight === null) break; // User cancelled
+      
+      const repsNum = parseFloat(setReps) || 0;
+      const weightNum = parseFloat(setWeight) || 0;
+      const setVolume = repsNum * weightNum;
+      
+      detailedSets.push({
+        setNumber: i,
+        reps: repsNum,
+        weight: weightNum,
+        volume: setVolume
+      });
+      
+      totalVolume += setVolume;
+    }
+    
+    // If user cancelled all sets, fall back to simple mode
+    if (detailedSets.length === 0) {
+      detailedSets = null;
+    }
+  }
+  
   const newLog = {
     id: Date.now(),
     date: state.currentWorkoutDay, // Use selected day instead of today
     time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     exercise: exerciseName,
     category: category || '',
-    sets: sets || '-',
-    reps: reps || '-',
-    weight: weight || '-',
+    sets: detailedSets ? detailedSets.length : (sets || '-'),
+    reps: detailedSets ? '-' : (reps || '-'),
+    weight: detailedSets ? '-' : (weight || '-'),
+    detailedSets: detailedSets, // New field for detailed sets
+    totalVolume: totalVolume, // Total volume in kg
     completed: true
   };
   
@@ -2687,8 +2725,13 @@ function handleLogWorkout(exerciseName, sets = '', reps = '', weight = '', categ
   user.workoutHistory.unshift(newLog);
   addOrUpdateUser(user);
   
-  // Show success notification
-  const details = sets && reps ? ` (${sets}x${reps}${weight ? ' @ ' + weight + 'kg' : ''})` : '';
+  // Show success notification with volume info
+  let details = '';
+  if (detailedSets) {
+    details = ` (${detailedSets.length} séries, Volume total: ${totalVolume.toFixed(1)}kg)`;
+  } else if (sets && reps) {
+    details = ` (${sets}x${reps}${weight ? ' @ ' + weight + 'kg' : ''})`;
+  }
   showNotification(`✅ Exercício registrado: ${exerciseName}${details}`, 'success');
   render();
 }
@@ -2699,27 +2742,75 @@ function handleEditWorkout(id) {
   const log = user.workoutHistory.find(l => l.id === id);
   if (!log) return alert('Registro não encontrado');
   
-  // Prompt for new values
-  const newSets = prompt(`Editar Séries\nExercício: ${log.exercise}\n\nSéries atuais: ${log.sets}`, log.sets === '-' ? '' : log.sets);
-  if (newSets === null) return; // User cancelled
-  
-  const newReps = prompt(`Editar Repetições\nExercício: ${log.exercise}\n\nRepetições atuais: ${log.reps}`, log.reps === '-' ? '' : log.reps);
-  if (newReps === null) return; // User cancelled
-  
-  const newWeight = prompt(`Editar Carga (kg)\nExercício: ${log.exercise}\n\nCarga atual: ${log.weight}`, log.weight === '-' ? '' : log.weight);
-  if (newWeight === null) return; // User cancelled
-  
-  // Update the workout log
-  log.sets = newSets || '-';
-  log.reps = newReps || '-';
-  log.weight = newWeight || '-';
-  
-  addOrUpdateUser(user);
-  
-  // Show success notification
-  const details = newSets && newReps ? ` (${newSets}x${newReps}${newWeight ? ' @ ' + newWeight + 'kg' : ''})` : '';
-  showNotification(`✅ Treino atualizado: ${log.exercise}${details}`, 'success');
-  render();
+  // Check if this workout has detailed sets
+  if (log.detailedSets && log.detailedSets.length > 0) {
+    // Edit detailed sets
+    const editDetailed = confirm('Este treino tem séries detalhadas. Deseja editar?\n\nSim = Editar séries detalhadas\nNão = Cancelar');
+    if (!editDetailed) return;
+    
+    const newDetailedSets = [];
+    let newTotalVolume = 0;
+    
+    for (let i = 0; i < log.detailedSets.length; i++) {
+      const oldSet = log.detailedSets[i];
+      const setReps = prompt(
+        `Editar Série ${oldSet.setNumber}\n\nRepetições atuais: ${oldSet.reps}\nCarga atual: ${oldSet.weight}kg\nVolume atual: ${oldSet.volume.toFixed(1)}kg\n\nNovas repetições:`,
+        oldSet.reps
+      );
+      if (setReps === null) continue; // User cancelled this set
+      
+      const setWeight = prompt(
+        `Série ${oldSet.setNumber}\n\nNova carga (kg):`,
+        oldSet.weight
+      );
+      if (setWeight === null) continue; // User cancelled
+      
+      const repsNum = parseFloat(setReps) || 0;
+      const weightNum = parseFloat(setWeight) || 0;
+      const setVolume = repsNum * weightNum;
+      
+      newDetailedSets.push({
+        setNumber: oldSet.setNumber,
+        reps: repsNum,
+        weight: weightNum,
+        volume: setVolume
+      });
+      
+      newTotalVolume += setVolume;
+    }
+    
+    if (newDetailedSets.length > 0) {
+      log.detailedSets = newDetailedSets;
+      log.totalVolume = newTotalVolume;
+      log.sets = newDetailedSets.length;
+      
+      addOrUpdateUser(user);
+      showNotification(`✅ Séries atualizadas! Volume total: ${newTotalVolume.toFixed(1)}kg`, 'success');
+      render();
+    }
+  } else {
+    // Edit simple format
+    const newSets = prompt(`Editar Séries\nExercício: ${log.exercise}\n\nSéries atuais: ${log.sets}`, log.sets === '-' ? '' : log.sets);
+    if (newSets === null) return; // User cancelled
+    
+    const newReps = prompt(`Editar Repetições\nExercício: ${log.exercise}\n\nRepetições atuais: ${log.reps}`, log.reps === '-' ? '' : log.reps);
+    if (newReps === null) return; // User cancelled
+    
+    const newWeight = prompt(`Editar Carga (kg)\nExercício: ${log.exercise}\n\nCarga atual: ${log.weight}`, log.weight === '-' ? '' : log.weight);
+    if (newWeight === null) return; // User cancelled
+    
+    // Update the workout log
+    log.sets = newSets || '-';
+    log.reps = newReps || '-';
+    log.weight = newWeight || '-';
+    
+    addOrUpdateUser(user);
+    
+    // Show success notification
+    const details = newSets && newReps ? ` (${newSets}x${newReps}${newWeight ? ' @ ' + newWeight + 'kg' : ''})` : '';
+    showNotification(`✅ Treino atualizado: ${log.exercise}${details}`, 'success');
+    render();
+  }
 }
 
 function handleDeleteWorkout(id) {
@@ -4197,18 +4288,49 @@ function renderTreino(user) {
       ${selectedDayWorkouts.length === 0 ? 
         `<p class="text-slate-400">Nenhum treino registrado neste dia. Selecione um treino acima e registre seus exercícios.</p>` :
         `<div class="space-y-2">
-          ${selectedDayWorkouts.map(log => `
-            <div class="flex justify-between items-center bg-slate-700 p-3 rounded">
-              <div class="flex-1">
-                <p class="font-semibold">${log.exercise || log.workout}</p>
+          ${selectedDayWorkouts.map(log => {
+            // Enhanced display with detailed sets
+            let detailsHtml = '';
+            
+            if (log.detailedSets && log.detailedSets.length > 0) {
+              // Show detailed sets with individual volumes
+              detailsHtml = `
+                <p class="text-slate-300 text-xs">${log.category ? `${log.category} • ` : ''}${log.time}</p>
+                <div class="mt-2 space-y-1">
+                  ${log.detailedSets.map(set => `
+                    <div class="flex justify-between items-center bg-slate-600 px-2 py-1 rounded text-xs">
+                      <span class="text-slate-300">Série ${set.setNumber}: ${set.reps} reps × ${set.weight}kg</span>
+                      <span class="text-green-400 font-semibold">Vol: ${set.volume.toFixed(1)}kg</span>
+                    </div>
+                  `).join('')}
+                  <div class="flex justify-between items-center bg-gradient-to-r from-purple-600 to-pink-600 px-2 py-1 rounded text-xs font-bold mt-2">
+                    <span>Volume Total</span>
+                    <span>${log.totalVolume.toFixed(1)}kg</span>
+                  </div>
+                </div>
+              `;
+            } else {
+              // Simple display
+              detailsHtml = `
                 <p class="text-slate-300 text-xs">${log.category ? `${log.category} • ` : ''}${log.time}${log.sets && log.sets !== '-' ? ` • ${log.sets}x${log.reps}` : ''}${log.weight && log.weight !== '-' ? ` • ${log.weight}kg` : ''}</p>
+              `;
+            }
+            
+            return `
+              <div class="bg-slate-700 p-3 rounded mb-2">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <p class="font-semibold">${log.exercise || log.workout}</p>
+                    ${detailsHtml}
+                  </div>
+                  <div class="flex gap-2">
+                    <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300" title="Editar séries/reps/carga">✏️</button>
+                    <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
+                  </div>
+                </div>
               </div>
-              <div class="flex gap-2">
-                <button onclick="handleEditWorkout(${log.id})" class="text-blue-400 hover:text-blue-300" title="Editar séries/reps/carga">✏️</button>
-                <button data-workout-id="${log.id}" class="workout-delete-btn text-red-400 hover:text-red-300" title="Excluir registro">🗑️</button>
-              </div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>`
       }
     </div>
