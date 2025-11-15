@@ -1446,13 +1446,13 @@ const templates = {
         name: 'Treino 1',
         exercises: [
           { name: 'Mobilidade Torácica em Pé', sets: 2, reps: '', rest: 60, notes: 'Mobilidade não precisa de reps' },
-          { name: 'Supino Inclinado com Halteres', sets: 3, reps: '8-12', rest: 90, notes: '' },
-          { name: 'Crucifixo na Máquina', sets: 3, reps: '10-12', rest: 60, notes: '' },
-          { name: 'Puxada na Barra Frente', sets: 3, reps: '8-12', rest: 90, notes: '' },
-          { name: 'Remada Unilateral na Máquina', sets: 3, reps: '10-12', rest: 60, notes: '' },
-          { name: 'Bi-set: Desenvolvimento Arnold + Elevação Lateral', sets: 3, reps: '8-12', rest: 90, notes: 'Bi-set completo conta como 1 série' },
-          { name: 'Bi-set: Rosca Alternada + Rosca Polia Baixa', sets: 3, reps: '10-12', rest: 60, notes: 'Bi-set completo conta como 1 série' },
-          { name: 'Bi-set: Tríceps Testa Polia Alta + Tríceps Corda', sets: 3, reps: '10-12', rest: 60, notes: 'Bi-set completo conta como 1 série' }
+          { name: 'Supino Inclinado com Halteres', sets: 3, reps: '3', rest: 90, notes: '' },
+          { name: 'Crucifixo na Máquina', sets: 3, reps: '3', rest: 60, notes: '' },
+          { name: 'Puxada na Barra Frente', sets: 3, reps: '3', rest: 90, notes: '' },
+          { name: 'Remada Unilateral na Máquina', sets: 3, reps: '3', rest: 60, notes: '' },
+          { name: 'Bi-set: Desenvolvimento Arnold + Elevação Lateral', sets: 3, reps: '3', rest: 90, notes: 'Bi-set completo conta como 1 série' },
+          { name: 'Bi-set: Rosca Alternada + Rosca Polia Baixa', sets: 3, reps: '3', rest: 60, notes: 'Bi-set completo conta como 1 série' },
+          { name: 'Bi-set: Tríceps Testa Polia Alta + Tríceps Corda', sets: 3, reps: '3', rest: 60, notes: 'Bi-set completo conta como 1 série' }
         ],
         notes: 'Treino completo de upper body',
         primaryMuscles: ['Peitoral', 'Dorsal', 'Ombros', 'Bíceps', 'Tríceps']
@@ -1471,14 +1471,14 @@ const templates = {
         exercises: [
           { name: 'Mobilidade - Quadril (lateral)', sets: 2, reps: '', rest: 60, notes: 'Mobilidade não precisa de reps' },
           { name: 'Mobilidade Quadril Cócoras', sets: 2, reps: '', rest: 60, notes: 'Mobilidade não precisa de reps' },
-          { name: 'Agachamento (multi)', sets: 3, reps: '8-12', rest: 120, notes: '' },
-          { name: 'Leg Press Horizontal (Subindo A Carga)', sets: 3, reps: '8-12', rest: 90, notes: 'Aumentar carga progressivamente' },
-          { name: 'Agachamento (hack)', sets: 3, reps: '10-12', rest: 90, notes: '' },
-          { name: 'Mesa Flexora (simultânea)', sets: 3, reps: '10-12', rest: 60, notes: '' },
-          { name: 'Cadeira Abdutora', sets: 3, reps: '12-15', rest: 60, notes: '' },
-          { name: 'Cadeira Adutora', sets: 3, reps: '12-15', rest: 60, notes: '' },
-          { name: 'Cadeira Extensora (simultânea)', sets: 3, reps: '10-12', rest: 60, notes: '' },
-          { name: 'Panturrilha (sentado)', sets: 3, reps: '15-20', rest: 60, notes: '' }
+          { name: 'Agachamento (multi)', sets: 3, reps: '3', rest: 120, notes: '' },
+          { name: 'Leg Press Horizontal (Subindo A Carga)', sets: 3, reps: '3', rest: 90, notes: 'Aumentar carga progressivamente' },
+          { name: 'Agachamento (hack)', sets: 3, reps: '3', rest: 90, notes: '' },
+          { name: 'Mesa Flexora (simultânea)', sets: 3, reps: '3', rest: 60, notes: '' },
+          { name: 'Cadeira Abdutora', sets: 3, reps: '3', rest: 60, notes: '' },
+          { name: 'Cadeira Adutora', sets: 3, reps: '3', rest: 60, notes: '' },
+          { name: 'Cadeira Extensora (simultânea)', sets: 3, reps: '3', rest: 60, notes: '' },
+          { name: 'Panturrilha (sentado)', sets: 3, reps: '3', rest: 60, notes: '' }
         ],
         notes: 'Treino completo de lower body',
         primaryMuscles: ['Abdutores', 'Anterior de coxa', 'Dorsal', 'Glúteo', 'Panturrilha', 'Posterior de coxa', 'Quadríceps']
@@ -2165,7 +2165,7 @@ function showWorkoutExercises(templateId) {
             <label class="block text-xs text-slate-400 mb-1">Repetições</label>
             <select name="reps" class="w-full px-3 py-2 rounded bg-slate-600 text-white" ${isMobility ? '' : 'required'}>
               <option value="">-</option>
-              ${[...Array(20)].map((_, i) => `<option value="${i+1}" ${exercise.reps === (i+1) ? 'selected' : ''}>${i+1}</option>`).join('')}
+              ${[...Array(20)].map((_, i) => `<option value="${i+1}" ${(exercise.reps === (i+1).toString() || (exercise.reps === '3' && i+1 === 3) || (!exercise.reps && i+1 === 3)) ? 'selected' : ''}>${i+1}</option>`).join('')}
             </select>
           </div>
           <div>
@@ -2992,7 +2992,7 @@ function attachWorkoutButtons() {
       const sets = prompt(`Registrar: ${exercise}\n\nQuantas séries você fez?`, '3');
       if (sets === null) return; // User cancelled
       
-      const reps = prompt(`Registrar: ${exercise}\n\nQuantas repetições por série?`, '12');
+      const reps = prompt(`Registrar: ${exercise}\n\nQuantas repetições por série?`, '3');
       if (reps === null) return; // User cancelled
       
       const weight = prompt(`Registrar: ${exercise}\n\nQual carga você usou? (kg)\nDeixe em branco se não aplicável`, '');
