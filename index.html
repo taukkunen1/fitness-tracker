@@ -1575,10 +1575,276 @@ const defaultShortTermTasks = [
   }
 ];
 
+// Initialize default medium-term tasks (1-3 months)
+const defaultMediumTermTasks = [
+  {
+    id: 'task_notifications_system',
+    title: 'Implementar sistema de notificações push',
+    description: 'Sistema de notificações para alertas de treinos, refeições e progresso do usuário',
+    category: TASK_CATEGORIES.MEDIUM_TERM,
+    priority: TASK_PRIORITIES.HIGH,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feature', 'notifications', 'ux'],
+    checklist: [
+      { id: 1, text: 'Implementar API de notificações do navegador', done: false },
+      { id: 2, text: 'Criar sistema de agendamento de notificações', done: false },
+      { id: 3, text: 'Adicionar preferências de notificação no perfil', done: false },
+      { id: 4, text: 'Implementar notificações de lembretes de treino', done: false },
+      { id: 5, text: 'Implementar notificações de metas atingidas', done: false }
+    ]
+  },
+  {
+    id: 'task_export_import',
+    title: 'Sistema de export/import em múltiplos formatos',
+    description: 'Permitir exportação e importação de dados em CSV, JSON e Excel',
+    category: TASK_CATEGORIES.MEDIUM_TERM,
+    priority: TASK_PRIORITIES.HIGH,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feature', 'export', 'import', 'data'],
+    checklist: [
+      { id: 1, text: 'Implementar export para CSV', done: false },
+      { id: 2, text: 'Implementar export para Excel', done: false },
+      { id: 3, text: 'Implementar import de CSV', done: false },
+      { id: 4, text: 'Validação de dados importados', done: false },
+      { id: 5, text: 'Backup automático antes de import', done: false }
+    ]
+  },
+  {
+    id: 'task_themes',
+    title: 'Temas personalizáveis (dark/light)',
+    description: 'Sistema de temas com suporte a modo claro e escuro personalizável',
+    category: TASK_CATEGORIES.MEDIUM_TERM,
+    priority: TASK_PRIORITIES.MEDIUM,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feature', 'ui', 'themes', 'accessibility'],
+    checklist: [
+      { id: 1, text: 'Criar sistema de troca de temas', done: false },
+      { id: 2, text: 'Implementar tema claro', done: false },
+      { id: 3, text: 'Adicionar preferência no perfil do usuário', done: false },
+      { id: 4, text: 'Respeitar preferência do sistema operacional', done: false },
+      { id: 5, text: 'Testar contraste e acessibilidade', done: false }
+    ]
+  },
+  {
+    id: 'task_pwa',
+    title: 'Progressive Web App (PWA) com suporte offline',
+    description: 'Transformar aplicação em PWA instalável com funcionalidade offline',
+    category: TASK_CATEGORIES.MEDIUM_TERM,
+    priority: TASK_PRIORITIES.HIGH,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feature', 'pwa', 'offline', 'mobile'],
+    checklist: [
+      { id: 1, text: 'Criar manifest.json', done: false },
+      { id: 2, text: 'Implementar service worker', done: false },
+      { id: 3, text: 'Adicionar estratégia de cache', done: false },
+      { id: 4, text: 'Implementar sincronização offline', done: false },
+      { id: 5, text: 'Testar instalação em dispositivos móveis', done: false }
+    ]
+  },
+  {
+    id: 'task_analytics',
+    title: 'Sistema de analytics e relatórios avançados',
+    description: 'Dashboard de analytics com gráficos de progresso e insights personalizados',
+    category: TASK_CATEGORIES.MEDIUM_TERM,
+    priority: TASK_PRIORITIES.MEDIUM,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feature', 'analytics', 'reports', 'charts'],
+    checklist: [
+      { id: 1, text: 'Implementar gráficos de progresso de peso', done: false },
+      { id: 2, text: 'Adicionar análise de macros ao longo do tempo', done: false },
+      { id: 3, text: 'Criar relatórios semanais/mensais', done: false },
+      { id: 4, text: 'Implementar comparação de períodos', done: false },
+      { id: 5, text: 'Adicionar insights automáticos baseados em dados', done: false }
+    ]
+  },
+  {
+    id: 'task_social_features',
+    title: 'Funcionalidades sociais básicas',
+    description: 'Sistema de compartilhamento de conquistas e progresso',
+    category: TASK_CATEGORIES.MEDIUM_TERM,
+    priority: TASK_PRIORITIES.LOW,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feature', 'social', 'sharing'],
+    checklist: [
+      { id: 1, text: 'Implementar compartilhamento de conquistas', done: false },
+      { id: 2, text: 'Adicionar geração de imagens para redes sociais', done: false },
+      { id: 3, text: 'Criar sistema de badges/conquistas', done: false },
+      { id: 4, text: 'Implementar perfil público opcional', done: false }
+    ]
+  }
+];
+
+// Initialize default long-term tasks (3-6 months)
+const defaultLongTermTasks = [
+  {
+    id: 'task_backend_api',
+    title: 'Backend completo com Node.js + PostgreSQL',
+    description: 'Migrar de localStorage para backend real com banco de dados PostgreSQL',
+    category: TASK_CATEGORIES.LONG_TERM,
+    priority: TASK_PRIORITIES.CRITICAL,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['infrastructure', 'backend', 'database', 'migration'],
+    checklist: [
+      { id: 1, text: 'Configurar servidor Node.js com Express', done: false },
+      { id: 2, text: 'Configurar PostgreSQL e migrations', done: false },
+      { id: 3, text: 'Implementar API REST completa', done: false },
+      { id: 4, text: 'Adicionar autenticação JWT', done: false },
+      { id: 5, text: 'Implementar rate limiting no servidor', done: false },
+      { id: 6, text: 'Migrar dados do localStorage', done: false },
+      { id: 7, text: 'Testes de integração completos', done: false }
+    ]
+  },
+  {
+    id: 'task_cloud_sync',
+    title: 'Sincronização em nuvem multi-dispositivo',
+    description: 'Sistema de sincronização automática entre dispositivos',
+    category: TASK_CATEGORIES.LONG_TERM,
+    priority: TASK_PRIORITIES.HIGH,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feature', 'cloud', 'sync', 'multi-device'],
+    checklist: [
+      { id: 1, text: 'Implementar sistema de sincronização', done: false },
+      { id: 2, text: 'Resolver conflitos de dados', done: false },
+      { id: 3, text: 'Adicionar indicador de sincronização', done: false },
+      { id: 4, text: 'Implementar sincronização incremental', done: false },
+      { id: 5, text: 'Testar em múltiplos dispositivos', done: false }
+    ]
+  },
+  {
+    id: 'task_mobile_apps',
+    title: 'Apps mobile nativos (React Native)',
+    description: 'Desenvolvimento de aplicativos iOS e Android com React Native',
+    category: TASK_CATEGORIES.LONG_TERM,
+    priority: TASK_PRIORITIES.HIGH,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['mobile', 'react-native', 'ios', 'android'],
+    checklist: [
+      { id: 1, text: 'Configurar projeto React Native', done: false },
+      { id: 2, text: 'Desenvolver interface mobile', done: false },
+      { id: 3, text: 'Integrar com API backend', done: false },
+      { id: 4, text: 'Implementar notificações push nativas', done: false },
+      { id: 5, text: 'Testar em dispositivos iOS e Android', done: false },
+      { id: 6, text: 'Publicar na App Store', done: false },
+      { id: 7, text: 'Publicar na Play Store', done: false }
+    ]
+  },
+  {
+    id: 'task_ai_features',
+    title: 'Funcionalidades de IA e Machine Learning',
+    description: 'Recomendações inteligentes e previsões baseadas em histórico',
+    category: TASK_CATEGORIES.LONG_TERM,
+    priority: TASK_PRIORITIES.MEDIUM,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feature', 'ai', 'ml', 'recommendations'],
+    checklist: [
+      { id: 1, text: 'Implementar recomendação de treinos', done: false },
+      { id: 2, text: 'Previsão de progresso baseada em histórico', done: false },
+      { id: 3, text: 'Sugestões automáticas de refeições', done: false },
+      { id: 4, text: 'Análise de padrões de comportamento', done: false },
+      { id: 5, text: 'Alertas inteligentes de saúde', done: false }
+    ]
+  },
+  {
+    id: 'task_integration_ecosystem',
+    title: 'Integrações com dispositivos e apps fitness',
+    description: 'Integração com wearables e outros aplicativos de fitness',
+    category: TASK_CATEGORIES.LONG_TERM,
+    priority: TASK_PRIORITIES.MEDIUM,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['integration', 'wearables', 'api', 'third-party'],
+    checklist: [
+      { id: 1, text: 'Integração com Google Fit', done: false },
+      { id: 2, text: 'Integração com Apple Health', done: false },
+      { id: 3, text: 'Suporte a smartwatches', done: false },
+      { id: 4, text: 'Integração com MyFitnessPal', done: false },
+      { id: 5, text: 'API pública para integrações de terceiros', done: false }
+    ]
+  },
+  {
+    id: 'task_gamification',
+    title: 'Sistema completo de gamificação',
+    description: 'Gamificação com desafios, conquistas, rankings e recompensas',
+    category: TASK_CATEGORIES.LONG_TERM,
+    priority: TASK_PRIORITIES.LOW,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feature', 'gamification', 'engagement'],
+    checklist: [
+      { id: 1, text: 'Sistema de pontos e níveis', done: false },
+      { id: 2, text: 'Conquistas e badges', done: false },
+      { id: 3, text: 'Desafios diários e semanais', done: false },
+      { id: 4, text: 'Rankings e leaderboards', done: false },
+      { id: 5, text: 'Sistema de recompensas', done: false },
+      { id: 6, text: 'Desafios entre amigos', done: false }
+    ]
+  },
+  {
+    id: 'task_coach_mode',
+    title: 'Modo Coach com planos personalizados',
+    description: 'Sistema para personal trainers gerenciarem múltiplos clientes',
+    category: TASK_CATEGORIES.LONG_TERM,
+    priority: TASK_PRIORITIES.MEDIUM,
+    status: TASK_STATUSES.TODO,
+    createdAt: new Date().toISOString(),
+    dueDate: null,
+    assignedTo: null,
+    tags: ['feature', 'coach', 'b2b', 'professional'],
+    checklist: [
+      { id: 1, text: 'Sistema de conta Coach/Trainer', done: false },
+      { id: 2, text: 'Gerenciamento de múltiplos clientes', done: false },
+      { id: 3, text: 'Criação de planos de treino personalizados', done: false },
+      { id: 4, text: 'Dashboard de progresso dos clientes', done: false },
+      { id: 5, text: 'Sistema de mensagens coach-cliente', done: false },
+      { id: 6, text: 'Assinatura premium para coaches', done: false }
+    ]
+  }
+];
+
 // Initialize tasks in database
 async function initializeTasks() {
   try {
-    for (const task of defaultShortTermTasks) {
+    const allDefaultTasks = [
+      ...defaultShortTermTasks,
+      ...defaultMediumTermTasks,
+      ...defaultLongTermTasks
+    ];
+    
+    for (const task of allDefaultTasks) {
       const existing = await dbGet(STORE_TASKS, task.id);
       if (!existing) {
         await dbPut(STORE_TASKS, task);

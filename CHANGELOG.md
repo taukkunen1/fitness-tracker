@@ -7,6 +7,48 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [2.1.0] - 2025-11-16
+
+### 🎉 Principais Mudanças desta Versão
+
+Esta versão expande significativamente o **roadmap de desenvolvimento** com planejamento detalhado de médio e longo prazo.
+
+### ✨ Adicionado
+
+#### Sistema de Roadmap Expandido
+- **Lista de Tarefas de Médio Prazo (1-3 meses)**:
+  - 🔔 Sistema de notificações push para alertas de treinos e metas
+  - 📊 Export/Import em múltiplos formatos (CSV, JSON, Excel)
+  - 🎨 Temas personalizáveis com modo claro e escuro
+  - 📱 Progressive Web App (PWA) com suporte offline completo
+  - 📈 Sistema de analytics e relatórios avançados com gráficos
+  - 👥 Funcionalidades sociais básicas com compartilhamento de conquistas
+
+- **Lista de Tarefas de Longo Prazo (3-6 meses)**:
+  - 🖥️ Backend completo com Node.js + PostgreSQL para escalabilidade
+  - ☁️ Sincronização em nuvem multi-dispositivo
+  - 📱 Apps mobile nativos para iOS e Android (React Native)
+  - 🤖 Funcionalidades de IA e Machine Learning com recomendações inteligentes
+  - 🔗 Integrações com wearables e apps fitness (Google Fit, Apple Health)
+  - 🎮 Sistema completo de gamificação com desafios e rankings
+  - 👨‍🏫 Modo Coach para personal trainers gerenciarem clientes
+
+#### Melhorias no Painel Administrativo
+- **Gestão de Roadmap Completo**:
+  - Visualização integrada de tarefas de curto, médio e longo prazo
+  - Total de 6 tarefas de curto prazo (2 concluídas)
+  - 6 novas tarefas de médio prazo planejadas
+  - 7 novas tarefas de longo prazo planejadas
+  - Cada tarefa inclui checklist detalhado com passos de implementação
+  - Sistema de prioridades e categorização aprimorado
+
+### 🔧 Alterado
+- Refatoração da função `initializeTasks()` para incluir todas as categorias de tarefas
+- Organização melhorada do código de inicialização de tarefas
+- Documentação expandida no CHANGELOG com detalhes de todas as mudanças
+
+---
+
 ## [2.0.0] - 2025-11-15
 
 ### 🎉 Principais Mudanças desta Versão
