@@ -63,16 +63,57 @@
 
 <script>
 /* ======================================================================
+   🛡️ PILGRIM FITNESS TRACKER - SISTEMA PROTEGIDO (2025)
+   ======================================================================
+   
+   ⚠️ AVISO DE DIREITOS AUTORAIS E PROTEÇÃO DE CÓDIGO:
+   
+   Este código-fonte é propriedade de Pilgrim e está protegido por leis de 
+   direitos autorais internacionais. Uso não autorizado, cópia, modificação, 
+   distribuição ou engenharia reversa são estritamente proibidos.
+   
+   © 2025 Pilgrim. Todos os direitos reservados.
+   
+   ARQUITETURA DE SEGURANÇA:
+   - 🔐 Autenticação PBKDF2 com 100.000 iterações
+   - 🛡️ Proteção contra XSS, CSRF, Brute Force
+   - 🔒 Armazenamento local criptografado (IndexedDB)
+   - 🚫 Sem transmissão de dados para servidores externos
+   - 🎯 Zero Trust Framework com validação contínua
+   - 🤖 AI-Powered Security com detecção de ameaças
+   - 📊 Analytics 100% local e privacy-first
+   
+   ESTRUTURA DE DADOS DESCENTRALIZADA:
+   - Todos os dados são armazenados localmente no navegador do usuário
+   - IndexedDB como banco de dados principal (sem servidores)
+   - Fallback para localStorage quando necessário
+   - Política de soft-delete para proteção de dados
+   - Exportação/Importação de backups em formato JSON
+   
+   ORGANIZAÇÃO DO CÓDIGO:
+   - /# (root) - Dashboard principal
+   - /#treino - Módulo de treinos e fotos de progresso
+   - /#nutricao - Módulo de nutrição e alimentação
+   - /#admin - Painel administrativo (acesso restrito)
+   
+   Para mais informações sobre segurança, consulte: SECURITY.md
+   ====================================================================== */
+
+/* ======================================================================
    CONFIGURAÇÕES GLOBAIS E DESCRIÇÃO DO DB
    ======================================================================
 
-   - IndexedDB: 'fitness-tracker-db' versão 3 (versão incrementada para garantir migração se necessário)
+   - IndexedDB: 'fitness-tracker-db' versão 6 (versão incrementada para garantir migração se necessário)
      Object stores:
        * users         - keyPath: id
        * comparisons   - keyPath: id
        * references    - keyPath: id
        * archive       - keyPath: id  (para guardar itens removidos, histórico, backups rápidos)
        * settings      - keyPath: key (para armazenar flags, lastSync, etc.)
+       * accounts      - keyPath: username (sistema de autenticação)
+       * tasks         - keyPath: id (gerenciamento de tarefas admin)
+       * suggestions   - keyPath: id (sistema de sugestões)
+       * access_logs   - keyPath: id (monitoramento de acessos)
 
    - Fallback localStorage keys:
        ft_users, ft_comparisons, ft_references, ft_custom_programs, ft_settings
@@ -4197,18 +4238,22 @@ document.addEventListener('keydown', function(e) {
   switch(e.key.toLowerCase()) {
     case 'd':
       state.activeTab = 'dashboard';
+      updateHash();
       render();
       break;
     case 't':
       state.activeTab = 'treino';
+      updateHash();
       render();
       break;
     case 'n':
       state.activeTab = 'alimentacao';
+      updateHash();
       render();
       break;
     case 'e':
       state.activeTab = 'evolucao';
+      updateHash();
       render();
       break;
     case '?':
@@ -4216,6 +4261,84 @@ document.addEventListener('keydown', function(e) {
       toggleDashboardHelp();
       break;
   }
+});
+
+/* ----------------------------- HASH-BASED URL ROUTING (2025 Enhancement) -----------------------------
+   Implements clean URL structure for better navigation and bookmarking:
+   - /#dashboard - Main dashboard
+   - /#treino - Workout tracking page
+   - /#nutricao - Nutrition page
+   - /#alimentacao - Meal management
+   - /#admin - Admin panel (requires admin role)
+   
+   This provides a logical "genealogical tree" structure while maintaining SPA benefits.
+-------------------------------------------------------------------------------------------------------- */
+
+// Update URL hash when tab changes
+function updateHash() {
+  const hashMap = {
+    'dashboard': '#dashboard',
+    'treino': '#treino',
+    'exercicios': '#exercicios',
+    'nutricao': '#nutricao',
+    'alimentacao': '#nutricao/alimentacao',
+    'evolucao': '#evolucao',
+    'referencias': '#referencias',
+    'developer': '#developer',
+    'admin_tasks': '#admin/tarefas',
+    'admin_suggestions': '#admin/sugestoes',
+    'admin_security': '#admin/seguranca',
+    'admin_changelog': '#admin/changelog',
+    'suggestions': '#sugestoes'
+  };
+  
+  const hash = hashMap[state.activeTab] || '#dashboard';
+  if (window.location.hash !== hash) {
+    window.location.hash = hash;
+  }
+}
+
+// Load tab from URL hash
+function loadFromHash() {
+  const hash = window.location.hash.slice(1); // Remove #
+  
+  const tabMap = {
+    '': 'dashboard',
+    'dashboard': 'dashboard',
+    'treino': 'treino',
+    'exercicios': 'exercicios',
+    'nutricao': 'nutricao',
+    'nutricao/alimentacao': 'alimentacao',
+    'alimentacao': 'alimentacao',
+    'evolucao': 'evolucao',
+    'referencias': 'referencias',
+    'developer': 'developer',
+    'admin': 'admin_tasks',
+    'admin/tarefas': 'admin_tasks',
+    'admin/sugestoes': 'admin_suggestions',
+    'admin/seguranca': 'admin_security',
+    'admin/changelog': 'admin_changelog',
+    'paineladmin': 'admin_tasks', // Alias for admin panel
+    'sugestoes': 'suggestions'
+  };
+  
+  const newTab = tabMap[hash] || 'dashboard';
+  
+  // Check admin access
+  if (newTab.startsWith('admin_') && !isAdmin()) {
+    showNotification('⛔ Acesso negado. Você precisa ser administrador.', 'error');
+    state.activeTab = 'dashboard';
+    updateHash();
+    return;
+  }
+  
+  state.activeTab = newTab;
+}
+
+// Listen for hash changes (back/forward navigation)
+window.addEventListener('hashchange', () => {
+  loadFromHash();
+  render();
 });
 
 /* ----------------------------- RENDER (UI) -----------------------------
@@ -4269,7 +4392,7 @@ function render() {
     <div class="max-w-7xl mx-auto px-4 py-6">
       <div class="flex flex-wrap gap-3 mb-6">
         ${['dashboard','treino','exercicios','nutricao','alimentacao','evolucao','referencias','developer'].map(tab => `
-          <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
+          <button onclick="state.activeTab='${tab}'; updateHash(); render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
             ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : tab === 'referencias' ? '📚 Referências' : '👨‍💻 Developer'}
           </button>
         `).join('')}
@@ -4279,14 +4402,14 @@ function render() {
             <span class="text-red-400 font-bold">👑 ADMIN:</span>
           </div>
           ${['admin_tasks','admin_suggestions','admin_security','admin_changelog'].map(tab => `
-            <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white' : 'bg-slate-800/50 text-slate-300 border border-red-500/30'}">
+            <button onclick="state.activeTab='${tab}'; updateHash(); render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white' : 'bg-slate-800/50 text-slate-300 border border-red-500/30'}">
               ${tab === 'admin_tasks' ? '📋 Tarefas' : tab === 'admin_suggestions' ? '💡 Sugestões' : tab === 'admin_security' ? '🔐 Segurança' : '📝 Changelog'}
             </button>
           `).join('')}
         ` : `
           ${['suggestions'].map(tab => `
             <div class="w-full my-2"></div>
-            <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-green-600 to-teal-600 text-white' : 'bg-slate-800/50 text-slate-300'}">
+            <button onclick="state.activeTab='${tab}'; updateHash(); render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-green-600 to-teal-600 text-white' : 'bg-slate-800/50 text-slate-300'}">
               💡 Sugestões
             </button>
           `).join('')}
@@ -10227,6 +10350,9 @@ window.addEventListener('beforeunload', () => { try { saveAllToDB(); } catch (e)
       }
     }
   }, 60000); // Check every minute
+  
+  // Initialize hash-based routing
+  loadFromHash();
   
   render();
 })();
