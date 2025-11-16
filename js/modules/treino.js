@@ -3,7 +3,21 @@
  * @module modules/treino
  */
 
-/* Workout navigation and helpers */
+/* Toggle functions */
+function togglePhotoSection() {
+  const section = document.getElementById('photoSection');
+  const icon = document.getElementById('togglePhotoIcon');
+  const text = document.getElementById('togglePhotoText');
+  
+  if (section) {
+    const isHidden = section.classList.toggle('hidden');
+    if (icon) icon.textContent = isHidden ? '▼' : '▲';
+    if (text) text.textContent = isHidden ? 'Mostrar Fotos' : 'Ocultar Fotos';
+  }
+}
+
+
+/* Workout day navigation */
 function goToPreviousWorkoutDay() {
   const current = new Date(state.currentWorkoutDay);
   current.setDate(current.getDate() - 1);
@@ -23,7 +37,53 @@ function goToTodayWorkout() {
   render();
 }
 
-// Show workout exercises form for registration
+
+/* Workout handlers */
+function handleEditWorkout(id) {
+  const user = state.users[state.activeUser];
+  if (!user.workoutHistory) user.workoutHistory = [];
+  const log = user.workoutHistory.find(l => l.id === id);
+  if (!log) return alert('Registro não encontrado');
+  
+  // Prompt for new values
+  const newSets = prompt(`Editar Séries\nExercício: ${log.exercise}\n\nSéries atuais: ${log.sets}`, log.sets === '-' ? '' : log.sets);
+  if (newSets === null) return; // User cancelled
+  
+  const newReps = prompt(`Editar Repetições\nExercício: ${log.exercise}\n\nRepetições atuais: ${log.reps}`, log.reps === '-' ? '' : log.reps);
+  if (newReps === null) return; // User cancelled
+  
+  const newWeight = prompt(`Editar Carga (kg)\nExercício: ${log.exercise}\n\nCarga atual: ${log.weight}`, log.weight === '-' ? '' : log.weight);
+  if (newWeight === null) return; // User cancelled
+  
+  // Update the workout log
+  log.sets = newSets || '-';
+  log.reps = newReps || '-';
+  log.weight = newWeight || '-';
+  
+  addOrUpdateUser(user);
+  
+  // Show success notification
+  const details = newSets && newReps ? ` (${newSets}x${newReps}${newWeight ? ' @ ' + newWeight + 'kg' : ''})` : '';
+  showNotification(`✅ Treino atualizado: ${log.exercise}${details}`, 'success');
+  render();
+}
+
+function handleDeleteWorkout(id) {
+  if (!confirm('Deseja excluir este registro de treino? Ele será movido para o arquivo (archive) e poderá ser restaurado.')) return;
+  const user = state.users[state.activeUser];
+  if (!user.workoutHistory) user.workoutHistory = [];
+  const log = user.workoutHistory.find(l => l.id === id);
+  if (!log) return alert('Registro não encontrado');
+  archiveItem('workoutHistory', id, 'workout', log).then(() => {
+    user.workoutHistory = user.workoutHistory.filter(l => l.id !== id);
+    addOrUpdateUser(user);
+    showNotification('✅ Registro de treino excluído e movido para archive', 'success');
+    render();
+  });
+}
+
+
+/* Show workout exercises */
 function showWorkoutExercises(templateId) {
   const template = templates[templateId];
   if (!template) return;
@@ -246,26 +306,8 @@ function hideWorkoutExercises() {
   formDiv.classList.add('hidden');
 }
 
-// Handle quick exercise log from the form
-function handleQuickExerciseLog(event, exerciseName, templateId) {
-  event.preventDefault();
-  
-  const form = event.target;
-  
-  // Collect data for 3 individual sets
-  const setsData = [];
-  for (let i = 1; i <= 3; i++) {
-    const reps = form['reps' + i].value;
-    const weight = form['weight' + i].value;
-    
-    if (reps && weight) {
-      setsData.push({
-        setNumber: i,
-        reps: parseFloat(reps),
-        weight: parseFloat(weight),
 
-
-/* Main treino render function */
+/* Main treino render */
 function renderTreino(user) {
   if (!user.workoutHistory) user.workoutHistory = [];
   
@@ -395,3 +437,4 @@ function renderTreino(user) {
     </div>
   `;
 }
+

@@ -509,7 +509,3 @@ function renderComparisonChart() {
   
   window.comparisonChart = new Chart(canvas, config);
 }
-
-/* ============================= AUTHENTICATION UI ============================= */
-
-function renderLoginPage() {

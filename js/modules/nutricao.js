@@ -846,5 +846,3 @@ function renderAlimentacao() {
     </div>
   `;
 }
-
-function renderEvolucao(bodyMetrics, user) {

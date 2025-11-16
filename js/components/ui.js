@@ -2426,7 +2426,3 @@ function renderFotosProgresso(user) {
     </div>
   `;
 }
-
-/* ============================= ADMIN RENDER FUNCTIONS ============================= */
-
-function renderAdminTasks() {

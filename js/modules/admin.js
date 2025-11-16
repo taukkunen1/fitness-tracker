@@ -850,6 +850,3 @@ function exportChangelogToJSON() {
 if (!window.selectedProfilesForChart) {
   window.selectedProfilesForChart = new Set([state.activeUser]);
 }
-
-// Toggle profile in chart
-function toggleProfileInChart(profileId) {
