@@ -3028,44 +3028,6 @@ function showWorkoutExercises(templateId) {
             ✓ Registrar Exercício
           </button>
         </form>
-        
-        <script>
-          // Auto-calculate volumes for exercise ${index}
-          (function() {
-            const form = document.currentScript.previousElementSibling;
-            const inputs = {
-              reps1: form.querySelector('[name="reps1"]'),
-              weight1: form.querySelector('[name="weight1"]'),
-              volume1: form.querySelector('[name="volume1"]'),
-              reps2: form.querySelector('[name="reps2"]'),
-              weight2: form.querySelector('[name="weight2"]'),
-              volume2: form.querySelector('[name="volume2"]'),
-              reps3: form.querySelector('[name="reps3"]'),
-              weight3: form.querySelector('[name="weight3"]'),
-              volume3: form.querySelector('[name="volume3"]')
-            };
-            
-            function updateVolumes() {
-              let total = 0;
-              for (let i = 1; i <= 3; i++) {
-                const reps = parseFloat(inputs['reps' + i].value) || 0;
-                const weight = parseFloat(inputs['weight' + i].value) || 0;
-                const volume = reps * weight;
-                inputs['volume' + i].value = volume > 0 ? volume.toFixed(1) + ' kg' : '';
-                total += volume;
-              }
-              const totalElem = document.getElementById('totalVolume_${index}');
-              if (totalElem) {
-                totalElem.textContent = total > 0 ? total.toFixed(1) + ' kg' : '0 kg';
-              }
-            }
-            
-            // Add listeners
-            ['reps1', 'weight1', 'reps2', 'weight2', 'reps3', 'weight3'].forEach(name => {
-              inputs[name].addEventListener('input', updateVolumes);
-            });
-          })();
-        </script>
       </div>
     `;
   });
@@ -6812,21 +6774,6 @@ function renderExercicios(user) {
                       if (log.totalVolume) {
                         return sum + log.totalVolume;
                       }
-                      const weight = parseNumber(log.weight);
-                      const reps = parseNumber(log.reps);
-                      const sets = parseNumber(log.sets);
-                      return sum + (weight * reps * sets);
-                    }, 0))} kg</p>
-                  </div>
-                  <div class="bg-white/10 backdrop-blur p-3 rounded">
-                    <p class="text-sm text-purple-200 mb-1">Exercícios Únicos</p>
-                    <p class="text-2xl font-bold">${new Set(workoutsOnDate.map(w => w.exercise)).size}</p>
-                  </div>
-                </div>
-              </div>
-            </div>`
-          }
-        </div>
                       const weight = parseNumber(log.weight);
                       const reps = parseNumber(log.reps);
                       const sets = parseNumber(log.sets);
