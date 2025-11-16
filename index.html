@@ -4166,6 +4166,19 @@ function toggleDashboardHelp() {
   }
 }
 
+// Toggle photo section in workouts (Progressive Disclosure)
+function togglePhotoSection() {
+  const section = document.getElementById('photoSection');
+  const icon = document.getElementById('togglePhotoIcon');
+  const text = document.getElementById('togglePhotoText');
+  
+  if (section) {
+    const isHidden = section.classList.toggle('hidden');
+    if (icon) icon.textContent = isHidden ? '▼' : '▲';
+    if (text) text.textContent = isHidden ? 'Mostrar Fotos' : 'Ocultar Fotos';
+  }
+}
+
 // Toggle scientific references panel (Progressive Disclosure)
 // Toggle period comparison view (Future enhancement placeholder)
 function togglePeriodComparison() {
@@ -4196,10 +4209,6 @@ document.addEventListener('keydown', function(e) {
       break;
     case 'e':
       state.activeTab = 'evolucao';
-      render();
-      break;
-    case 'f':
-      state.activeTab = 'fotos';
       render();
       break;
     case '?':
@@ -4259,9 +4268,9 @@ function render() {
 
     <div class="max-w-7xl mx-auto px-4 py-6">
       <div class="flex flex-wrap gap-3 mb-6">
-        ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao','referencias','developer'].map(tab => `
+        ${['dashboard','treino','exercicios','nutricao','alimentacao','evolucao','referencias','developer'].map(tab => `
           <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
-            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : tab === 'referencias' ? '📚 Referências' : '👨‍💻 Developer'}
+            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : tab === 'referencias' ? '📚 Referências' : '👨‍💻 Developer'}
           </button>
         `).join('')}
         ${isAdmin() ? `
@@ -4288,7 +4297,6 @@ function render() {
         ${state.activeTab === 'dashboard' ? renderDashboard(currentUser, latestMetrics) : ''}
         ${state.activeTab === 'treino' ? renderTreino(currentUser) : ''}
         ${state.activeTab === 'exercicios' ? renderExercicios(currentUser) : ''}
-        ${state.activeTab === 'fotos' ? renderFotosProgresso(currentUser) : ''}
         ${state.activeTab === 'nutricao' ? renderNutricao(currentUser) : ''}
         ${state.activeTab === 'alimentacao' ? renderAlimentacao() : ''}
         ${state.activeTab === 'evolucao' ? renderEvolucao(bodyMetrics, currentUser) : ''}
@@ -4313,11 +4321,6 @@ function render() {
   if (state.activeTab === 'evolucao') {
     renderMuscleEvolutionChart(bodyMetrics, currentUser.id);
     setupWorkoutFormListeners();
-  }
-  
-  // Load progress photos for current user
-  if (state.activeTab === 'fotos') {
-    loadProgressPhotos();
   }
   
   // Render comparison chart if in comparar tab
@@ -4351,17 +4354,18 @@ function render() {
     
     // attach workout delete buttons using event delegation
     attachWorkoutDeleteButtons();
+    
+    // Load progress photos for current user (now part of treino tab)
+    loadProgressPhotos();
+    
+    // attach progress photo form (now part of treino tab)
+    const photoForm = document.getElementById('progressPhotoForm');
+    if (photoForm) photoForm.addEventListener('submit', handleAddProgressPhoto);
   }
   
   // attach workout delete buttons if in exercicios tab
   if (state.activeTab === 'exercicios') {
     attachWorkoutDeleteButtons();
-  }
-  
-  // attach progress photo form if in fotos tab
-  if (state.activeTab === 'fotos') {
-    const photoForm = document.getElementById('progressPhotoForm');
-    if (photoForm) photoForm.addEventListener('submit', handleAddProgressPhoto);
   }
   
   // Admin tabs - load data and attach event listeners
@@ -4907,6 +4911,21 @@ function renderTreino(user) {
           }).join('')}
         </div>`
       }
+    </div>
+
+    <!-- Photos Section (Optional) -->
+    <div class="mt-6 bg-gradient-to-r from-blue-900 to-purple-900 p-6 rounded-xl border border-blue-500">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-2xl">📸 Fotos de Progresso (Opcional)</h3>
+        <button onclick="togglePhotoSection()" id="togglePhotoBtn" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded font-semibold">
+          <span id="togglePhotoIcon">▼</span> <span id="togglePhotoText">Mostrar Fotos</span>
+        </button>
+      </div>
+      <p class="text-blue-200 text-sm mb-4">Adicione fotos do seu progresso para acompanhar sua evolução visual ao longo do tempo.</p>
+      
+      <div id="photoSection" class="hidden">
+        ${renderFotosProgresso(user)}
+      </div>
     </div>
   `;
 }
