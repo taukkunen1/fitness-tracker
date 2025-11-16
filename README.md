@@ -174,7 +174,29 @@ firebase deploy
 
 For detailed Firebase setup instructions, see **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)**.
 
-### 4. Primeiro Acesso
+### 4. Test Firebase Data Storage
+
+To verify Firebase Firestore is saving and reading data correctly:
+
+```bash
+# Start local server
+python -m http.server 8000
+
+# Open in browser
+open http://localhost:8000/firebase-data-test.html
+```
+
+The test page will automatically run a comprehensive test suite including:
+- ✅ Firebase initialization
+- ✅ Data write operations
+- ✅ Data read operations
+- ✅ Data update operations
+- ✅ Data delete operations
+- ✅ Real-time listeners
+
+For detailed testing instructions, see **[FIREBASE_DATA_TESTING.md](FIREBASE_DATA_TESTING.md)**.
+
+### 5. Primeiro Acesso
 
 O sistema fará auto-login como **Pedro (Admin)** para facilitar o desenvolvimento.
 
@@ -189,6 +211,7 @@ Para criar uma nova conta:
 ### Documentação Principal
 - **[ARQUITETURA.md](ARQUITETURA.md)** - 🏗️ Arquitetura completa do sistema (Backend + Frontend)
 - **[🔥 FIREBASE_SETUP.md](FIREBASE_SETUP.md)** - Firebase integration and deployment guide
+- **[🔥 FIREBASE_DATA_TESTING.md](FIREBASE_DATA_TESTING.md)** - Firebase Firestore data storage testing guide
 - **[CHANGELOG.md](CHANGELOG.md)** - Histórico completo de mudanças
 - **[VERSION.md](VERSION.md)** - Controle de versionamento semântico
 - **[RELEASES.md](RELEASES.md)** - Releases detalhadas com nomes específicos
