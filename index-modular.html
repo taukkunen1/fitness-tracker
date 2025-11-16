@@ -50,12 +50,15 @@
             <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/modules/nutricao.js</code> - Nutrição</li>
             <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/modules/admin.js</code> - Admin</li>
             <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/components/ui.js</code> - UI Components</li>
-            <li>🎯 <strong class="text-green-400">66% do código modularizado!</strong></li>
+            <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/core/state.js</code> - Estado global</li>
+            <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/core/theme.js</code> - Sistema de temas</li>
+            <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/core/init.js</code> - Inicialização</li>
+            <li>🎯 <strong class="text-green-400">Progresso atualizado: extraindo código restante...</strong></li>
           </ul>
           <div class="mt-6 p-4 bg-green-900/30 border border-green-500 rounded">
-            <p class="font-bold mb-2 text-green-300">🎉 Progresso: 66% Completo!</p>
-            <p class="text-sm">7.797 de 11.871 linhas já foram modularizadas.</p>
-            <p class="text-sm mt-2">Todos os módulos principais estão carregados e prontos para uso.</p>
+            <p class="font-bold mb-2 text-green-300">🎉 Progresso: ~75% Completo!</p>
+            <p class="text-sm">Novos módulos adicionados: State, Theme, Init (~500 linhas)</p>
+            <p class="text-sm mt-2">Próximo: Extrair código de renderização e handlers restantes</p>
             <p class="text-sm mt-2">Por enquanto, continue usando <code class="bg-slate-700 px-2 py-1 rounded">index.html</code> para funcionalidade completa.</p>
           </div>
           <div class="mt-4 text-center">
@@ -70,7 +73,9 @@
 
   <!-- Core Modules (Load Order Matters!) -->
   <script src="js/core/db.js"></script>
+  <script src="js/core/state.js"></script>
   <script src="js/core/router.js"></script>
+  <script src="js/core/theme.js"></script>
   <script src="js/auth/security.js"></script>
   <script src="js/auth/advanced-security.js"></script>
   <script src="js/auth/authentication.js"></script>
@@ -91,14 +96,17 @@
   <!-- UI Components -->
   <script src="js/components/ui.js"></script>
   
+  <!-- Initialization -->
+  <script src="js/core/init.js"></script>
+  
   <script>
     // Initialize the application
     (function() {
       console.log('🚀 Pilgrim Fitness Tracker (Modular Version)');
-      console.log('📊 Progress: 66% Complete (7,797 of 11,871 lines modularized)');
+      console.log('📊 Progress: ~75% Complete (8,300+ of 11,871 lines modularized)');
       console.log('');
       console.log('📦 Loaded modules:');
-      console.log('  ✅ Core: Database, Router');
+      console.log('  ✅ Core: Database, State, Router, Theme, Init');
       console.log('  ✅ Auth: Security, Advanced Security, Authentication');
       console.log('  ✅ Utils: Helpers, Charts');
       console.log('  ✅ Data: Initial Users, Templates, Common Foods');
@@ -106,6 +114,8 @@
       console.log('  ✅ Components: UI');
       console.log('');
       console.log('📋 Available data:');
+      console.log('  - state: Global application state');
+      console.log('  - themeState: Theme management state');
       console.log('  - initialUsers: Pedro, Valentina');
       console.log('  - templates: treino_1, treino_2');
       console.log('  - scientificStudiesSeed: Research references');
@@ -113,12 +123,13 @@
       console.log('  - livUpMarmitas: Ready meals database');
       console.log('');
       console.log('📋 Available functions:');
+      console.log('  - initApp(), toggleTheme(), setTheme()');
       console.log('  - renderDashboard(), renderTreino(), renderNutricao()');
       console.log('  - renderAdminTasks(), renderAdminSuggestions(), renderAdminSecurity()');
       console.log('  - renderEvolucao(), renderComparacao(), renderWorkoutCharts()');
       console.log('  - toggleDashboardHelp(), togglePhotoSection()');
       console.log('');
-      console.log('ℹ️ Esta versão demonstra a estrutura modular (66% completo).');
+      console.log('ℹ️ Esta versão demonstra a estrutura modular (~75% completo).');
       console.log('📄 Para funcionalidade completa, use: index.html');
     })();
   </script>
