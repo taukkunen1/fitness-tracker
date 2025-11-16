@@ -850,3 +850,110 @@ function exportChangelogToJSON() {
 if (!window.selectedProfilesForChart) {
   window.selectedProfilesForChart = new Set([state.activeUser]);
 }
+
+/* ----------------------------- Admin UI Helper Functions ----------------------------- */
+
+function showCreateTaskModal() {
+  const modal = prompt('Digite o título da nova tarefa:');
+  if (!modal) return;
+  
+  const description = prompt('Digite a descrição da tarefa:');
+  if (!description) return;
+  
+  const category = prompt('Categoria (short_term/medium_term/long_term):', 'short_term');
+  const priority = prompt('Prioridade (low/medium/high/critical):', 'medium');
+  
+  createTask({
+    title: modal,
+    description: description,
+    category: category || 'short_term',
+    priority: priority || 'medium'
+  }).then(() => {
+    showNotification('✅ Tarefa criada!', 'success');
+    loadAndDisplayTasks();
+  }).catch(err => {
+    showNotification('❌ ' + err.message, 'error');
+  });
+}
+
+// Change task status
+async function changeTaskStatus(taskId) {
+  const newStatus = prompt('Novo status (todo/in_progress/done/blocked):', 'in_progress');
+  if (!newStatus) return;
+  
+  try {
+    await updateTask(taskId, { status: newStatus });
+    await loadAndDisplayTasks();
+    showNotification('✅ Status atualizado!', 'success');
+  } catch (err) {
+    showNotification('❌ ' + err.message, 'error');
+  }
+}
+
+// Delete task with confirmation
+async function deleteTaskConfirm(taskId) {
+  if (!confirm('Deseja arquivar esta tarefa? Ela será movida para o arquivo.')) return;
+  
+  try {
+    await deleteTask(taskId);
+    await loadAndDisplayTasks();
+    showNotification('✅ Tarefa arquivada!', 'success');
+  } catch (err) {
+    showNotification('❌ ' + err.message, 'error');
+  }
+}
+
+// Export tasks to markdown
+async function exportTasksToMarkdown() {
+  const tasks = await getAllTasks();
+  
+  let markdown = '# Roadmap - Pilgrim\n\n';
+  markdown += `**Data:** ${new Date().toLocaleString('pt-BR')}\n\n`;
+  markdown += '---\n\n';
+  
+  const categories = {
+    [TASK_CATEGORIES.SHORT_TERM]: 'Curto Prazo (1-2 semanas)',
+    [TASK_CATEGORIES.MEDIUM_TERM]: 'Médio Prazo (1-3 meses)',
+    [TASK_CATEGORIES.LONG_TERM]: 'Longo Prazo (3-6 meses)'
+  };
+  
+  for (const [category, categoryName] of Object.entries(categories)) {
+    const categoryTasks = tasks.filter(t => t.category === category);
+    if (categoryTasks.length === 0) continue;
+    
+    markdown += `## ${categoryName}\n\n`;
+    
+    categoryTasks.forEach(task => {
+      markdown += `### ${task.title}\n`;
+      markdown += `- **Status:** ${task.status}\n`;
+      markdown += `- **Prioridade:** ${task.priority}\n`;
+      markdown += `- **Descrição:** ${task.description}\n`;
+      
+      if (task.checklist.length > 0) {
+        markdown += `- **Checklist:**\n`;
+        task.checklist.forEach(item => {
+          markdown += `  - [${item.done ? 'x' : ' '}] ${item.text}\n`;
+        });
+      }
+      
+      markdown += '\n---\n\n';
+    });
+  }
+  
+  // Download as file
+  const blob = new Blob([markdown], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `roadmap_${new Date().toISOString().split('T')[0]}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showNotification('✅ Roadmap exportado!', 'success');
+}
+
+// Export tasks to JSON
+async function exportTasksToJSON() {
+  const tasks = await getAllTasks();
+  const json = JSON.stringify(tasks, null, 2);
+  
