@@ -2,7 +2,7 @@
 
 Sistema completo e seguro de acompanhamento de treino e nutrição baseado em evidências científicas, com autenticação, painel administrativo e recursos avançados de monitoramento.
 
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](VERSION.md)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](docs/releases/VERSION.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-enterprise-brightgreen.svg)](SECURITY.md)
 
@@ -265,11 +265,34 @@ Use o [GitHub Issues](https://github.com/taukkunen1/fitness-tracker/issues) com:
 - Screenshots (se aplicável)
 - Browser e versão
 
+## 📚 Documentação
+
+### Estrutura de Documentação
+
+- **[Documentação Principal](docs/README.md)** - Índice completo da documentação
+- **[Information Architecture Guide](docs/INFORMATION-ARCHITECTURE.md)** - Guia de organização do projeto
+- **[Changelog](CHANGELOG.md)** - Histórico de mudanças (Keep a Changelog)
+- **[Security Policy](SECURITY.md)** - Política de segurança
+
+### Documentação por Público
+
+- **[Guias do Usuário](docs/user/)** - Como usar o sistema
+- **[Guias do Admin](docs/admin/)** - Administração e monitoramento
+- **[Guias do Desenvolvedor](docs/developer/)** - Setup, arquitetura, contribuição
+- **[Guias de Deploy](docs/deployment/)** - Como fazer deploy
+
+### Recursos Adicionais
+
+- **[Features](docs/FEATURES.md)** - Lista completa de funcionalidades
+- **[Known Issues](docs/KNOWN-ISSUES.md)** - Problemas conhecidos
+- **[Releases](docs/releases/)** - Notas de versão
+- **[Reports](docs/reports/)** - Relatórios de implementação
+
 ## 📊 Status do Projeto
 
 - **Status**: 🟢 Ativo
 - **Versão**: 2.0.0
-- **Última atualização**: 15 de Novembro de 2025
+- **Última atualização**: 16 de Novembro de 2025
 - **Manutenção**: Ativa
 - **Issues abertas**: Veja [Issues](https://github.com/taukkunen1/fitness-tracker/issues)
 

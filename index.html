@@ -7744,64 +7744,152 @@ function renderUserSuggestions() {
   `;
 }
 
-/* ----------------------------- Admin Changelog Page ----------------------------- */
-function renderAdminChangelog() {
-  // Changelog data structure - this will be displayed in the admin panel
-  // Following versioning: Major changes (1.0 -> 1.1), Minor changes (1.0.1 -> 1.0.2)
-  const changelogData = [
+/* ----------------------------- Parse CHANGELOG.md ----------------------------- */
+// Global variable to store parsed changelog
+let parsedChangelogData = null;
+let isLoadingChangelog = false;
+
+// Function to fetch and parse CHANGELOG.md
+async function fetchAndParseChangelog() {
+  try {
+    const response = await fetch('CHANGELOG.md');
+    if (!response.ok) {
+      throw new Error('Failed to fetch CHANGELOG.md');
+    }
+    const text = await response.text();
+    return parseChangelogMarkdown(text);
+  } catch (error) {
+    console.error('Error fetching changelog:', error);
+    return getFallbackChangelogData();
+  }
+}
+
+// Function to parse markdown changelog into structured data
+function parseChangelogMarkdown(markdown) {
+  const versions = [];
+  const lines = markdown.split('\n');
+  let currentVersion = null;
+  let currentSection = null;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Match version header: ## [2.0.0] - 2025-11-15
+    const versionMatch = line.match(/^##\s+\[(\d+\.\d+\.\d+)\]\s+-\s+(\d{4}-\d{2}-\d{2})/);
+    if (versionMatch) {
+      if (currentVersion) {
+        versions.push(currentVersion);
+      }
+      
+      const [, version, date] = versionMatch;
+      const versionParts = version.split('.').map(Number);
+      let type = 'patch';
+      if (versionParts[0] > 0 && versionParts[1] === 0 && versionParts[2] === 0) {
+        type = 'major';
+      } else if (versionParts[1] > 0 && versionParts[2] === 0) {
+        type = 'minor';
+      }
+      
+      currentVersion = {
+        version,
+        date,
+        type,
+        title: '',
+        changes: []
+      };
+      currentSection = null;
+      continue;
+    }
+    
+    // Skip if no current version
+    if (!currentVersion) continue;
+    
+    // Capture title (first heading after version that's not a section)
+    if (!currentVersion.title && line.startsWith('###') && !line.includes('✨') && !line.includes('🔧') && !line.includes('❌') && !line.includes('🐛') && !line.includes('🔒') && !line.includes('📚') && !line.includes('🎯')) {
+      currentVersion.title = line.replace(/^###\s+🎉?\s*/, '').replace(/^Principais Mudanças desta Versão/, '').trim();
+      if (!currentVersion.title) currentVersion.title = `Versão ${currentVersion.version}`;
+      continue;
+    }
+    
+    // Match section headers: ### ✨ Adicionado
+    if (line.startsWith('###')) {
+      if (line.includes('✨') || line.includes('Adicionado')) currentSection = 'added';
+      else if (line.includes('🔧') || line.includes('Alterado')) currentSection = 'changed';
+      else if (line.includes('❌') || line.includes('Removido')) currentSection = 'removed';
+      else if (line.includes('🐛') || line.includes('Corrigido')) currentSection = 'fixed';
+      else if (line.includes('🔒') || line.includes('Segurança')) currentSection = 'security';
+      continue;
+    }
+    
+    // Match bullet points (changes)
+    if (currentSection && line.startsWith('-')) {
+      let text = line.substring(1).trim();
+      
+      // Remove markdown bold formatting
+      text = text.replace(/\*\*(.*?)\*\*/g, '$1');
+      
+      // Extract just the main point (first sentence or before colon)
+      if (text.includes(':')) {
+        text = text.split(':')[0];
+      }
+      
+      // Skip sub-bullets (indented with spaces)
+      if (!line.match(/^-\s{2,}/)) {
+        currentVersion.changes.push({
+          type: currentSection,
+          text: text.trim()
+        });
+      }
+    }
+  }
+  
+  // Add last version
+  if (currentVersion) {
+    versions.push(currentVersion);
+  }
+  
+  return versions;
+}
+
+// Fallback data if CHANGELOG.md cannot be loaded
+function getFallbackChangelogData() {
+  return [
     {
       version: '2.0.0',
       date: '2025-11-15',
       type: 'major',
       title: 'Sistema de Autenticação e Administração',
       changes: [
-        { type: 'added', text: 'Sistema completo de autenticação com PBKDF2 (100k iterações)' },
-        { type: 'added', text: 'Painel administrativo com gestão de tarefas e roadmap' },
-        { type: 'added', text: 'Sistema de monitoramento de acessos e estatísticas' },
-        { type: 'added', text: 'Sistema de sugestões e feedback da comunidade' },
-        { type: 'added', text: 'Proteção contra brute force e rate limiting' },
-        { type: 'removed', text: 'Código de bloqueio de DevTools (má UX)' },
-        { type: 'fixed', text: 'Headers CSP inválidos em meta tags' },
-        { type: 'changed', text: 'IndexedDB atualizado para versão 6 com novos stores' }
-      ]
-    },
-    {
-      version: '1.5.0',
-      date: '2025-11-10',
-      type: 'minor',
-      title: 'Melhorias no Sistema de Refeições e Fotos',
-      changes: [
-        { type: 'added', text: 'Navegação dia-a-dia para registro de refeições' },
-        { type: 'added', text: 'Sistema de upload e comparação de fotos de progresso' },
-        { type: 'added', text: 'Composição de refeições com múltiplos alimentos' },
-        { type: 'changed', text: 'Melhorias na interface de nutrição' }
-      ]
-    },
-    {
-      version: '1.0.1',
-      date: '2025-11-05',
-      type: 'patch',
-      title: 'Correções e pequenas melhorias',
-      changes: [
-        { type: 'fixed', text: 'Bug no cálculo de macros totais' },
-        { type: 'fixed', text: 'Problema de responsividade em mobile' },
-        { type: 'changed', text: 'Ajustes no design dos cards' }
-      ]
-    },
-    {
-      version: '1.0.0',
-      date: '2025-11-01',
-      type: 'major',
-      title: 'Lançamento Inicial',
-      changes: [
-        { type: 'added', text: 'Sistema básico de tracking de fitness' },
-        { type: 'added', text: 'Registro de métricas corporais' },
-        { type: 'added', text: 'Templates de treino científicos' },
-        { type: 'added', text: 'Cálculo de macronutrientes' },
-        { type: 'added', text: 'Gráficos de evolução com Chart.js' }
+        { type: 'added', text: 'Sistema completo de autenticação com PBKDF2' },
+        { type: 'added', text: 'Painel administrativo com gestão de tarefas' },
+        { type: 'added', text: 'Sistema de monitoramento de acessos' }
       ]
     }
   ];
+}
+
+// Load changelog data asynchronously and re-render when ready
+async function loadChangelogData() {
+  if (!parsedChangelogData && !isLoadingChangelog) {
+    isLoadingChangelog = true;
+    parsedChangelogData = await fetchAndParseChangelog();
+    isLoadingChangelog = false;
+    // Re-render if we're on the changelog tab
+    if (state.activeTab === 'admin_changelog') {
+      render();
+    }
+  }
+}
+
+/* ----------------------------- Admin Changelog Page ----------------------------- */
+function renderAdminChangelog() {
+  // Trigger async load if needed
+  if (!parsedChangelogData && !isLoadingChangelog) {
+    loadChangelogData();
+  }
+  
+  // Use fallback data while loading or if already loaded
+  const changelogData = parsedChangelogData || getFallbackChangelogData();
 
   // Get change type badge styling
   const getChangeTypeBadge = (type) => {
@@ -7833,8 +7921,10 @@ function renderAdminChangelog() {
         <p class="text-slate-300">Histórico completo de mudanças e versões do Pilgrim Fitness Tracker</p>
         <p class="text-slate-400 text-sm mt-2">
           <strong>Versionamento:</strong> MAJOR.MINOR.PATCH - 
-          Mudanças importantes (1.0 → 1.1), Novas funcionalidades (1.0 → 1.1.0), Correções (1.0.0 → 1.0.1)
+          Mudanças importantes (1.0 → 2.0), Novas funcionalidades (1.0 → 1.1), Correções (1.0.0 → 1.0.1)
         </p>
+        ${isLoadingChangelog ? '<p class="text-yellow-300 text-sm mt-2 animate-pulse">🔄 Carregando changelog do CHANGELOG.md...</p>' : ''}
+        ${!isLoadingChangelog && parsedChangelogData ? '<p class="text-green-300 text-sm mt-2">✅ Dados carregados automaticamente do CHANGELOG.md</p>' : ''}
       </div>
 
       <!-- Info Box -->
@@ -7844,6 +7934,10 @@ function renderAdminChangelog() {
           Todas as mudanças significativas no painel de administrador e no sistema são documentadas aqui a partir da versão 1.0.
           Este changelog segue o <a href="https://semver.org/lang/pt-BR/" target="_blank" class="underline">Versionamento Semântico</a> 
           e o formato <a href="https://keepachangelog.com/pt-BR/1.0.0/" target="_blank" class="underline">Keep a Changelog</a>.
+          <br><br>
+          <strong class="text-blue-300">📄 Fonte:</strong> Os dados são carregados automaticamente do arquivo 
+          <a href="CHANGELOG.md" target="_blank" class="underline font-semibold">CHANGELOG.md</a> na raiz do projeto.
+          Qualquer atualização nesse arquivo será refletida aqui automaticamente ao recarregar a página.
         </p>
       </div>
 
@@ -7980,7 +8074,7 @@ function renderAdminChangelog() {
               <p class="text-xs text-slate-400">Changelog completo no GitHub</p>
             </div>
           </a>
-          <a href="https://github.com/taukkunen1/fitness-tracker/blob/main/VERSION.md" 
+          <a href="https://github.com/taukkunen1/fitness-tracker/blob/main/docs/releases/VERSION.md" 
              target="_blank"
              class="p-4 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center gap-3 transition-colors">
             <span class="text-2xl">🔢</span>
@@ -7999,17 +8093,59 @@ function renderAdminChangelog() {
 
 // Export changelog to Markdown
 function exportChangelogToMarkdown() {
+  const data = parsedChangelogData || getFallbackChangelogData();
+  
   let markdown = '# Changelog - Pilgrim Fitness Tracker\n\n';
   markdown += `**Gerado em:** ${new Date().toLocaleString('pt-BR')}\n\n`;
   markdown += 'Todas as mudanças notáveis neste projeto são documentadas neste arquivo.\n\n';
+  markdown += 'O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),\n';
+  markdown += 'e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).\n\n';
   markdown += '---\n\n';
   
-  // This would need the changelog data - for now, just show a message
+  data.forEach(version => {
+    markdown += `## [${version.version}] - ${version.date}\n\n`;
+    markdown += `### ${version.title}\n\n`;
+    
+    const grouped = {};
+    version.changes.forEach(change => {
+      if (!grouped[change.type]) grouped[change.type] = [];
+      grouped[change.type].push(change.text);
+    });
+    
+    if (grouped.added) {
+      markdown += '### ✨ Adicionado\n\n';
+      grouped.added.forEach(text => markdown += `- ${text}\n`);
+      markdown += '\n';
+    }
+    if (grouped.changed) {
+      markdown += '### 🔧 Alterado\n\n';
+      grouped.changed.forEach(text => markdown += `- ${text}\n`);
+      markdown += '\n';
+    }
+    if (grouped.fixed) {
+      markdown += '### 🐛 Corrigido\n\n';
+      grouped.fixed.forEach(text => markdown += `- ${text}\n`);
+      markdown += '\n';
+    }
+    if (grouped.removed) {
+      markdown += '### ❌ Removido\n\n';
+      grouped.removed.forEach(text => markdown += `- ${text}\n`);
+      markdown += '\n';
+    }
+    if (grouped.security) {
+      markdown += '### 🔒 Segurança\n\n';
+      grouped.security.forEach(text => markdown += `- ${text}\n`);
+      markdown += '\n';
+    }
+    
+    markdown += '---\n\n';
+  });
+  
   const blob = new Blob([markdown], { type: 'text/markdown' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `changelog_${new Date().toISOString().split('T')[0]}.md`;
+  a.download = `changelog_export_${new Date().toISOString().split('T')[0]}.md`;
   a.click();
   URL.revokeObjectURL(url);
   
@@ -8018,18 +8154,13 @@ function exportChangelogToMarkdown() {
 
 // Export changelog to JSON
 function exportChangelogToJSON() {
+  const data = parsedChangelogData || getFallbackChangelogData();
+  
   const changelogData = {
     generated: new Date().toISOString(),
-    currentVersion: '2.0.0',
-    versions: [
-      {
-        version: '2.0.0',
-        date: '2025-11-15',
-        type: 'major',
-        title: 'Sistema de Autenticação e Administração',
-        changes: []
-      }
-    ]
+    currentVersion: data[0]?.version || '2.0.0',
+    totalVersions: data.length,
+    versions: data
   };
   
   const json = JSON.stringify(changelogData, null, 2);
@@ -8038,7 +8169,7 @@ function exportChangelogToJSON() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `changelog_${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `changelog_export_${new Date().toISOString().split('T')[0]}.json`;
   a.click();
   URL.revokeObjectURL(url);
   
