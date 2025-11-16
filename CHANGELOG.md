@@ -7,6 +7,174 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [2.1.0] - 2025-11-16
+
+### 🎉 Backend Database Infrastructure
+
+Esta versão adiciona suporte completo a banco de dados backend, transformando o Pilgrim em uma aplicação full-stack profissional.
+
+### ✨ Adicionado
+
+#### Backend Infrastructure
+- **Node.js/Express Server**: API RESTful completa e production-ready
+  - Express 4.18 com middleware de segurança (Helmet, CORS)
+  - Rate limiting adaptativo para proteção contra brute force
+  - Tratamento robusto de erros com mensagens amigáveis
+  - Health check endpoint para monitoramento
+- **MongoDB Database**: Banco de dados NoSQL escalável
+  - Mongoose 8.0 como ODM
+  - 5 coleções principais: users, workouts, meals, metrics, progressphotos
+  - Índices otimizados para queries frequentes
+  - Validação de dados no nível do schema
+- **JWT Authentication**: Sistema de autenticação stateless
+  - Tokens JWT com expiração configurável (24h padrão)
+  - bcryptjs para hash seguro de senhas
+  - Refresh token support
+  - Account locking após tentativas falhadas
+
+#### API Endpoints
+- **Authentication** (`/api/auth`)
+  - `POST /register` - Registrar novo usuário
+  - `POST /login` - Login com JWT
+  - `GET /me` - Informações do usuário autenticado
+  - `PUT /updateprofile` - Atualizar perfil
+  - `PUT /updatepassword` - Alterar senha
+- **Workouts** (`/api/workouts`)
+  - CRUD completo com filtros por data e tipo
+  - Suporte a exercícios compostos
+  - Tracking de calorias e duração
+- **Meals** (`/api/meals`)
+  - CRUD completo com cálculo automático de macros
+  - Filtros por tipo de refeição e data
+  - Validação de valores nutricionais
+- **Metrics** (`/api/metrics`)
+  - Registro de medidas corporais ao longo do tempo
+  - Suporte a peso, gordura corporal, massa muscular, IMC
+- **Progress Photos** (`/api/photos`)
+  - Upload de fotos com multer
+  - Validação de tipo e tamanho (5MB máximo)
+  - Armazenamento seguro em filesystem
+
+#### Database Models
+- **User Model**: Perfil completo com segurança
+  - Profile fields: age, weight, height, gender, goals
+  - Role-based access (user/admin)
+  - Failed login tracking
+  - Account locking mechanism
+- **Workout Model**: Treinos detalhados
+  - Array de exercícios com sets, reps, weight
+  - Categorização por tipo
+  - Duração e calorias queimadas
+- **Meal Model**: Refeições com nutrição
+  - Array de alimentos com macros
+  - Cálculo automático de totais
+  - Timestamps automáticos
+- **Metrics Model**: Evolução corporal
+  - Medidas ao longo do tempo
+  - Suporte a notas e observações
+- **ProgressPhoto Model**: Fotos de progresso
+  - Referência ao arquivo no filesystem
+  - Metadata adicional (peso, gordura, medidas)
+
+#### Docker Support
+- **Production Setup** (`docker-compose.yml`)
+  - MongoDB, API, Frontend, Certbot
+  - Volumes persistentes para dados
+  - Health checks automáticos
+  - Network isolation
+- **Development Setup** (`docker-compose.dev.yml`)
+  - Hot-reload para desenvolvimento
+  - Mongo Express UI (localhost:8081)
+  - Debug-friendly configuration
+  - Rápido setup com um comando
+
+#### Documentation
+- **BACKEND_SETUP.md**: Guia completo de setup (8KB)
+  - Instalação local e Docker
+  - Configuração de ambiente
+  - Schema do banco de dados
+  - Troubleshooting
+- **API_TESTING.md**: Guia de testes (9KB)
+  - Exemplos curl para todos endpoints
+  - Script de teste automatizado
+  - Postman collection guide
+- **BACKEND_README.md**: Quick reference
+  - Comandos rápidos
+  - Credenciais padrão
+  - Troubleshooting comum
+
+#### Scripts & Tools
+- **start-backend.sh/bat**: Scripts de início multiplataforma
+  - Verificação de dependências
+  - Setup automático de .env
+  - Detecção de MongoDB
+- **test-api.sh**: Suite de testes automatizada
+  - 10 testes cobrindo todos endpoints
+  - Output colorido e detalhado
+  - Relatório de sucesso/falha
+- **server/seed.js**: Dados iniciais
+  - Contas admin e demo
+  - Workouts e meals de exemplo
+  - Metrics e photos de teste
+- **migrate.html**: Ferramenta de migração
+  - Interface web para exportar IndexedDB
+  - Login no backend
+  - Migração assistida de dados
+
+#### API Client
+- **js/api-client.js**: Cliente JavaScript completo
+  - Classe `FitnessTrackerAPI` para integração
+  - Métodos para todos endpoints
+  - Gerenciamento automático de tokens
+  - Error handling consistente
+
+#### Security Features
+- **Password Security**
+  - bcrypt com 10 salt rounds
+  - Validação de força de senha
+  - Histórico de senhas (futuro)
+- **API Security**
+  - Rate limiting: 100 req/15min
+  - Account locking: 5 tentativas/15min
+  - CORS configurável
+  - Helmet security headers
+- **Data Validation**
+  - Mongoose schema validation
+  - Input sanitization
+  - File upload restrictions
+  - Size and type validation
+
+### 🔄 Mudado
+- **README.md**: Adicionado seção de backend e modos de operação
+- **package.json**: Adicionado scripts e dependências do backend
+- **.gitignore**: Atualizado para node_modules, uploads, .env
+
+### 📊 Dual-Mode Support
+
+O Pilgrim agora suporta **dois modos de operação**:
+
+1. **Frontend-Only Mode** (Original)
+   - 100% local, tudo no navegador
+   - IndexedDB para armazenamento
+   - Zero configuração necessária
+   - Perfeito para uso pessoal
+
+2. **Full-Stack Mode** (Novo)
+   - Backend Node.js + MongoDB
+   - API REST profissional
+   - Multi-usuário e multi-dispositivo
+   - Escalável e production-ready
+
+### 🎯 Próximos Passos
+
+- [ ] Integrar frontend com API client
+- [ ] Sincronização automática de dados
+- [ ] Modo offline com sync quando online
+- [ ] WebSocket para updates real-time
+- [ ] Apps mobile nativos (React Native)
+
+---
+
 ## [2.0.0] - 2025-11-15
 
 ### 🎉 Principais Mudanças desta Versão
