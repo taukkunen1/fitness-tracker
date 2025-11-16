@@ -2,7 +2,7 @@
 
 Sistema completo e seguro de acompanhamento de treino e nutrição baseado em evidências científicas, com autenticação, painel administrativo e recursos avançados de monitoramento.
 
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](docs/releases/VERSION.md)
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](docs/releases/VERSION.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-enterprise-brightgreen.svg)](SECURITY.md)
 
@@ -16,6 +16,25 @@ Sistema completo e seguro de acompanhamento de treino e nutrição baseado em ev
 - Role: Admin
 
 > ⚠️ **Nota**: Auto-login está ativado por padrão para facilitar o desenvolvimento. Em produção, desabilite o auto-login editando `index.html`.
+
+## 🎯 Modos de Operação
+
+O Pilgrim agora suporta **dois modos de operação**:
+
+### 1. Frontend-Only (Modo Original)
+- ✅ **100% Local**: Todos os dados no navegador (IndexedDB)
+- ✅ **Zero Configuração**: Apenas abra o index.html
+- ✅ **Privacidade Total**: Nenhum dado sai do seu computador
+- ✅ **Ideal para**: Uso pessoal, desenvolvimento, testes
+
+### 2. Full-Stack com Backend (Novo!)
+- ✅ **Banco de Dados Real**: MongoDB para armazenamento persistente
+- ✅ **API REST**: Backend Node.js/Express profissional
+- ✅ **Multi-dispositivo**: Acesse seus dados de qualquer lugar
+- ✅ **Escalável**: Suporta múltiplos usuários
+- ✅ **Ideal para**: Produção, uso em equipe, aplicações empresariais
+
+**📖 Guia Completo de Setup:** Veja [BACKEND_SETUP.md](BACKEND_SETUP.md)
 
 ## ✨ Funcionalidades Principais
 
@@ -98,8 +117,19 @@ Sistema completo e seguro de acompanhamento de treino e nutrição baseado em ev
 - **Chart.js 4.4.0** - Gráficos interativos e responsivos
 - **Tailwind CSS (CDN)** - Estilização moderna e utility-first
 
+### Backend (Opcional - Novo!)
+- **Node.js 20+** - Runtime JavaScript
+- **Express 4.18** - Framework web minimalista
+- **MongoDB 7.0** - Banco de dados NoSQL
+- **Mongoose 8.0** - ODM para MongoDB
+- **JWT** - Autenticação stateless
+- **bcryptjs** - Hash seguro de senhas
+- **Helmet** - Security headers
+- **Express Rate Limit** - Proteção contra brute force
+
 ### Armazenamento
-- **IndexedDB v6** - Banco de dados principal (9 stores)
+- **IndexedDB v6** - Banco de dados local do navegador (9 stores)
+- **MongoDB 7.0** - Banco de dados backend (opcional)
 - **LocalStorage** - Fallback e cache rápido
 - **Web Crypto API** - Criptografia nativa do browser
 
@@ -118,14 +148,16 @@ Sistema completo e seguro de acompanhamento de treino e nutrição baseado em ev
 
 ## 🚀 Quick Start
 
-### 1. Clone o Repositório
+### Modo Frontend-Only (Mais Simples)
+
+#### 1. Clone o Repositório
 
 ```bash
 git clone https://github.com/taukkunen1/fitness-tracker.git
 cd fitness-tracker
 ```
 
-### 2. Abra no Navegador
+#### 2. Abra no Navegador
 
 Simplesmente abra o arquivo `index.html` no seu navegador:
 
@@ -150,7 +182,72 @@ npx http-server -p 8000
 php -S localhost:8000
 ```
 
-### 3. Primeiro Acesso
+#### 3. Primeiro Acesso
+
+O sistema fará auto-login como **Pedro (Admin)** para facilitar o desenvolvimento.
+
+### Modo Full-Stack com Backend
+
+**📖 Guia Completo:** [BACKEND_SETUP.md](BACKEND_SETUP.md)
+
+#### Quick Start com Docker
+
+```bash
+# 1. Configure as variáveis de ambiente
+cp .env.production .env
+# Edite .env com suas configurações
+
+# 2. Inicie todos os serviços
+docker-compose up -d
+
+# 3. Acesse a aplicação
+# Frontend: http://localhost
+# API: http://localhost:3000
+```
+
+#### Quick Start sem Docker
+
+```bash
+# 1. Instale as dependências
+npm install
+
+# 2. Configure o ambiente
+cp .env.example .env
+# Edite .env com suas configurações
+
+# 3. Inicie o MongoDB
+# macOS: brew services start mongodb-community
+# Linux: sudo systemctl start mongodb
+# Windows: Execute o MongoDB como serviço
+
+# 4. Inicie o backend
+npm start
+
+# 5. Em outro terminal, sirva o frontend
+python -m http.server 8000
+
+# 6. Acesse
+# Frontend: http://localhost:8000
+# API: http://localhost:3000
+```
+```
+
+### 3. Migração de Dados
+
+Se você já tem dados no modo frontend-only e quer migrar para o backend:
+
+```bash
+# 1. Abra a ferramenta de migração
+open migrate.html
+
+# 2. Siga as instruções na página
+# - Configure a URL do backend
+# - Faça login
+# - Exporte os dados do IndexedDB
+# - Migre para o backend
+```
+
+### 4. Primeiro Acesso
 
 O sistema fará auto-login como **Pedro (Admin)** para facilitar o desenvolvimento.
 

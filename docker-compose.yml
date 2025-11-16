@@ -1,7 +1,63 @@
 version: '3.8'
 
 services:
-  # Main web application with nginx
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: pilgrim-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE: fitness-tracker
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - app-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Backend API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: pilgrim-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@mongodb:27017/fitness-tracker?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
+      JWT_EXPIRE: 24h
+      CORS_ORIGINS: http://localhost:8000,http://localhost:80
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+      MAX_FILE_SIZE: 5242880
+      UPLOAD_PATH: /app/uploads
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Frontend web application with nginx
   web:
     build: .
     container_name: pilgrim-fitness-tracker
@@ -16,6 +72,8 @@ services:
       # Mount certbot challenge directory
       - ./certbot-challenge:/var/www/certbot:ro
     restart: unless-stopped
+    depends_on:
+      - api
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
@@ -38,6 +96,12 @@ services:
     networks:
       - app-network
 
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+
 networks:
   app-network:
     driver: bridge
@@ -46,6 +110,8 @@ networks:
 # 1. Replace 'your-email@example.com' with your actual email
 # 2. Replace 'your-domain.com' with your actual domain
 # 3. Update nginx.conf SSL certificate paths to match mounted volumes
-# 4. Run certbot service first to generate certificates
-# 5. Set up cron job for certificate renewal:
+# 4. Set strong passwords for MongoDB in .env file
+# 5. Set a strong JWT_SECRET in .env file
+# 6. Run certbot service first to generate certificates
+# 7. Set up cron job for certificate renewal:
 #    docker-compose run --rm certbot renew

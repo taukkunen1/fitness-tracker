@@ -23,7 +23,29 @@ npm-debug.log*
 *.backup
 *.bak
 
+# Node.js
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Uploads
+uploads/
+*.jpg
+*.png
+*.jpeg
+*.webp
+
+# Database
+*.db
+*.sqlite
+
 # Nota: Os seguintes arquivos são intencionalmente incluídos no repositório:
 # - index.html.txt (versão alternativa com funcionalidades admin)
 # - update-site.sh e update-site.bat (scripts de deploy)
 # - github_workflows_auto-deploy-index_Version9.yml (workflow alternativo)
+# - .env.example e .env.production (templates de configuração)
