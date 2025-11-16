@@ -58,11 +58,13 @@ Sistema completo e seguro de acompanhamento de treino e nutrição baseado em ev
 - **Histórico Completo**: Visualização e análise de todas as refeições
 - **Validação Robusta**: Campos obrigatórios e validação numérica
 
-### 📸 Fotos de Progresso
-- **Upload de Fotos**: Interface moderna com preview
+### 📸 Fotos de Progresso (v2.1 - Integrado em Treinos) ✨
+- **Upload Opcional**: Agora integrado na aba de treinos
+- **Interface Moderna**: Preview e validação de imagens
 - **Comparação Visual**: Lado a lado de duas fotos diferentes
-- **Galeria**: Organização por data com notas
-- **Armazenamento Local**: Todas as fotos em IndexedDB
+- **Galeria Organizada**: Por data com notas personalizadas
+- **Armazenamento Local**: Todas as fotos em IndexedDB (100% privado)
+- **Progressive Disclosure**: Seção expansível para melhor UX
 
 ### 🏋️ Treinos e Templates
 - **Templates Científicos**: Full-body, Push/Pull/Legs, Upper/Lower/Full
@@ -70,6 +72,7 @@ Sistema completo e seguro de acompanhamento de treino e nutrição baseado em ev
 - **Base Científica**: Programas baseados em estudos e evidências
 - **Logs de Treino**: Registro completo de cada sessão
 - **Progressão**: Acompanhamento de carga e volume ao longo do tempo
+- **📸 Fotos Integradas**: Adicione fotos de progresso opcional junto com treinos
 
 ### 📈 Métricas e Gráficos
 - **Dashboard Interativo**: Visualização de peso, gordura, massa muscular
@@ -77,6 +80,16 @@ Sistema completo e seguro de acompanhamento de treino e nutrição baseado em ev
 - **Comparação de Usuários**: Métricas lado a lado de 2 perfis
 - **Export de Dados**: CSV com todos os registros históricos
 - **Estatísticas**: Médias, tendências, projeções
+
+### 🌐 Estrutura de URLs (v2.1 - Hash-Based Routing) ✨
+- **URLs Bookmarkable**: Cada seção tem sua própria URL
+- **Navegação Browser**: Botões voltar/avançar funcionam corretamente
+- **Estrutura Lógica**:
+  - `/#dashboard` - Dashboard principal
+  - `/#treino` - Treinos e fotos de progresso
+  - `/#nutricao` - Nutrição e alimentação
+  - `/#admin` - Painel administrativo (restrito)
+- **Proteção de Rotas**: Admin routes verificam permissões automaticamente
 
 ## 🛠️ Tecnologias
 
