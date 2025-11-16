@@ -163,6 +163,7 @@ Para criar uma nova conta:
 ## 📚 Documentação Completa
 
 ### Documentação Principal
+- **[ARQUITETURA.md](ARQUITETURA.md)** - 🏗️ Arquitetura completa do sistema (Backend + Frontend)
 - **[CHANGELOG.md](CHANGELOG.md)** - Histórico completo de mudanças
 - **[VERSION.md](VERSION.md)** - Controle de versionamento semântico
 - **[RELEASES.md](RELEASES.md)** - Releases detalhadas com nomes específicos
