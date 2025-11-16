@@ -13,9 +13,7 @@
   <!-- Referrer Policy: Control referer information -->
   <meta name="referrer" content="no-referrer">
   
-  <!-- Copyright e aviso de proteção -->
-  <meta name="copyright" content="© 2025 Pilgrim. Todos os direitos reservados." />
-  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -45,88 +43,11 @@
   </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen">
-  <!--
-    Pilgrim - Versão completa e verbosa (2025-11)
-    Objetivos desta versão:
-    - Restaurar/Manter todas as informações antigas (marmitas, templates, treinos, etc.)
-    - Nunca excluir dados permanentemente sem confirmação explícita do usuário;
-      operações de "exclusão" movem o item para um store 'archive' ou marcam como 'deleted' (soft delete).
-    - Banco de dados robusto local: IndexedDB com stores: users, comparisons, references, archive, settings
-    - Fallback para localStorage e migração automatizada de chaves legadas (ft_users, ft_references, ft_custom_programs, etc.)
-    - Templates detalhados de treino (Full-body, PPL, Upper/Lower/Full) com exercícios, sets, reps, tempo e notas.
-    - Gráfico de evolução muscular com massa (kg) e tamanho (cm) e opção de export CSV.
-    - Import/Export de backups JSON e funções para sincronização remota futura (placeholder).
-    - Comentários abundantes para transparência e fácil edição.
-  -->
-
   <div id="app"></div>
 
 <script>
-/* ======================================================================
-   🛡️ PILGRIM FITNESS TRACKER - SISTEMA PROTEGIDO (2025)
-   ======================================================================
-   
-   ⚠️ AVISO DE DIREITOS AUTORAIS E PROTEÇÃO DE CÓDIGO:
-   
-   Este código-fonte é propriedade de Pilgrim e está protegido por leis de 
-   direitos autorais internacionais. Uso não autorizado, cópia, modificação, 
-   distribuição ou engenharia reversa são estritamente proibidos.
-   
-   © 2025 Pilgrim. Todos os direitos reservados.
-   
-   ARQUITETURA DE SEGURANÇA:
-   - 🔐 Autenticação PBKDF2 com 100.000 iterações
-   - 🛡️ Proteção contra XSS, CSRF, Brute Force
-   - 🔒 Armazenamento local criptografado (IndexedDB)
-   - 🚫 Sem transmissão de dados para servidores externos
-   - 🎯 Zero Trust Framework com validação contínua
-   - 🤖 AI-Powered Security com detecção de ameaças
-   - 📊 Analytics 100% local e privacy-first
-   
-   ESTRUTURA DE DADOS DESCENTRALIZADA:
-   - Todos os dados são armazenados localmente no navegador do usuário
-   - IndexedDB como banco de dados principal (sem servidores)
-   - Fallback para localStorage quando necessário
-   - Política de soft-delete para proteção de dados
-   - Exportação/Importação de backups em formato JSON
-   
-   ORGANIZAÇÃO DO CÓDIGO:
-   - /# (root) - Dashboard principal
-   - /#treino - Módulo de treinos e fotos de progresso
-   - /#nutricao - Módulo de nutrição e alimentação
-   - /#admin - Painel administrativo (acesso restrito)
-   
-   Para mais informações sobre segurança, consulte: SECURITY.md
-   ====================================================================== */
 
-/* ======================================================================
-   CONFIGURAÇÕES GLOBAIS E DESCRIÇÃO DO DB
-   ======================================================================
-
-   - IndexedDB: 'fitness-tracker-db' versão 6 (versão incrementada para garantir migração se necessário)
-     Object stores:
-       * users         - keyPath: id
-       * comparisons   - keyPath: id
-       * references    - keyPath: id
-       * archive       - keyPath: id  (para guardar itens removidos, histórico, backups rápidos)
-       * settings      - keyPath: key (para armazenar flags, lastSync, etc.)
-       * accounts      - keyPath: username (sistema de autenticação)
-       * tasks         - keyPath: id (gerenciamento de tarefas admin)
-       * suggestions   - keyPath: id (sistema de sugestões)
-       * access_logs   - keyPath: id (monitoramento de acessos)
-
-   - Fallback localStorage keys:
-       ft_users, ft_comparisons, ft_references, ft_custom_programs, ft_settings
-
-   - Política de exclusão: por padrão, NÃO remover do arquivo nem do DB. Ao "deletar" itens,
-     movemos para STORE 'archive' e marcamos um campo deletedAt + deletedBy (soft-delete).
-     Apenas com confirmação explícita do usuário e seleção de "Excluir permanentemente (archive->delete)"
-     removeremos de archive.
-
-   - Migração: se encontrar dados legados em localStorage, vamos migrar cuidadosamente para IndexedDB
-     (sem sobrescrever dados existentes) e manter as chaves legadas como backup.
-
-   ====================================================================== */
+/* Database Configuration */
 
 const DB_NAME = 'fitness-tracker-db';
 const DB_VERSION = 6; // bumped for access tracking and monitoring
@@ -245,17 +166,6 @@ function loadLS(key) {
 }
 
 // ============================= AUTHENTICATION & SECURITY SYSTEM (2025) =============================
-/* 
-  Sistema de autenticação e segurança implementado para proteção contra ataques modernos:
-  - Login e registro seguros
-  - Hash de senha com PBKDF2 (Web Crypto API)
-  - Proteção contra brute force
-  - Rate limiting
-  - CSRF token protection
-  - XSS protection com sanitização
-  - Session management segura
-  - Auditoria de eventos de segurança
-*/
 
 // Security configuration
 const SECURITY_CONFIG = {
@@ -282,17 +192,7 @@ let authState = {
   rateLimitTracking: {}
 };
 
-/* ========================================
-   ADVANCED SECURITY MODULES (2025 Research-Based)
-   Based on cutting-edge cybersecurity research:
-   - AI-Powered Security Agent (LLM concepts)
-   - Adaptive Rate Limiter (ML-based adaptive firewalls)
-   - Zero Trust Framework (continuous validation)
-   - Privacy-Preserving Analytics (federated learning concepts)
-   - DCCI Framework (dynamic capabilities intelligence)
-   
-   Full documentation: docs/security/
-   ======================================== */
+/* ======================================== ADVANCED SECURITY MODULES (2025) ======================================== */
 
 // AI-Powered Security Agent Module
 const SecurityAgent = {
@@ -9189,7 +9089,6 @@ function renderLoginPage() {
             <p class="text-xs mt-1">O primeiro usuário registrado será automaticamente promovido a administrador</p>
           </div>
           <p>🔒 Seus dados ficam armazenados apenas no seu navegador</p>
-          <p>© 2025 Pilgrim - Todos os direitos reservados</p>
         </div>
       </div>
     </div>
