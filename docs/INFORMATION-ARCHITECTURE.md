@@ -154,17 +154,61 @@ https://github.com/taukkunen1/fitness-tracker/blob/main/CHANGELOG.md
 https://github.com/taukkunen1/fitness-tracker/blob/main/docs/releases/v2.0.0.md
 ```
 
-### URLs da Aplicação (GitHub Pages)
+### URLs da Aplicação (GitHub Pages) - Hash-Based Routing ✨
+
+O sistema agora utiliza **hash-based routing** para criar uma estrutura de URLs organizada e bookmarkable:
 
 ```
-# Aplicação principal
+# Aplicação principal (Dashboard)
 https://taukkunen1.github.io/fitness-tracker/
-
-# Deep links (hash-based routing)
 https://taukkunen1.github.io/fitness-tracker/#dashboard
-https://taukkunen1.github.io/fitness-tracker/#treinos
+
+# Módulo de Treinos (inclui Fotos de Progresso)
+https://taukkunen1.github.io/fitness-tracker/#treino
+
+# Módulo de Exercícios
+https://taukkunen1.github.io/fitness-tracker/#exercicios
+
+# Módulo de Nutrição
+https://taukkunen1.github.io/fitness-tracker/#nutricao
+https://taukkunen1.github.io/fitness-tracker/#nutricao/alimentacao
+
+# Evolução e Métricas
+https://taukkunen1.github.io/fitness-tracker/#evolucao
+
+# Referências Científicas
+https://taukkunen1.github.io/fitness-tracker/#referencias
+
+# Painel Administrativo (acesso restrito)
+https://taukkunen1.github.io/fitness-tracker/#admin
+https://taukkunen1.github.io/fitness-tracker/#admin/tarefas
+https://taukkunen1.github.io/fitness-tracker/#admin/sugestoes
+https://taukkunen1.github.io/fitness-tracker/#admin/seguranca
 https://taukkunen1.github.io/fitness-tracker/#admin/changelog
+
+# Sistema de Sugestões (usuários)
+https://taukkunen1.github.io/fitness-tracker/#sugestoes
+
+# Developer Tools
+https://taukkunen1.github.io/fitness-tracker/#developer
 ```
+
+#### Benefícios do Hash-Based Routing:
+
+1. **📑 Bookmarkable**: Usuários podem salvar URLs específicas
+2. **↩️ Navegação Browser**: Botões voltar/avançar funcionam corretamente
+3. **🔒 Proteção de Rotas**: Rotas admin verificam permissões automaticamente
+4. **🏗️ Estrutura Lógica**: "Árvore genealógica" clara do site
+5. **⚡ Performance**: SPA mantém velocidade, sem recarregamento de página
+
+#### Aliases e Atalhos:
+
+- `/#paineladmin` → redireciona para `/#admin/tarefas`
+- `/#alimentacao` → equivalente a `/#nutricao/alimentacao`
+
+#### Proteção de Acesso:
+
+Rotas que começam com `/#admin` exigem autenticação como administrador. Usuários sem permissão são automaticamente redirecionados para o dashboard com uma notificação de erro.
 
 ---
 
