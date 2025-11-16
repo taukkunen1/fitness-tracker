@@ -102,6 +102,7 @@ Sistema completo e seguro de acompanhamento de treino e nutrição baseado em ev
 - **IndexedDB v6** - Banco de dados principal (9 stores)
 - **LocalStorage** - Fallback e cache rápido
 - **Web Crypto API** - Criptografia nativa do browser
+- **🔥 Firebase** - Hosting, Analytics, e future cloud features
 
 ### Segurança
 - **PBKDF2** - Hash de senhas (100.000 iterações)
@@ -150,7 +151,30 @@ npx http-server -p 8000
 php -S localhost:8000
 ```
 
-### 3. Primeiro Acesso
+### 3. Firebase Setup (Optional - for deployment)
+
+If you want to deploy to Firebase Hosting:
+
+```bash
+# Install dependencies
+npm install
+
+# Install Firebase CLI
+npm install -g firebase-tools
+
+# Login to Firebase
+firebase login
+
+# Initialize Firebase (if needed)
+firebase init
+
+# Deploy to Firebase
+firebase deploy
+```
+
+For detailed Firebase setup instructions, see **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)**.
+
+### 4. Primeiro Acesso
 
 O sistema fará auto-login como **Pedro (Admin)** para facilitar o desenvolvimento.
 
@@ -164,6 +188,7 @@ Para criar uma nova conta:
 
 ### Documentação Principal
 - **[ARQUITETURA.md](ARQUITETURA.md)** - 🏗️ Arquitetura completa do sistema (Backend + Frontend)
+- **[🔥 FIREBASE_SETUP.md](FIREBASE_SETUP.md)** - Firebase integration and deployment guide
 - **[CHANGELOG.md](CHANGELOG.md)** - Histórico completo de mudanças
 - **[VERSION.md](VERSION.md)** - Controle de versionamento semântico
 - **[RELEASES.md](RELEASES.md)** - Releases detalhadas com nomes específicos

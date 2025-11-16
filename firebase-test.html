@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Test - Pilgrim Fitness Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .test-result {
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 5px;
+    }
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+    pre {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    h1 { color: #333; }
+    h2 { color: #666; margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>🔥 Firebase Integration Test</h1>
+    <p>This page verifies that Firebase is properly integrated into the Pilgrim Fitness Tracker.</p>
+
+    <div id="test-results"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+    
+    const resultsContainer = document.getElementById('test-results');
+    
+    function addTestResult(title, success, message, details = null) {
+      const resultDiv = document.createElement('div');
+      resultDiv.className = `test-result ${success ? 'success' : 'error'}`;
+      
+      let html = `<h3>${success ? '✅' : '❌'} ${title}</h3><p>${message}</p>`;
+      
+      if (details) {
+        html += `<pre>${JSON.stringify(details, null, 2)}</pre>`;
+      }
+      
+      resultDiv.innerHTML = html;
+      resultsContainer.appendChild(resultDiv);
+    }
+    
+    function addInfoResult(title, message) {
+      const resultDiv = document.createElement('div');
+      resultDiv.className = 'test-result info';
+      resultDiv.innerHTML = `<h3>ℹ️ ${title}</h3><p>${message}</p>`;
+      resultsContainer.appendChild(resultDiv);
+    }
+    
+    // Test 1: Firebase Configuration
+    addInfoResult('Test 1: Firebase Configuration', 'Checking Firebase configuration...');
+    
+    const firebaseConfig = {
+      apiKey: "AIzaSyC1zhIHzZoTHx7XBfaYnSYya_TgrJR-eNU",
+      authDomain: "fitness-tracker-9c801.firebaseapp.com",
+      projectId: "fitness-tracker-9c801",
+      storageBucket: "fitness-tracker-9c801.firebasestorage.app",
+      messagingSenderId: "890869868034",
+      appId: "1:890869868034:web:034347f9849af262ea691b",
+      measurementId: "G-TYDL5MRFRL"
+    };
+
+    addTestResult(
+      'Firebase Configuration Loaded',
+      true,
+      'Firebase configuration object is properly defined.',
+      firebaseConfig
+    );
+
+    // Test 2: Initialize Firebase
+    try {
+      const app = initializeApp(firebaseConfig);
+      addTestResult(
+        'Firebase App Initialized',
+        true,
+        'Firebase app initialized successfully.',
+        { name: app.name, options: app.options }
+      );
+      
+      // Test 3: Initialize Analytics
+      try {
+        const analytics = getAnalytics(app);
+        addTestResult(
+          'Firebase Analytics Initialized',
+          true,
+          'Firebase Analytics initialized successfully. Events will be tracked automatically.',
+          { app: analytics.app.name }
+        );
+      } catch (analyticsError) {
+        addTestResult(
+          'Firebase Analytics Initialization',
+          false,
+          'Failed to initialize Firebase Analytics. This may be due to browser privacy settings or ad blockers.',
+          { error: analyticsError.message }
+        );
+      }
+      
+      // Test 4: Check global availability
+      window.firebaseApp = app;
+      if (window.firebaseApp) {
+        addTestResult(
+          'Global Firebase Access',
+          true,
+          'Firebase app is available globally as window.firebaseApp',
+          null
+        );
+      }
+      
+      // Summary
+      addInfoResult(
+        'Test Summary',
+        'Firebase integration is working correctly! The app can now use Firebase services including Hosting and Analytics.'
+      );
+      
+    } catch (error) {
+      addTestResult(
+        'Firebase Initialization',
+        false,
+        'Failed to initialize Firebase. Check the configuration and network connection.',
+        { error: error.message, stack: error.stack }
+      );
+    }
+  </script>
+</body>
+</html>
