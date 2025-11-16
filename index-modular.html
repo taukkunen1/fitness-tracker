@@ -56,8 +56,12 @@
             <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/core/db.js</code> - Banco de dados</li>
             <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/core/router.js</code> - Roteamento</li>
             <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/auth/security.js</code> - Segurança</li>
+            <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/auth/advanced-security.js</code> - Segurança avançada (AI)</li>
+            <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/auth/authentication.js</code> - Autenticação</li>
+            <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/data/initial-users.js</code> - Dados iniciais</li>
+            <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/data/templates.js</code> - Templates de treino</li>
+            <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/data/common-foods.js</code> - Banco de alimentos</li>
             <li>✅ <code class="bg-slate-700 px-2 py-1 rounded">js/utils/helpers.js</code> - Utilitários</li>
-            <li>⏳ <code class="bg-slate-700 px-2 py-1 rounded">js/auth/authentication.js</code> - Em breve</li>
             <li>⏳ <code class="bg-slate-700 px-2 py-1 rounded">js/modules/*.js</code> - Em breve</li>
           </ul>
           <div class="mt-6 p-4 bg-blue-900/30 border border-blue-500 rounded">
@@ -79,10 +83,16 @@
   <script src="js/core/db.js"></script>
   <script src="js/core/router.js"></script>
   <script src="js/auth/security.js"></script>
+  <script src="js/auth/advanced-security.js"></script>
+  <script src="js/auth/authentication.js"></script>
   <script src="js/utils/helpers.js"></script>
   
-  <!-- Additional modules will be loaded here as they're created -->
-  <!-- <script src="js/auth/authentication.js"></script> -->
+  <!-- Data Modules -->
+  <script src="js/data/initial-users.js"></script>
+  <script src="js/data/templates.js"></script>
+  <script src="js/data/common-foods.js"></script>
+  
+  <!-- Feature modules will be loaded here as they're created -->
   <!-- <script src="js/modules/dashboard.js"></script> -->
   <!-- <script src="js/modules/treino.js"></script> -->
   <!-- <script src="js/modules/nutricao.js"></script> -->
@@ -96,14 +106,19 @@
       console.log('  ✅ Database (db.js)');
       console.log('  ✅ Router (router.js)');
       console.log('  ✅ Security (security.js)');
+      console.log('  ✅ Advanced Security (advanced-security.js)');
+      console.log('  ✅ Authentication (authentication.js)');
       console.log('  ✅ Helpers (helpers.js)');
+      console.log('  ✅ Initial Users (initial-users.js)');
+      console.log('  ✅ Workout Templates (templates.js)');
+      console.log('  ✅ Common Foods (common-foods.js)');
       console.log('');
-      console.log('📋 Modules available:');
-      console.log('  - openDB(), dbPut(), dbGet(), dbGetAll(), dbDelete()');
-      console.log('  - saveLS(), loadLS()');
-      console.log('  - navigateTo(), getCurrentRoute(), initRouter()');
-      console.log('  - hashPassword(), validatePassword(), sanitizeInput()');
-      console.log('  - showNotification(), formatDate(), generateId()');
+      console.log('📋 Available data:');
+      console.log('  - initialUsers: Pedro, Valentina');
+      console.log('  - templates: treino_1, treino_2');
+      console.log('  - scientificStudiesSeed: Research references');
+      console.log('  - commonFoods: proteinas, carboidratos, gorduras, vegetais');
+      console.log('  - livUpMarmitas: Ready meals database');
       console.log('');
       console.log('ℹ️ Esta versão é uma demonstração da estrutura modular.');
       console.log('📄 Para usar o app completo, acesse: index.html');
