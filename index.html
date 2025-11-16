@@ -5825,6 +5825,72 @@ function renderEvolucao(bodyMetrics, user) {
     </div>
 
     <div class="bg-slate-800 p-4 rounded mb-6">
+      <h3 class="font-bold text-xl mb-4">📈 Gráfico de Evolução</h3>
+      
+      <!-- Profile Selection for Comparison -->
+      <div class="bg-slate-700 p-4 rounded mb-4">
+        <h4 class="font-semibold mb-3 text-purple-300">👥 Selecionar Perfis para Comparação</h4>
+        <div class="space-y-2">
+          ${Object.values(state.users).map(u => `
+            <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-2 rounded">
+              <input type="checkbox" 
+                     id="profileSelect_${u.id}" 
+                     onchange="toggleProfileInChart('${u.id}')" 
+                     ${u.id === user.id ? 'checked' : ''}
+                     class="w-4 h-4 rounded" />
+              <span class="text-white">${u.name}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Metric Filters -->
+      <div class="bg-slate-700 p-4 rounded mb-4">
+        <h4 class="font-semibold mb-3 text-green-300">📊 Selecionar Métricas para Exibir</h4>
+        <div class="grid md:grid-cols-3 gap-3">
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-2 rounded">
+            <input type="checkbox" id="metricWeight" onchange="updateEvolutionChart()" checked class="w-4 h-4 rounded" />
+            <span class="text-white">Peso (kg)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-2 rounded">
+            <input type="checkbox" id="metricBodyFat" onchange="updateEvolutionChart()" checked class="w-4 h-4 rounded" />
+            <span class="text-white">Gordura Corporal (%)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-2 rounded">
+            <input type="checkbox" id="metricMuscleMass" onchange="updateEvolutionChart()" checked class="w-4 h-4 rounded" />
+            <span class="text-white">Massa Muscular (kg)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-2 rounded">
+            <input type="checkbox" id="metricBMI" onchange="updateEvolutionChart()" class="w-4 h-4 rounded" />
+            <span class="text-white">IMC</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-2 rounded">
+            <input type="checkbox" id="metricWater" onchange="updateEvolutionChart()" class="w-4 h-4 rounded" />
+            <span class="text-white">Água Corporal (kg)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-2 rounded">
+            <input type="checkbox" id="metricBMR" onchange="updateEvolutionChart()" class="w-4 h-4 rounded" />
+            <span class="text-white">TMB (kcal/dia)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-2 rounded">
+            <input type="checkbox" id="metricPhaseAngle" onchange="updateEvolutionChart()" class="w-4 h-4 rounded" />
+            <span class="text-white">Ângulo de Fase (°)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-2 rounded">
+            <input type="checkbox" id="metricMetabolicAge" onchange="updateEvolutionChart()" class="w-4 h-4 rounded" />
+            <span class="text-white">Idade Metabólica (anos)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-2 rounded">
+            <input type="checkbox" id="metricMuscleSize" onchange="updateEvolutionChart()" class="w-4 h-4 rounded" />
+            <span class="text-white">Tamanho Muscular (cm)</span>
+          </label>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button onclick="selectAllMetrics()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm">✅ Selecionar Todas</button>
+          <button onclick="deselectAllMetrics()" class="px-3 py-1 bg-slate-600 hover:bg-slate-500 rounded text-sm">❌ Desmarcar Todas</button>
+        </div>
+      </div>
+
       <div class="flex gap-3 items-start">
         <div style="flex:1;">
           <canvas id="muscleChart" height="160"></canvas>
@@ -5832,7 +5898,7 @@ function renderEvolucao(bodyMetrics, user) {
         <div style="width: 180px;" class="flex flex-col gap-2">
           <button onclick="exportMuscleEvolutionCSV('${user.id}')" class="bg-blue-600 px-3 py-2 rounded">📊 Exportar CSV</button>
           <button onclick="alert('Backup (full DB export) em breve')" class="bg-amber-600 px-3 py-2 rounded">💾 Backup DB</button>
-          <div class="text-slate-300 text-sm mt-2">Gráfico de evolução: massa muscular e composição corporal ao longo do tempo.</div>
+          <div class="text-slate-300 text-sm mt-2">Gráfico de evolução comparativa com múltiplos perfis e métricas.</div>
         </div>
       </div>
 
@@ -8677,8 +8743,43 @@ function exportChangelogToJSON() {
 }
 
 /* ----------------------------- Chart rendering ----------------------------- */
-function renderMuscleEvolutionChart(bodyMetrics, userId) {
-  // Check if Chart.js is available
+
+// State for selected profiles (initialize with current user)
+if (!window.selectedProfilesForChart) {
+  window.selectedProfilesForChart = new Set([state.activeUser]);
+}
+
+// Toggle profile in chart
+function toggleProfileInChart(profileId) {
+  if (window.selectedProfilesForChart.has(profileId)) {
+    window.selectedProfilesForChart.delete(profileId);
+  } else {
+    window.selectedProfilesForChart.add(profileId);
+  }
+  updateEvolutionChart();
+}
+
+// Select/deselect all metrics
+function selectAllMetrics() {
+  ['metricWeight', 'metricBodyFat', 'metricMuscleMass', 'metricBMI', 'metricWater', 
+   'metricBMR', 'metricPhaseAngle', 'metricMetabolicAge', 'metricMuscleSize'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.checked = true;
+  });
+  updateEvolutionChart();
+}
+
+function deselectAllMetrics() {
+  ['metricWeight', 'metricBodyFat', 'metricMuscleMass', 'metricBMI', 'metricWater', 
+   'metricBMR', 'metricPhaseAngle', 'metricMetabolicAge', 'metricMuscleSize'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
+  });
+  updateEvolutionChart();
+}
+
+// Update chart based on current selections
+function updateEvolutionChart() {
   if (typeof Chart === 'undefined') {
     console.warn('Chart.js not loaded, skipping chart rendering');
     return;
@@ -8686,27 +8787,241 @@ function renderMuscleEvolutionChart(bodyMetrics, userId) {
   
   const canvas = document.getElementById('muscleChart');
   if (!canvas) return;
-  const metrics = (bodyMetrics || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
-  const labels = metrics.map(m => m.date);
-  const muscleMassData = metrics.map(m => m.muscleMass || null);
-  const muscleSizeData = metrics.map(m => m.muscleSize || null);
+  
+  // Get selected metrics
+  const selectedMetrics = {
+    weight: document.getElementById('metricWeight')?.checked || false,
+    bodyFat: document.getElementById('metricBodyFat')?.checked || false,
+    muscleMass: document.getElementById('metricMuscleMass')?.checked || false,
+    bmi: document.getElementById('metricBMI')?.checked || false,
+    water: document.getElementById('metricWater')?.checked || false,
+    bmr: document.getElementById('metricBMR')?.checked || false,
+    phaseAngle: document.getElementById('metricPhaseAngle')?.checked || false,
+    metabolicAge: document.getElementById('metricMetabolicAge')?.checked || false,
+    muscleSize: document.getElementById('metricMuscleSize')?.checked || false
+  };
+  
+  // Get all dates from selected profiles
+  const allDates = new Set();
+  const profileColors = {
+    0: { primary: '#8B5CF6', secondary: '#A78BFA' },
+    1: { primary: '#EC4899', secondary: '#F472B6' },
+    2: { primary: '#10B981', secondary: '#34D399' },
+    3: { primary: '#F59E0B', secondary: '#FBBF24' },
+    4: { primary: '#3B82F6', secondary: '#60A5FA' },
+    5: { primary: '#EF4444', secondary: '#F87171' }
+  };
+  
   const datasets = [];
-  if (muscleMassData.some(v => v !== null)) datasets.push({ label: 'Massa Muscular (kg)', data: muscleMassData, borderColor: '#34D399', backgroundColor: '#34D39933', tension: 0.2, yAxisID: 'y' });
-  if (muscleSizeData.some(v => v !== null)) datasets.push({ label: 'Tamanho Músculo (cm)', data: muscleSizeData, borderColor: '#60A5FA', backgroundColor: '#60A5FA33', tension: 0.2, yAxisID: 'y2' });
+  let profileIndex = 0;
+  
+  // Process each selected profile
+  window.selectedProfilesForChart.forEach(profileId => {
+    const profile = state.users[profileId];
+    if (!profile) return;
+    
+    const metrics = (profile.bodyMetrics || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+    metrics.forEach(m => allDates.add(m.date));
+    
+    const colors = profileColors[profileIndex % 6];
+    const profileName = profile.name;
+    
+    // Create datasets for each selected metric
+    if (selectedMetrics.weight) {
+      const data = metrics.map(m => m.weight || null);
+      datasets.push({
+        label: `${profileName} - Peso (kg)`,
+        data: data,
+        borderColor: colors.primary,
+        backgroundColor: colors.primary + '33',
+        tension: 0.2,
+        yAxisID: 'y'
+      });
+    }
+    
+    if (selectedMetrics.bodyFat) {
+      const data = metrics.map(m => m.bodyFat || null);
+      datasets.push({
+        label: `${profileName} - Gordura (%)`,
+        data: data,
+        borderColor: colors.secondary,
+        backgroundColor: colors.secondary + '33',
+        tension: 0.2,
+        yAxisID: 'y2',
+        borderDash: [5, 5]
+      });
+    }
+    
+    if (selectedMetrics.muscleMass) {
+      const data = metrics.map(m => m.muscleMass || null);
+      datasets.push({
+        label: `${profileName} - Massa Muscular (kg)`,
+        data: data,
+        borderColor: colors.primary,
+        backgroundColor: colors.primary + '22',
+        tension: 0.2,
+        yAxisID: 'y',
+        borderDash: [10, 5]
+      });
+    }
+    
+    if (selectedMetrics.bmi) {
+      const data = metrics.map(m => m.bmi || null);
+      datasets.push({
+        label: `${profileName} - IMC`,
+        data: data,
+        borderColor: colors.secondary,
+        backgroundColor: colors.secondary + '22',
+        tension: 0.2,
+        yAxisID: 'y3'
+      });
+    }
+    
+    if (selectedMetrics.water) {
+      const data = metrics.map(m => m.waterWeight || null);
+      datasets.push({
+        label: `${profileName} - Água (kg)`,
+        data: data,
+        borderColor: '#06B6D4',
+        backgroundColor: '#06B6D433',
+        tension: 0.2,
+        yAxisID: 'y'
+      });
+    }
+    
+    if (selectedMetrics.bmr) {
+      const data = metrics.map(m => m.bmr || null);
+      datasets.push({
+        label: `${profileName} - TMB (kcal)`,
+        data: data,
+        borderColor: '#F97316',
+        backgroundColor: '#F9731633',
+        tension: 0.2,
+        yAxisID: 'y4'
+      });
+    }
+    
+    if (selectedMetrics.phaseAngle) {
+      const data = metrics.map(m => m.phaseAngle || null);
+      datasets.push({
+        label: `${profileName} - Ângulo Fase (°)`,
+        data: data,
+        borderColor: '#14B8A6',
+        backgroundColor: '#14B8A633',
+        tension: 0.2,
+        yAxisID: 'y3'
+      });
+    }
+    
+    if (selectedMetrics.metabolicAge) {
+      const data = metrics.map(m => m.metabolicAge || null);
+      datasets.push({
+        label: `${profileName} - Idade Met. (anos)`,
+        data: data,
+        borderColor: '#FBBF24',
+        backgroundColor: '#FBBF2433',
+        tension: 0.2,
+        yAxisID: 'y3'
+      });
+    }
+    
+    if (selectedMetrics.muscleSize) {
+      const data = metrics.map(m => m.muscleSize || null);
+      datasets.push({
+        label: `${profileName} - Tamanho Musc. (cm)`,
+        data: data,
+        borderColor: '#60A5FA',
+        backgroundColor: '#60A5FA33',
+        tension: 0.2,
+        yAxisID: 'y2'
+      });
+    }
+    
+    profileIndex++;
+  });
+  
+  const labels = Array.from(allDates).sort();
+  
+  // Build scales configuration
+  const scales = {
+    x: {
+      ticks: { color: '#E2E8F0' },
+      grid: { color: '#475569' }
+    },
+    y: {
+      beginAtZero: false,
+      position: 'left',
+      title: { display: true, text: 'kg', color: '#E2E8F0' },
+      ticks: { color: '#E2E8F0' },
+      grid: { color: '#475569' }
+    }
+  };
+  
+  // Add additional axes if needed
+  if (selectedMetrics.bodyFat || selectedMetrics.muscleSize) {
+    scales.y2 = {
+      position: 'right',
+      grid: { drawOnChartArea: false },
+      title: { display: true, text: '% / cm', color: '#E2E8F0' },
+      ticks: { color: '#E2E8F0' }
+    };
+  }
+  
+  if (selectedMetrics.bmi || selectedMetrics.phaseAngle || selectedMetrics.metabolicAge) {
+    scales.y3 = {
+      position: 'right',
+      grid: { drawOnChartArea: false },
+      title: { display: true, text: 'IMC / ° / anos', color: '#E2E8F0' },
+      ticks: { color: '#E2E8F0' }
+    };
+  }
+  
+  if (selectedMetrics.bmr) {
+    scales.y4 = {
+      position: 'right',
+      grid: { drawOnChartArea: false },
+      title: { display: true, text: 'kcal/dia', color: '#E2E8F0' },
+      ticks: { color: '#E2E8F0' }
+    };
+  }
+  
   const config = {
     type: 'line',
     data: { labels, datasets },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
-      scales: {
-        y: { beginAtZero: false, title: { display: true, text: 'kg' } },
-        y2: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'cm' } }
-      }
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { color: '#E2E8F0', boxWidth: 15, padding: 10 }
+        },
+        title: {
+          display: true,
+          text: 'Evolução de Performance e Medidas ao Longo do Tempo',
+          color: '#E2E8F0',
+          font: { size: 16 }
+        }
+      },
+      scales: scales
     }
   };
-  if (muscleChart) { muscleChart.destroy(); muscleChart = null; }
+  
+  if (muscleChart) {
+    muscleChart.destroy();
+    muscleChart = null;
+  }
   muscleChart = new Chart(canvas, config);
+}
+
+// Legacy function for compatibility - now calls updateEvolutionChart
+function renderMuscleEvolutionChart(bodyMetrics, userId) {
+  // Initialize selected profiles if needed
+  if (!window.selectedProfilesForChart) {
+    window.selectedProfilesForChart = new Set([userId]);
+  }
+  updateEvolutionChart();
 }
 
 function compareProgressPhotos() {
