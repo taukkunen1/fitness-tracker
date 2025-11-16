@@ -49,6 +49,50 @@
       --border-color: 203 213 225; /* slate-300 */
     }
     
+    /* Light theme overrides for common Tailwind classes */
+    .light .bg-slate-800,
+    .light .bg-slate-800\/50,
+    .light .bg-slate-800\/70,
+    .light .bg-slate-800\/90 {
+      background-color: rgb(241 245 249) !important; /* slate-100 */
+    }
+    
+    .light .bg-slate-700,
+    .light .bg-slate-700\/50,
+    .light .bg-slate-700\/60 {
+      background-color: rgb(226 232 240) !important; /* slate-200 */
+    }
+    
+    .light .bg-slate-900 {
+      background-color: rgb(248 250 252) !important; /* slate-50 */
+    }
+    
+    .light .text-white {
+      color: rgb(15 23 42) !important; /* slate-900 */
+    }
+    
+    .light .text-slate-300 {
+      color: rgb(30 41 59) !important; /* slate-800 */
+    }
+    
+    .light .text-slate-400 {
+      color: rgb(71 85 105) !important; /* slate-600 */
+    }
+    
+    .light .border-slate-700,
+    .light .border-slate-600,
+    .light .border-slate-500 {
+      border-color: rgb(203 213 225) !important; /* slate-300 */
+    }
+    
+    .light .bg-black\/40,
+    .light .bg-black\/60 {
+      background-color: rgba(255, 255, 255, 0.8) !important;
+      backdrop-filter: blur(12px);
+    }
+    
+    /* Purple accents stay the same in both themes */
+    
     /* Pequeno ajuste para tabelas e canvas em mobile */
     table { border-collapse: collapse; width: 100%; }
     th, td { padding: 6px 8px; }
@@ -73,12 +117,12 @@
     }
     
     /* Smooth theme transition */
-    body {
-      transition: background-color 0.3s ease, color 0.3s ease;
+    body, .bg-slate-800, .bg-slate-700, .bg-slate-900, .text-white, .text-slate-300, .text-slate-400 {
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
     }
   </style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 light:from-slate-50 light:via-purple-50 light:to-slate-100 text-white dark:text-white light:text-slate-900 min-h-screen">
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen transition-colors duration-300">
   <div id="app"></div>
 
 <script>
@@ -241,12 +285,12 @@ function applyTheme(theme) {
     html.classList.add('light');
     body.classList.add('light');
     // Update body background for light mode
-    body.className = 'light bg-gradient-to-br from-slate-50 via-purple-50 to-slate-100 text-slate-900 min-h-screen';
+    body.className = 'light bg-gradient-to-br from-slate-50 via-purple-50 to-slate-100 text-slate-900 min-h-screen transition-colors duration-300';
   } else {
     html.classList.add('dark');
     body.classList.add('dark');
     // Keep dark mode background
-    body.className = 'dark bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen';
+    body.className = 'dark bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen transition-colors duration-300';
   }
   
   console.log(`[Theme] Applied theme: ${theme} (actual: ${actualTheme})`);
