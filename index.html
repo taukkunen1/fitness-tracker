@@ -4293,7 +4293,7 @@ function render() {
       <div class="flex flex-wrap gap-3 mb-6">
         ${['dashboard','treino','exercicios','nutricao','alimentacao','evolucao','referencias','developer'].map(tab => `
           <button onclick="state.activeTab='${tab}'; updateHash(); render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
-            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : tab === 'referencias' ? '📚 Referências' : '👨‍💻 Developer'}
+            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : tab === 'referencias' ? '📚 Referências' : '🔗 Integrações'}
           </button>
         `).join('')}
         ${isAdmin() ? `
@@ -6958,136 +6958,178 @@ function renderCiencia() {
 }
 
 function renderDeveloper(user) {
-  // Initialize API fields if they don't exist
-  if (!user.apiKey) user.apiKey = '';
-  if (!user.webhookUrl) user.webhookUrl = '';
-  if (!user.webhookAuthHeader) user.webhookAuthHeader = '';
+  // Initialize external integration fields if they don't exist
+  if (!user.hevyApiKey) user.hevyApiKey = '';
+  if (!user.okokIntegration) user.okokIntegration = { enabled: false, lastSync: null };
   
   return `
     <div class="space-y-6">
-      <!-- API Key Section -->
-      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-        <h3 class="text-2xl font-bold mb-4">👨‍💻 Developer</h3>
-        <p class="text-slate-300 mb-4">Generate an API key to create your own ways of accessing your workout data. Use it at your own risk as we may change the project's structure or discontinue it entirely.</p>
-        <p class="text-slate-300 mb-4">Visit the official documentation for our API here.</p>
-        
-        <div class="bg-slate-700 p-4 rounded-lg mb-4">
-          <label class="block text-sm font-semibold mb-2">Generated API Key:</label>
-          <div class="flex gap-2">
-            <input type="text" id="apiKeyInput" value="${user.apiKey}" readonly class="flex-1 px-4 py-2 rounded bg-slate-600 text-white font-mono" />
-            <button onclick="copyToClipboard('${user.apiKey}')" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-semibold">📋 Copy</button>
-            ${user.apiKey ? `<button onclick="revokeApiKey('${user.id}')" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-semibold">🗑️ Revoke</button>` : ''}
-          </div>
+      <!-- Header Section -->
+      <div class="bg-gradient-to-r from-purple-900/50 to-blue-900/50 p-6 rounded-2xl border border-purple-500/30">
+        <h3 class="text-3xl font-bold mb-3">🔗 Importar Dados Externos</h3>
+        <p class="text-slate-300 text-lg mb-2">Conecte suas contas de aplicativos externos para importar automaticamente seus dados de treinos e métricas corporais.</p>
+        <div class="bg-blue-900/30 border border-blue-700 p-4 rounded-lg mt-4">
+          <p class="text-sm text-slate-300">
+            <strong>ℹ️ Importante:</strong> Esta página permite que você importe dados DE outros aplicativos para o seu perfil. 
+            Seus dados ficam armazenados localmente no seu navegador e as chaves de API são salvas de forma segura.
+          </p>
         </div>
-        
-        ${!user.apiKey ? `
-          <button onclick="generateApiKey('${user.id}')" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-lg font-semibold">
-            🔑 Generate API Key
-          </button>
-        ` : ''}
-      </div>
-      
-      <!-- Webhooks Section -->
-      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-        <h3 class="text-2xl font-bold mb-4">🔗 Webhooks</h3>
-        <p class="text-slate-300 mb-4">Subscribe to our webhook and get notified when you save a new workout. When a new workout is created, we will send a POST request to your provided URL with the following JSON payload, and we expect your application to respond with a 200 OK status code within 5 seconds.</p>
-        
-        <div class="bg-slate-700 p-4 rounded-lg mb-4">
-          <pre class="text-sm text-green-300 overflow-x-auto"><code>{
-  "id": "00000000-0000-0000-0000-000000000001",
-  "payload": {
-    "workoutId": "f1085cdb-32b2-4003-967d-53a3af8eaecb"
-  }
-}</code></pre>
-        </div>
-        
-        <form id="webhookForm" class="space-y-4">
-          <div>
-            <label class="block text-sm font-semibold mb-2">Url you want to get notified on:</label>
-            <input type="url" id="webhookUrl" value="${user.webhookUrl}" placeholder="https://mywebhook.com/notify" class="w-full px-4 py-2 rounded bg-slate-700 text-white" />
-          </div>
-          
-          <div>
-            <label class="block text-sm font-semibold mb-2">Your authorization header, that we'll send along with the provided url:</label>
-            <div class="flex gap-2">
-              <input type="password" id="webhookAuthHeader" value="${user.webhookAuthHeader}" placeholder="Bearer myauthtoken" class="flex-1 px-4 py-2 rounded bg-slate-700 text-white" />
-              <button type="button" onclick="toggleWebhookAuthVisibility()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded">👁️ show</button>
-            </div>
-          </div>
-          
-          <button type="submit" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-lg font-semibold">
-            📡 Subscribe
-          </button>
-        </form>
       </div>
       
       <!-- Hevy Integration Section -->
       <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-        <h3 class="text-2xl font-bold mb-4">🏋️ Hevy Integration</h3>
-        <p class="text-slate-300 mb-4">Connect your Hevy Training app account to import your workouts directly into your profile.</p>
+        <div class="flex items-center gap-3 mb-4">
+          <span class="text-4xl">🏋️</span>
+          <div>
+            <h3 class="text-2xl font-bold">Hevy Training</h3>
+            <p class="text-slate-400 text-sm">Importe seus treinos do Hevy</p>
+          </div>
+        </div>
+        
         <p class="text-slate-300 mb-4">
-          To get your API key, visit <a href="https://hevy.com/settings?developer" target="_blank" class="text-blue-400 underline">Hevy Developer Settings</a> and generate an API key.
+          Conecte sua conta do Hevy Training para importar automaticamente seus treinos para o seu perfil.
+        </p>
+        <p class="text-slate-300 mb-4">
+          Para obter sua chave de API, visite <a href="https://hevy.com/settings?developer" target="_blank" class="text-blue-400 underline hover:text-blue-300">Configurações de Desenvolvedor do Hevy</a> e gere uma chave de API.
         </p>
         
         <div class="bg-slate-700 p-4 rounded-lg mb-4">
-          <label class="block text-sm font-semibold mb-2">Hevy API Key:</label>
+          <label class="block text-sm font-semibold mb-2">Chave de API do Hevy:</label>
           <div class="flex gap-2 mb-4">
-            <input type="password" id="hevyApiKeyInput" value="${user.hevyApiKey || ''}" placeholder="Enter your Hevy API key" class="flex-1 px-4 py-2 rounded bg-slate-600 text-white font-mono" />
-            <button type="button" onclick="toggleHevyApiKeyVisibility()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded">👁️ show</button>
+            <input type="password" id="hevyApiKeyInput" value="${user.hevyApiKey || ''}" placeholder="Cole sua chave de API do Hevy aqui" class="flex-1 px-4 py-2 rounded bg-slate-600 text-white font-mono" />
+            <button type="button" onclick="toggleHevyApiKeyVisibility()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded">👁️</button>
           </div>
           <button onclick="saveHevyApiKey('${user.id}')" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-lg font-semibold w-full mb-2">
-            💾 Save Hevy API Key
+            💾 Salvar Chave de API
           </button>
         </div>
         
         ${user.hevyApiKey ? `
           <div class="bg-slate-700 p-4 rounded-lg mb-4">
-            <h4 class="font-bold text-lg mb-2">Sync Workouts</h4>
-            <p class="text-slate-300 text-sm mb-4">Click the button below to import your workouts from Hevy. This will fetch all your workouts and add them to your profile.</p>
+            <h4 class="font-bold text-lg mb-2">Sincronizar Treinos</h4>
+            <p class="text-slate-300 text-sm mb-4">Clique no botão abaixo para importar seus treinos do Hevy. Isso buscará todos os seus treinos e os adicionará ao seu perfil.</p>
             <button id="syncHevyButton" onclick="syncHevyWorkouts('${user.id}')" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-lg font-semibold w-full">
-              🔄 Sync Hevy Workouts
+              🔄 Sincronizar Treinos do Hevy
             </button>
             <div id="hevyStatus" class="mt-4"></div>
           </div>
         ` : ''}
         
         <div class="bg-blue-900/30 border border-blue-700 p-4 rounded-lg">
-          <h4 class="font-bold text-lg mb-2">ℹ️ How it works</h4>
+          <h4 class="font-bold text-lg mb-2">ℹ️ Como funciona</h4>
           <ul class="text-slate-300 text-sm space-y-2">
-            <li>• Your Hevy API key is stored securely in your browser</li>
-            <li>• Workouts are fetched directly from Hevy's API</li>
-            <li>• Only new workouts are imported (duplicates are skipped)</li>
-            <li>• Your Hevy data remains in your Hevy account</li>
-            <li>• You can sync again at any time to get new workouts</li>
+            <li>• Sua chave de API do Hevy é armazenada de forma segura no seu navegador</li>
+            <li>• Os treinos são buscados diretamente da API do Hevy</li>
+            <li>• Apenas treinos novos são importados (duplicatas são ignoradas)</li>
+            <li>• Seus dados do Hevy permanecem na sua conta do Hevy</li>
+            <li>• Você pode sincronizar novamente a qualquer momento para obter novos treinos</li>
           </ul>
         </div>
       </div>
       
-      <!-- API Documentation Section -->
+      <!-- OKOK Scale Integration Section -->
       <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-        <h3 class="text-2xl font-bold mb-4">📚 API Documentation</h3>
-        <p class="text-slate-300 mb-4">Use your API key to access your workout data programmatically.</p>
+        <div class="flex items-center gap-3 mb-4">
+          <span class="text-4xl">⚖️</span>
+          <div>
+            <h3 class="text-2xl font-bold">OKOK Balança Inteligente</h3>
+            <p class="text-slate-400 text-sm">Importe suas métricas corporais</p>
+          </div>
+        </div>
         
-        <div class="space-y-4">
-          <div class="bg-slate-700 p-4 rounded-lg">
-            <h4 class="font-bold text-lg mb-2">GET /api/workouts</h4>
-            <p class="text-slate-300 text-sm mb-2">Retrieve all workout history for the authenticated user.</p>
-            <pre class="text-xs text-green-300 overflow-x-auto bg-slate-800 p-2 rounded"><code>curl -H "Authorization: Bearer ${user.apiKey || 'YOUR_API_KEY'}" https://api.fitness-tracker.com/workouts</code></pre>
+        <p class="text-slate-300 mb-4">
+          Conecte sua balança OKOK para importar automaticamente suas medições de peso, gordura corporal, massa muscular e outras métricas para o seu perfil.
+        </p>
+        
+        <div class="bg-orange-900/30 border border-orange-700 p-4 rounded-lg mb-4">
+          <h4 class="font-bold text-lg mb-2">⚠️ Em Desenvolvimento</h4>
+          <p class="text-slate-300 text-sm">
+            A integração com o aplicativo OKOK está em desenvolvimento. A API oficial do OKOK não é públicamente documentada, 
+            mas estamos trabalhando em uma solução para importar seus dados.
+          </p>
+        </div>
+        
+        <div class="bg-slate-700 p-4 rounded-lg mb-4">
+          <h4 class="font-bold text-lg mb-2">💡 Alternativa Manual</h4>
+          <p class="text-slate-300 text-sm mb-4">
+            Enquanto a integração automática não está disponível, você pode registrar manualmente suas medições na aba 
+            <strong>Evolução</strong> do sistema. Os dados serão salvos localmente e você poderá acompanhar seu progresso através dos gráficos.
+          </p>
+          <button onclick="state.activeTab='evolucao'; updateHash(); render();" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-semibold w-full">
+            📊 Ir para Evolução
+          </button>
+        </div>
+        
+        <div class="bg-slate-700 p-4 rounded-lg">
+          <h4 class="font-bold text-lg mb-2">🔮 Recursos Futuros</h4>
+          <ul class="text-slate-300 text-sm space-y-2">
+            <li>• <strong>Sincronização automática:</strong> Importar dados automaticamente do app OKOK</li>
+            <li>• <strong>Histórico completo:</strong> Buscar todo o histórico de medições</li>
+            <li>• <strong>Alertas:</strong> Notificações quando novas medições forem detectadas</li>
+            <li>• <strong>Múltiplas balanças:</strong> Suporte para mais de uma balança inteligente</li>
+          </ul>
+        </div>
+        
+        <div class="bg-blue-900/30 border border-blue-700 p-4 rounded-lg mt-4">
+          <h4 class="font-bold text-lg mb-2">📝 Como você pode ajudar</h4>
+          <p class="text-slate-300 text-sm mb-3">
+            Se você tiver informações sobre a API do OKOK ou outras balanças inteligentes, entre em contato conosco através do 
+            sistema de <strong>Sugestões</strong> (disponível no menu lateral).
+          </p>
+          <p class="text-slate-300 text-sm">
+            Estamos especialmente interessados em:
+          </p>
+          <ul class="text-slate-300 text-sm space-y-1 ml-4 mt-2">
+            <li>• Documentação da API do OKOK</li>
+            <li>• Métodos de export de dados do aplicativo</li>
+            <li>• Outras integrações de balanças inteligentes que você gostaria de ver</li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Additional Integrations Placeholder -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h3 class="text-2xl font-bold mb-4">🌟 Outras Integrações</h3>
+        <p class="text-slate-300 mb-4">
+          Planejamos adicionar suporte para mais aplicativos e dispositivos no futuro. Se você tiver sugestões, 
+          use o sistema de feedback do aplicativo!
+        </p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-700 p-4 rounded-lg opacity-50">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-2xl">🍏</span>
+              <h4 class="font-bold">Apple Health</h4>
+              <span class="ml-auto text-xs bg-slate-600 px-2 py-1 rounded">Em breve</span>
+            </div>
+            <p class="text-slate-400 text-sm">Importe treinos e métricas do Apple Health</p>
           </div>
           
-          <div class="bg-slate-700 p-4 rounded-lg">
-            <h4 class="font-bold text-lg mb-2">GET /api/metrics</h4>
-            <p class="text-slate-300 text-sm mb-2">Retrieve body metrics and bioimpedance data.</p>
-            <pre class="text-xs text-green-300 overflow-x-auto bg-slate-800 p-2 rounded"><code>curl -H "Authorization: Bearer ${user.apiKey || 'YOUR_API_KEY'}" https://api.fitness-tracker.com/metrics</code></pre>
+          <div class="bg-slate-700 p-4 rounded-lg opacity-50">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-2xl">📱</span>
+              <h4 class="font-bold">Google Fit</h4>
+              <span class="ml-auto text-xs bg-slate-600 px-2 py-1 rounded">Em breve</span>
+            </div>
+            <p class="text-slate-400 text-sm">Sincronize dados do Google Fit</p>
           </div>
           
-          <div class="bg-slate-700 p-4 rounded-lg">
-            <h4 class="font-bold text-lg mb-2">POST /api/workouts</h4>
-            <p class="text-slate-300 text-sm mb-2">Create a new workout entry.</p>
-            <pre class="text-xs text-green-300 overflow-x-auto bg-slate-800 p-2 rounded"><code>curl -X POST -H "Authorization: Bearer ${user.apiKey || 'YOUR_API_KEY'}" \\
-  -H "Content-Type: application/json" \\
-  -d '{"exercise":"Bench Press","sets":3,"reps":10,"weight":80}' \\
-  https://api.fitness-tracker.com/workouts</code></pre>
+          <div class="bg-slate-700 p-4 rounded-lg opacity-50">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-2xl">⌚</span>
+              <h4 class="font-bold">Smartwatches</h4>
+              <span class="ml-auto text-xs bg-slate-600 px-2 py-1 rounded">Planejado</span>
+            </div>
+            <p class="text-slate-400 text-sm">Suporte para Garmin, Fitbit, etc.</p>
+          </div>
+          
+          <div class="bg-slate-700 p-4 rounded-lg opacity-50">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-2xl">💪</span>
+              <h4 class="font-bold">MyFitnessPal</h4>
+              <span class="ml-auto text-xs bg-slate-600 px-2 py-1 rounded">Planejado</span>
+            </div>
+            <p class="text-slate-400 text-sm">Importe dados de nutrição</p>
           </div>
         </div>
       </div>
