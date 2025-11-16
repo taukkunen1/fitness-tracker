@@ -1,0 +1,91 @@
+version: '3.8'
+
+# Development Docker Compose Configuration
+# This is optimized for local development with hot-reload and debugging
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: fitness-tracker-mongodb-dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: devpassword
+      MONGO_INITDB_DATABASE: fitness-tracker
+    volumes:
+      - mongodb_dev_data:/data/db
+    networks:
+      - dev-network
+
+  # Backend API Server (Development)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: fitness-tracker-api-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      MONGODB_URI: mongodb://admin:devpassword@mongodb:27017/fitness-tracker?authSource=admin
+      JWT_SECRET: dev-secret-key-not-for-production
+      JWT_EXPIRE: 24h
+      CORS_ORIGINS: http://localhost:8000,http://localhost:3000,http://127.0.0.1:8000
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 1000
+      MAX_FILE_SIZE: 10485760
+      UPLOAD_PATH: /app/uploads
+    volumes:
+      # Mount source code for hot-reload
+      - ./server:/app/server:ro
+      - ./package.json:/app/package.json:ro
+      - ./uploads:/app/uploads
+      # Exclude node_modules from mount
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    networks:
+      - dev-network
+    command: npm run dev
+
+  # Mongo Express (MongoDB Web UI)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: fitness-tracker-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: devpassword
+      ME_CONFIG_MONGODB_URL: mongodb://admin:devpassword@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    depends_on:
+      - mongodb
+    networks:
+      - dev-network
+
+volumes:
+  mongodb_dev_data:
+    driver: local
+
+networks:
+  dev-network:
+    driver: bridge
+
+# Usage:
+# 1. Start all services: docker-compose -f docker-compose.dev.yml up -d
+# 2. View logs: docker-compose -f docker-compose.dev.yml logs -f
+# 3. Stop all: docker-compose -f docker-compose.dev.yml down
+# 4. Reset database: docker-compose -f docker-compose.dev.yml down -v
+#
+# Access:
+# - API: http://localhost:3000
+# - MongoDB UI: http://localhost:8081 (admin/admin)
+# - Frontend: Serve with `python -m http.server 8000` in another terminal
