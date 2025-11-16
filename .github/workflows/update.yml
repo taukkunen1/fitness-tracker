@@ -16,20 +16,13 @@ on:
           - minor
           - major
         default: 'patch'
-      generate_tasks:
-        description: 'Generate new task suggestions'
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: write
-  pull-requests: write
-  issues: write
 
 jobs:
   update-project:
-    name: Update Project Documentation and Tasks
+    name: Update Project Documentation
     runs-on: ubuntu-latest
     
     steps:
@@ -37,17 +30,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
 
       - name: Get current version
         id: current_version
         run: |
-          # Extract current version from VERSION.md
           CURRENT_VERSION=$(grep -oP 'Versão Atual: \K[0-9]+\.[0-9]+\.[0-9]+' VERSION.md || echo "2.0.0")
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $CURRENT_VERSION"
@@ -77,291 +63,49 @@ jobs:
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
 
-      - name: Get commit history since last update
-        id: commits
-        run: |
-          # Get commits since last version tag or last 10 commits
-          COMMITS=$(git log --oneline -10 --pretty=format:"- %s (%h)" || echo "- No recent commits")
-          echo "commits<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Update CHANGELOG.md
-        run: |
-          CURRENT_DATE=$(date '+%Y-%m-%d')
-          NEW_VERSION="${{ steps.new_version.outputs.version }}"
-          AGENT_SUMMARY="${{ github.event.inputs.agent_summary }}"
-          VERSION_TYPE="${{ github.event.inputs.version_bump }}"
-          
-          # Create temporary file with new entry
-          cat > /tmp/new_entry.md <<EOF
-          
-## [$NEW_VERSION] - $CURRENT_DATE
-
-### 🤖 Atualização Automática - Agent Update
-
-**Tipo de Atualização:** $(echo $VERSION_TYPE | tr '[:lower:]' '[:upper:]')
-
-**Resumo das Mudanças:**
-$AGENT_SUMMARY
-
-### 📝 Commits Incluídos
-${{ steps.commits.outputs.commits }}
-
-### ✨ Melhorias e Correções
-- Documentação atualizada automaticamente
-- Changelog atualizado com novas mudanças
-- Versão incrementada seguindo Semantic Versioning
-
-EOF
-          
-          # Insert new entry after line 8 (after the header)
-          sed -i '8r /tmp/new_entry.md' CHANGELOG.md
-          
-          echo "✅ CHANGELOG.md updated with version $NEW_VERSION"
-
       - name: Update VERSION.md
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.version }}"
-          CURRENT_DATE=$(date '+%d de %B de %Y' | sed 's/January/Janeiro/g;s/February/Fevereiro/g;s/March/Março/g;s/April/Abril/g;s/May/Maio/g;s/June/Junho/g;s/July/Julho/g;s/August/Agosto/g;s/September/Setembro/g;s/October/Outubro/g;s/November/Novembro/g;s/December/Dezembro/g')
+          CURRENT_DATE=$(date '+%d de %B de %Y')
           
-          # Update version number
           sed -i "s/Versão Atual: [0-9]\+\.[0-9]\+\.[0-9]\+/Versão Atual: $NEW_VERSION/" VERSION.md
-          
-          # Update release date
           sed -i "s/Data de Lançamento:.*/Data de Lançamento: $CURRENT_DATE/" VERSION.md
-          
-          # Update last update date at bottom
           sed -i "s/Última atualização:.*/Última atualização: $CURRENT_DATE/" VERSION.md
           
-          echo "✅ VERSION.md updated to version $NEW_VERSION"
+          echo "Updated VERSION.md to $NEW_VERSION"
 
       - name: Update README.md version badge
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.version }}"
           sed -i "s/version-[0-9]\+\.[0-9]\+\.[0-9]\+-blue/version-$NEW_VERSION-blue/" README.md
-          echo "✅ README.md version badge updated"
+          echo "Updated README.md version badge"
 
-      - name: Generate task suggestions
-        if: github.event.inputs.generate_tasks == 'true'
+      - name: Update CHANGELOG.md
         run: |
+          NEW_VERSION="${{ steps.new_version.outputs.version }}"
           CURRENT_DATE=$(date '+%Y-%m-%d')
+          VERSION_TYPE=$(echo "${{ github.event.inputs.version_bump }}" | tr '[:lower:]' '[:upper:]')
           
-          cat > /tmp/task_suggestions.md <<'EOF'
-# 📋 Sugestões de Tarefas - Atualização Automática
-
-**Data de Geração:** $CURRENT_DATE
-**Versão:** ${{ steps.new_version.outputs.version }}
-
-## 🎯 Análise Competitiva - Sites de Fitness
-
-### Referências Analisadas:
-1. **MyFitnessPal** - Líder em tracking de nutrição e exercícios
-2. **Strava** - Focado em corrida e ciclismo com comunidade forte
-3. **Fitbit App** - Integração com wearables e métricas de saúde
-4. **Strong** - App focado em treino de força
-5. **Cronometer** - Tracking nutricional detalhado
-
-## 📊 Curto Prazo (1-2 meses)
-
-### Prioridade Alta
-- [ ] **PWA Completo**: Implementar Progressive Web App para funcionar offline
-  - Baseado em: MyFitnessPal, Fitbit
-  - Impacto: Alto - permite instalação no dispositivo
-  - Esforço: Médio
-  
-- [ ] **Dark Mode**: Adicionar tema escuro para melhor experiência noturna
-  - Baseado em: Todos os principais apps
-  - Impacto: Médio - melhora experiência do usuário
-  - Esforço: Baixo
-
-- [ ] **Export/Import Aprimorado**: Múltiplos formatos (CSV, PDF, Excel)
-  - Baseado em: MyFitnessPal, Cronometer
-  - Impacto: Alto - dados portáveis
-  - Esforço: Médio
-
-- [ ] **Notificações Push**: Lembretes de treino, refeições e hidratação
-  - Baseado em: MyFitnessPal, Fitbit
-  - Impacto: Alto - engajamento do usuário
-  - Esforço: Médio
-
-### Prioridade Média
-- [ ] **Gráficos Avançados**: Mais opções de visualização de progresso
-  - Baseado em: Strava, Fitbit
-  - Impacto: Médio
-  - Esforço: Médio
-
-- [ ] **Calculadoras**: TDEE, macros, 1RM, percentual de gordura
-  - Baseado em: MyFitnessPal, Strong
-  - Impacto: Alto - valor agregado
-  - Esforço: Baixo
-
-- [ ] **Templates Personalizados**: Criar e salvar treinos customizados
-  - Baseado em: Strong, Fitbit
-  - Impacto: Alto
-  - Esforço: Médio
-
-## 🚀 Médio Prazo (3-6 meses)
-
-### Prioridade Alta
-- [ ] **Integração com Wearables**: Apple Health, Google Fit, Fitbit
-  - Baseado em: MyFitnessPal, Strava
-  - Impacto: Muito Alto - sincronização automática
-  - Esforço: Alto
-
-- [ ] **IA para Sugestões**: Recomendações personalizadas de treino/dieta
-  - Baseado em: Todos têm alguma forma de recomendação
-  - Impacto: Muito Alto - diferencial competitivo
-  - Esforço: Alto
-
-- [ ] **Recursos Sociais**: Perfil público, seguir amigos, compartilhar progresso
-  - Baseado em: Strava, MyFitnessPal
-  - Impacto: Alto - aumenta retenção
-  - Esforço: Alto
-
-- [ ] **Desafios e Gamificação**: Badges, conquistas, streaks
-  - Baseado em: Strava, Fitbit
-  - Impacto: Alto - motivação e engajamento
-  - Esforço: Médio
-
-### Prioridade Média
-- [ ] **Biblioteca de Exercícios**: Vídeos e instruções detalhadas
-  - Baseado em: Strong, Fitbit
-  - Impacto: Alto - educacional
-  - Esforço: Alto (conteúdo)
-
-- [ ] **Planos de Treino Prontos**: Programas completos para diferentes objetivos
-  - Baseado em: Strong, MyFitnessPal
-  - Impacto: Alto
-  - Esforço: Médio
-
-- [ ] **Tracking de Água**: Monitoramento de hidratação
-  - Baseado em: MyFitnessPal, Fitbit
-  - Impacto: Médio
-  - Esforço: Baixo
-
-## 🌟 Longo Prazo (6-12 meses)
-
-### Prioridade Alta
-- [ ] **Backend e API**: Sincronização em nuvem, multi-dispositivo
-  - Baseado em: Todos os apps principais
-  - Impacto: Muito Alto - escalabilidade
-  - Esforço: Muito Alto
-
-- [ ] **Apps Mobile Nativos**: iOS e Android
-  - Baseado em: Mercado mobile-first
-  - Impacto: Muito Alto - alcance
-  - Esforço: Muito Alto
-
-- [ ] **Marketplace de Treinos**: Treinadores podem vender planos
-  - Baseado em: Modelo de monetização
-  - Impacto: Muito Alto - receita
-  - Esforço: Muito Alto
-
-- [ ] **Versão Premium/Pro**: Recursos pagos para monetização
-  - Baseado em: MyFitnessPal Premium, Strava Summit
-  - Impacto: Muito Alto - sustentabilidade financeira
-  - Esforço: Médio (infraestrutura de pagamento)
-
-### Recursos Premium Sugeridos
-1. **Análises Avançadas**: Relatórios detalhados, tendências, previsões
-2. **IA Personal Trainer**: Ajustes automáticos baseados em progresso
-3. **Planos Personalizados**: Geração automática de treinos e dietas
-4. **Suporte Prioritário**: Chat com especialistas
-5. **Exportação Profissional**: Relatórios em PDF personalizados
-6. **Sem Anúncios**: Experiência premium
-7. **Armazenamento Ilimitado**: Fotos e dados ilimitados
-
-### Infraestrutura para Monetização
-- [ ] **Sistema de Pagamentos**: Stripe, PayPal
-- [ ] **Gestão de Assinaturas**: Planos mensais/anuais
-- [ ] **Analytics Avançado**: Para entender comportamento do usuário
-- [ ] **A/B Testing**: Para otimizar conversão
-- [ ] **Email Marketing**: Para retenção e upselling
-
-## 💡 Oportunidades de Mercado
-
-### Nichos Não Explorados
-1. **Treino para Idosos**: Interface simplificada, exercícios de baixo impacto
-2. **Fisioterapia e Reabilitação**: Tracking de recuperação
-3. **Atletas Profissionais**: Métricas avançadas, periodização
-4. **Fitness Corporativo**: Planos para empresas
-5. **Nutrição Vegana/Vegetariana**: Tracking específico de nutrientes
-
-### Diferenciais Competitivos
-- ✅ **Privacy-First**: Dados locais, sem venda de informações
-- ✅ **Open Source**: Comunidade pode contribuir
-- ✅ **Baseado em Ciência**: Referências científicas
-- 🎯 **Sem Anúncios Intrusivos**: Experiência limpa
-- 🎯 **AI Ético**: Sem manipulação, foco em saúde real
-
-## 📈 Métricas de Sucesso
-
-### KPIs para Curto Prazo
-- Usuários ativos diários (DAU)
-- Taxa de retenção 30 dias
-- Tempo médio na plataforma
-- NPS (Net Promoter Score)
-
-### KPIs para Médio Prazo
-- Usuários premium (% conversão)
-- Lifetime Value (LTV)
-- Custo de Aquisição (CAC)
-- Churn rate
-
-### KPIs para Longo Prazo
-- Receita Recorrente Mensal (MRR)
-- Taxa de crescimento mês a mês
-- Market share no segmento
-- Avaliação de marca
-
-## 🎯 Próximos Passos Imediatos
-
-1. **Escolher 2-3 tarefas de curto prazo** e criar issues no GitHub
-2. **Validar com usuários** quais features são mais desejadas
-3. **Priorizar baseado em impacto vs esforço**
-4. **Iniciar desenvolvimento iterativo** com releases frequentes
-5. **Coletar feedback continuamente** através do sistema de sugestões
-
----
-
-**Gerado automaticamente pela ação Update**
-**Para sugerir modificações, use o sistema de sugestões no admin panel**
-EOF
+          # Create new changelog entry
+          {
+            echo ""
+            echo "## [$NEW_VERSION] - $CURRENT_DATE"
+            echo ""
+            echo "### 🤖 Atualização Automática"
+            echo ""
+            echo "**Tipo:** $VERSION_TYPE"
+            echo ""
+            echo "${{ github.event.inputs.agent_summary }}"
+            echo ""
+          } > /tmp/new_entry.md
           
-          # Replace date placeholder
-          sed -i "s/\$CURRENT_DATE/$CURRENT_DATE/" /tmp/task_suggestions.md
+          # Insert after line 8
+          head -n 8 CHANGELOG.md > /tmp/changelog_new.md
+          cat /tmp/new_entry.md >> /tmp/changelog_new.md
+          tail -n +9 CHANGELOG.md >> /tmp/changelog_new.md
+          mv /tmp/changelog_new.md CHANGELOG.md
           
-          # Move to docs folder
-          cp /tmp/task_suggestions.md "docs/TASK-SUGGESTIONS-$(date +%Y%m%d).md"
-          
-          echo "✅ Task suggestions generated"
-
-      - name: Create update summary
-        id: summary
-        run: |
-          cat > /tmp/update_summary.md <<EOF
-# 🚀 Update Summary
-
-## Version Update
-- **Previous Version:** ${{ steps.current_version.outputs.version }}
-- **New Version:** ${{ steps.new_version.outputs.version }}
-- **Update Type:** ${{ github.event.inputs.version_bump }}
-
-## Agent Summary
-${{ github.event.inputs.agent_summary }}
-
-## Files Updated
-- ✅ CHANGELOG.md - Added new version entry
-- ✅ VERSION.md - Updated version and dates
-- ✅ README.md - Updated version badge
-EOF
-
-          if [ "${{ github.event.inputs.generate_tasks }}" == "true" ]; then
-            echo "- ✅ Task suggestions generated in docs/" >> /tmp/update_summary.md
-          fi
-          
-          cat /tmp/update_summary.md
+          echo "Updated CHANGELOG.md"
 
       - name: Commit changes
         run: |
@@ -370,27 +114,19 @@ EOF
           
           git add CHANGELOG.md VERSION.md README.md
           
-          if [ "${{ github.event.inputs.generate_tasks }}" == "true" ]; then
-            git add docs/TASK-SUGGESTIONS-*.md || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(release): version ${{ steps.new_version.outputs.version }}" -m "${{ github.event.inputs.agent_summary }}"
+            git push origin ${{ github.ref_name }}
           fi
-          
-          git commit -m "chore(release): version ${{ steps.new_version.outputs.version }} [auto-update]
-
-${{ github.event.inputs.agent_summary }}
-
-- Updated CHANGELOG.md
-- Updated VERSION.md
-- Updated README.md version badge
-- Generated task suggestions" || echo "No changes to commit"
-          
-          git push origin ${{ github.ref_name }}
 
       - name: Create GitHub Release
         uses: actions/github-script@v7
         with:
           script: |
             const version = '${{ steps.new_version.outputs.version }}';
-            const agentSummary = `${{ github.event.inputs.agent_summary }}`;
+            const summary = `${{ github.event.inputs.agent_summary }}`;
             
             try {
               await github.rest.repos.createRelease({
@@ -398,55 +134,22 @@ ${{ github.event.inputs.agent_summary }}
                 repo: context.repo.repo,
                 tag_name: `v${version}`,
                 name: `Release v${version}`,
-                body: `## 🤖 Auto-generated Release\n\n${agentSummary}\n\n### Changes\nSee [CHANGELOG.md](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/CHANGELOG.md) for details.`,
+                body: `## 🤖 Auto-generated Release\n\n${summary}`,
                 draft: false,
                 prerelease: false
               });
-              console.log(`✅ Release v${version} created`);
+              console.log('Release created successfully');
             } catch (error) {
-              console.log(`Release creation failed (may already exist): ${error.message}`);
+              console.log('Release may already exist:', error.message);
             }
 
-      - name: Create summary
+      - name: Summary
         run: |
-          echo "## 🎉 Update Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "## Update Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**New Version:** ${{ steps.new_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Files Updated:" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ CHANGELOG.md" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ VERSION.md" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ README.md" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.event.inputs.generate_tasks }}" == "true" ]; then
-            echo "- ✅ Task suggestions generated" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Review the updated CHANGELOG.md" >> $GITHUB_STEP_SUMMARY
-          echo "2. Check task suggestions in docs/" >> $GITHUB_STEP_SUMMARY
-          echo "3. Create issues for priority tasks" >> $GITHUB_STEP_SUMMARY
-
-      - name: Comment on related issues
-        if: github.event.inputs.generate_tasks == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const message = `🤖 **Auto-Update Notification**\n\nA new version (**v${{ steps.new_version.outputs.version }}**) has been released!\n\n${{ github.event.inputs.agent_summary }}\n\nNew task suggestions have been generated. Check [\`docs/TASK-SUGGESTIONS-${new Date().toISOString().split('T')[0].replace(/-/g, '')}.md\`](https://github.com/${context.repo.owner}/${context.repo.repo}/tree/main/docs) for details.`;
-            
-            // Find open issues with label "enhancement" and comment
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: 'enhancement',
-              per_page: 5
-            });
-            
-            for (const issue of issues.data) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                body: message
-              });
-            }
+          echo "- CHANGELOG.md" >> $GITHUB_STEP_SUMMARY
+          echo "- VERSION.md" >> $GITHUB_STEP_SUMMARY
+          echo "- README.md" >> $GITHUB_STEP_SUMMARY
