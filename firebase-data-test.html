@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste de Dados Firebase - Pilgrim Fitness Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .test-card {
+      transition: all 0.3s ease;
+    }
+    .test-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    pre {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    code {
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen">
+  <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <!-- Header -->
+    <div class="mb-8 text-center">
+      <h1 class="text-4xl font-bold mb-2">🔥 Teste de Armazenamento de Dados Firebase</h1>
+      <p class="text-slate-300 text-lg">Pilgrim Fitness Tracker - Verificação Completa do Firestore</p>
+    </div>
+
+    <!-- Overall Status -->
+    <div id="overallStatus" class="mb-8 p-6 bg-slate-800 rounded-xl shadow-lg text-center">
+      <div class="spinner mx-auto mb-4"></div>
+      <p class="text-xl">Iniciando testes...</p>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <button onclick="runAllTests()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-semibold transition-colors">
+        🔄 Executar Todos os Testes
+      </button>
+      <button onclick="runWriteTest()" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-lg font-semibold transition-colors">
+        ✍️ Testar Escrita
+      </button>
+      <button onclick="runReadTest()" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-lg font-semibold transition-colors">
+        📖 Testar Leitura
+      </button>
+      <button onclick="clearTestData()" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-lg font-semibold transition-colors">
+        🗑️ Limpar Dados de Teste
+      </button>
+    </div>
+
+    <!-- Test Results -->
+    <div id="testResults" class="space-y-6"></div>
+
+    <!-- Firestore Data Viewer -->
+    <div class="mt-8 bg-slate-800 rounded-xl shadow-lg p-6">
+      <h2 class="text-2xl font-bold mb-4">📊 Visualizador de Dados em Tempo Real</h2>
+      <div id="dataViewer" class="bg-slate-900 rounded-lg p-4">
+        <p class="text-slate-400">Carregando dados...</p>
+      </div>
+    </div>
+
+    <!-- Console Log -->
+    <div class="mt-8 bg-slate-800 rounded-xl shadow-lg p-6">
+      <h2 class="text-2xl font-bold mb-4">📝 Log do Console</h2>
+      <pre id="consoleLog" class="bg-slate-900 rounded-lg p-4 text-sm text-green-400 font-mono"><code></code></pre>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+    import { 
+      getFirestore, 
+      collection, 
+      doc, 
+      setDoc, 
+      getDoc, 
+      getDocs, 
+      updateDoc, 
+      deleteDoc,
+      addDoc,
+      onSnapshot,
+      query,
+      orderBy,
+      limit,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyC1zhIHzZoTHx7XBfaYnSYya_TgrJR-eNU",
+      authDomain: "fitness-tracker-9c801.firebaseapp.com",
+      projectId: "fitness-tracker-9c801",
+      storageBucket: "fitness-tracker-9c801.firebasestorage.app",
+      messagingSenderId: "890869868034",
+      appId: "1:890869868034:web:034347f9849af262ea691b",
+      measurementId: "G-TYDL5MRFRL"
+    };
+
+    // Initialize Firebase
+    let app, analytics, db;
+    let testResults = [];
+    let dataViewerUnsubscribe = null;
+
+    // Console logging
+    function log(message, type = 'info') {
+      const consoleLog = document.getElementById('consoleLog').querySelector('code');
+      const timestamp = new Date().toLocaleTimeString('pt-BR');
+      const colors = {
+        info: 'text-green-400',
+        success: 'text-blue-400',
+        error: 'text-red-400',
+        warning: 'text-yellow-400'
+      };
+      const color = colors[type] || colors.info;
+      consoleLog.innerHTML += `<span class="${color}">[${timestamp}] ${message}</span>\n`;
+      consoleLog.parentElement.scrollTop = consoleLog.parentElement.scrollHeight;
+      console.log(`[${timestamp}] ${message}`);
+    }
+
+    // Initialize Firebase App
+    async function initializeFirebase() {
+      try {
+        log('🚀 Inicializando Firebase...', 'info');
+        app = initializeApp(firebaseConfig);
+        log('✅ Firebase App inicializado com sucesso', 'success');
+
+        try {
+          analytics = getAnalytics(app);
+          log('✅ Firebase Analytics inicializado', 'success');
+        } catch (err) {
+          log('⚠️ Analytics não disponível (normal em localhost): ' + err.message, 'warning');
+        }
+
+        db = getFirestore(app);
+        log('✅ Firestore inicializado com sucesso', 'success');
+
+        addTestResult('Inicialização do Firebase', true, 'Firebase e Firestore inicializados corretamente', {
+          projectId: firebaseConfig.projectId,
+          hasAnalytics: !!analytics,
+          hasFirestore: !!db
+        });
+
+        return true;
+      } catch (error) {
+        log('❌ Erro ao inicializar Firebase: ' + error.message, 'error');
+        addTestResult('Inicialização do Firebase', false, 'Falha ao inicializar: ' + error.message, { error: error.stack });
+        return false;
+      }
+    }
+
+    // Add test result card
+    function addTestResult(title, success, message, details = null) {
+      const resultsContainer = document.getElementById('testResults');
+      const resultCard = document.createElement('div');
+      resultCard.className = `test-card bg-slate-800 rounded-xl shadow-lg p-6 fade-in ${success ? 'border-l-4 border-green-500' : 'border-l-4 border-red-500'}`;
+      
+      let html = `
+        <div class="flex items-start gap-4">
+          <div class="text-4xl flex-shrink-0">${success ? '✅' : '❌'}</div>
+          <div class="flex-1">
+            <h3 class="text-xl font-bold mb-2">${title}</h3>
+            <p class="text-slate-300 mb-3">${message}</p>
+      `;
+      
+      if (details) {
+        html += `
+          <details class="mt-3">
+            <summary class="cursor-pointer text-sm text-blue-400 hover:text-blue-300 mb-2">
+              📋 Ver Detalhes
+            </summary>
+            <pre class="bg-slate-900 rounded-lg p-4 text-xs overflow-auto"><code class="text-green-400">${JSON.stringify(details, null, 2)}</code></pre>
+          </details>
+        `;
+      }
+      
+      html += `
+          </div>
+        </div>
+      `;
+      
+      resultCard.innerHTML = html;
+      resultsContainer.appendChild(resultCard);
+      testResults.push({ title, success, message, details });
+    }
+
+    // Update overall status
+    function updateOverallStatus(message, success = null, inProgress = false) {
+      const statusDiv = document.getElementById('overallStatus');
+      
+      if (inProgress) {
+        statusDiv.className = 'mb-8 p-6 bg-slate-800 rounded-xl shadow-lg text-center';
+        statusDiv.innerHTML = `
+          <div class="spinner mx-auto mb-4"></div>
+          <p class="text-xl">${message}</p>
+        `;
+      } else if (success === true) {
+        statusDiv.className = 'mb-8 p-6 bg-green-900/50 border-2 border-green-500 rounded-xl shadow-lg text-center fade-in';
+        statusDiv.innerHTML = `
+          <div class="text-6xl mb-4">✅</div>
+          <p class="text-2xl font-bold mb-2">${message}</p>
+          <div class="status-badge bg-green-600 mx-auto">
+            <span>Todos os testes passaram</span>
+          </div>
+        `;
+      } else if (success === false) {
+        statusDiv.className = 'mb-8 p-6 bg-red-900/50 border-2 border-red-500 rounded-xl shadow-lg text-center fade-in';
+        statusDiv.innerHTML = `
+          <div class="text-6xl mb-4">❌</div>
+          <p class="text-2xl font-bold mb-2">${message}</p>
+          <div class="status-badge bg-red-600 mx-auto">
+            <span>Alguns testes falharam</span>
+          </div>
+        `;
+      }
+    }
+
+    // Test 1: Write Data to Firestore
+    async function testFirestoreWrite() {
+      log('📝 Testando escrita no Firestore...', 'info');
+      
+      try {
+        const testData = {
+          testName: 'Fitness Tracker Data Test',
+          timestamp: serverTimestamp(),
+          userData: {
+            name: 'Pedro',
+            weight: 75,
+            height: 175,
+            goal: 'Ganho de massa muscular'
+          },
+          testNumber: Math.floor(Math.random() * 1000),
+          createdAt: new Date().toISOString()
+        };
+
+        // Write to a test collection
+        const docRef = doc(db, 'fitness_tracker_tests', 'test_document_' + Date.now());
+        await setDoc(docRef, testData);
+        
+        log(`✅ Dados escritos com sucesso! ID: ${docRef.id}`, 'success');
+        addTestResult(
+          'Escrita de Dados (setDoc)',
+          true,
+          `Documento criado com sucesso no Firestore. ID: ${docRef.id}`,
+          { docId: docRef.id, data: testData }
+        );
+        
+        return { success: true, docId: docRef.id, data: testData };
+      } catch (error) {
+        log('❌ Erro ao escrever dados: ' + error.message, 'error');
+        addTestResult(
+          'Escrita de Dados (setDoc)',
+          false,
+          'Falha ao escrever dados: ' + error.message,
+          { error: error.stack }
+        );
+        return { success: false, error };
+      }
+    }
+
+    // Test 2: Read Data from Firestore
+    async function testFirestoreRead(docId = null) {
+      log('📖 Testando leitura do Firestore...', 'info');
+      
+      try {
+        // If no docId provided, read all documents from test collection
+        if (!docId) {
+          const querySnapshot = await getDocs(collection(db, 'fitness_tracker_tests'));
+          const documents = [];
+          querySnapshot.forEach((doc) => {
+            documents.push({ id: doc.id, ...doc.data() });
+          });
+          
+          log(`✅ ${documents.length} documento(s) lido(s) com sucesso!`, 'success');
+          addTestResult(
+            'Leitura de Dados (getDocs)',
+            true,
+            `${documents.length} documento(s) encontrado(s) na coleção de testes`,
+            { count: documents.length, documents: documents.slice(0, 3) } // Show first 3
+          );
+          
+          return { success: true, documents };
+        } else {
+          // Read specific document
+          const docRef = doc(db, 'fitness_tracker_tests', docId);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            log(`✅ Documento lido com sucesso! ID: ${docId}`, 'success');
+            addTestResult(
+              'Leitura de Dados (getDoc)',
+              true,
+              `Documento específico lido com sucesso`,
+              { docId, data: docSnap.data() }
+            );
+            return { success: true, data: docSnap.data() };
+          } else {
+            log(`⚠️ Documento não encontrado: ${docId}`, 'warning');
+            addTestResult(
+              'Leitura de Dados (getDoc)',
+              false,
+              `Documento não existe: ${docId}`,
+              { docId }
+            );
+            return { success: false, message: 'Document not found' };
+          }
+        }
+      } catch (error) {
+        log('❌ Erro ao ler dados: ' + error.message, 'error');
+        addTestResult(
+          'Leitura de Dados',
+          false,
+          'Falha ao ler dados: ' + error.message,
+          { error: error.stack }
+        );
+        return { success: false, error };
+      }
+    }
+
+    // Test 3: Update Data in Firestore
+    async function testFirestoreUpdate(docId) {
+      log('✏️ Testando atualização no Firestore...', 'info');
+      
+      try {
+        const docRef = doc(db, 'fitness_tracker_tests', docId);
+        const updateData = {
+          lastUpdated: serverTimestamp(),
+          updateCount: Math.floor(Math.random() * 100),
+          status: 'updated'
+        };
+        
+        await updateDoc(docRef, updateData);
+        
+        log(`✅ Documento atualizado com sucesso! ID: ${docId}`, 'success');
+        addTestResult(
+          'Atualização de Dados (updateDoc)',
+          true,
+          `Documento atualizado com sucesso`,
+          { docId, updates: updateData }
+        );
+        
+        return { success: true, docId, updates: updateData };
+      } catch (error) {
+        log('❌ Erro ao atualizar dados: ' + error.message, 'error');
+        addTestResult(
+          'Atualização de Dados (updateDoc)',
+          false,
+          'Falha ao atualizar dados: ' + error.message,
+          { error: error.stack }
+        );
+        return { success: false, error };
+      }
+    }
+
+    // Test 4: Delete Data from Firestore
+    async function testFirestoreDelete(docId) {
+      log('🗑️ Testando exclusão no Firestore...', 'info');
+      
+      try {
+        const docRef = doc(db, 'fitness_tracker_tests', docId);
+        await deleteDoc(docRef);
+        
+        log(`✅ Documento excluído com sucesso! ID: ${docId}`, 'success');
+        addTestResult(
+          'Exclusão de Dados (deleteDoc)',
+          true,
+          `Documento excluído com sucesso`,
+          { docId }
+        );
+        
+        return { success: true, docId };
+      } catch (error) {
+        log('❌ Erro ao excluir dados: ' + error.message, 'error');
+        addTestResult(
+          'Exclusão de Dados (deleteDoc)',
+          false,
+          'Falha ao excluir dados: ' + error.message,
+          { error: error.stack }
+        );
+        return { success: false, error };
+      }
+    }
+
+    // Test 5: Real-time listener
+    async function testRealtimeListener() {
+      log('🔄 Testando listener em tempo real...', 'info');
+      
+      try {
+        const q = query(
+          collection(db, 'fitness_tracker_tests'),
+          orderBy('testNumber', 'desc'),
+          limit(10)
+        );
+        
+        // Set up real-time listener
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const documents = [];
+          querySnapshot.forEach((doc) => {
+            documents.push({ id: doc.id, ...doc.data() });
+          });
+          
+          // Update data viewer
+          const dataViewer = document.getElementById('dataViewer');
+          if (documents.length === 0) {
+            dataViewer.innerHTML = '<p class="text-slate-400">Nenhum documento encontrado na coleção de testes.</p>';
+          } else {
+            let html = '<div class="space-y-4">';
+            documents.forEach((doc, index) => {
+              html += `
+                <div class="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                  <div class="flex justify-between items-start mb-2">
+                    <span class="text-sm font-mono text-blue-400">${doc.id}</span>
+                    <span class="text-xs text-slate-500">#${index + 1}</span>
+                  </div>
+                  <pre class="text-xs text-green-400 overflow-auto"><code>${JSON.stringify(doc, null, 2)}</code></pre>
+                </div>
+              `;
+            });
+            html += '</div>';
+            dataViewer.innerHTML = html;
+          }
+          
+          log(`🔄 Listener atualizado: ${documents.length} documento(s)`, 'info');
+        }, (error) => {
+          log('❌ Erro no listener: ' + error.message, 'error');
+        });
+        
+        dataViewerUnsubscribe = unsubscribe;
+        
+        addTestResult(
+          'Listener em Tempo Real (onSnapshot)',
+          true,
+          'Listener configurado com sucesso. Dados serão atualizados automaticamente.',
+          { listenerActive: true }
+        );
+        
+        return { success: true, unsubscribe };
+      } catch (error) {
+        log('❌ Erro ao configurar listener: ' + error.message, 'error');
+        addTestResult(
+          'Listener em Tempo Real (onSnapshot)',
+          false,
+          'Falha ao configurar listener: ' + error.message,
+          { error: error.stack }
+        );
+        return { success: false, error };
+      }
+    }
+
+    // Run all tests sequentially
+    async function runAllTests() {
+      log('🚀 Iniciando bateria completa de testes...', 'info');
+      updateOverallStatus('Executando testes...', null, true);
+      
+      // Clear previous results
+      document.getElementById('testResults').innerHTML = '';
+      testResults = [];
+      
+      // Test 1: Initialize
+      const initSuccess = await initializeFirebase();
+      if (!initSuccess) {
+        updateOverallStatus('Falha na inicialização do Firebase', false);
+        return;
+      }
+      
+      // Test 2: Write
+      const writeResult = await testFirestoreWrite();
+      if (!writeResult.success) {
+        updateOverallStatus('Falha nos testes de escrita', false);
+        return;
+      }
+      
+      // Test 3: Read (all documents)
+      await testFirestoreRead();
+      
+      // Test 4: Read (specific document)
+      await testFirestoreRead(writeResult.docId);
+      
+      // Test 5: Update
+      await testFirestoreUpdate(writeResult.docId);
+      
+      // Test 6: Real-time listener
+      await testRealtimeListener();
+      
+      // Test 7: Delete
+      await testFirestoreDelete(writeResult.docId);
+      
+      // Summary
+      const allSuccessful = testResults.every(r => r.success);
+      const successCount = testResults.filter(r => r.success).length;
+      const totalCount = testResults.length;
+      
+      log(`\n✨ Testes concluídos: ${successCount}/${totalCount} bem-sucedidos`, allSuccessful ? 'success' : 'warning');
+      
+      if (allSuccessful) {
+        updateOverallStatus('✨ Firebase está funcionando perfeitamente!', true);
+      } else {
+        updateOverallStatus(`⚠️ ${totalCount - successCount} teste(s) falharam`, false);
+      }
+    }
+
+    // Individual test functions for buttons
+    window.runAllTests = runAllTests;
+    
+    window.runWriteTest = async function() {
+      if (!db) await initializeFirebase();
+      await testFirestoreWrite();
+    };
+    
+    window.runReadTest = async function() {
+      if (!db) await initializeFirebase();
+      await testFirestoreRead();
+    };
+    
+    window.clearTestData = async function() {
+      if (!confirm('Deseja realmente excluir todos os dados de teste?')) return;
+      
+      log('🗑️ Limpando dados de teste...', 'warning');
+      
+      try {
+        const querySnapshot = await getDocs(collection(db, 'fitness_tracker_tests'));
+        let deleteCount = 0;
+        
+        for (const docSnapshot of querySnapshot.docs) {
+          await deleteDoc(doc(db, 'fitness_tracker_tests', docSnapshot.id));
+          deleteCount++;
+        }
+        
+        log(`✅ ${deleteCount} documento(s) de teste excluído(s)`, 'success');
+        addTestResult(
+          'Limpeza de Dados de Teste',
+          true,
+          `${deleteCount} documento(s) excluído(s) com sucesso`,
+          { count: deleteCount }
+        );
+      } catch (error) {
+        log('❌ Erro ao limpar dados: ' + error.message, 'error');
+        addTestResult(
+          'Limpeza de Dados de Teste',
+          false,
+          'Falha ao limpar dados: ' + error.message,
+          { error: error.stack }
+        );
+      }
+    };
+
+    // Auto-run tests on page load
+    window.addEventListener('DOMContentLoaded', async () => {
+      log('🎯 Página carregada. Aguardando 1 segundo antes de iniciar testes...', 'info');
+      setTimeout(async () => {
+        await runAllTests();
+      }, 1000);
+    });
+
+    // Make functions globally available
+    window.initializeFirebase = initializeFirebase;
+    window.testFirestoreWrite = testFirestoreWrite;
+    window.testFirestoreRead = testFirestoreRead;
+    window.testFirestoreUpdate = testFirestoreUpdate;
+    window.testFirestoreDelete = testFirestoreDelete;
+    window.testRealtimeListener = testRealtimeListener;
+  </script>
+</body>
+</html>
