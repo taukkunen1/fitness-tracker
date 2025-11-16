@@ -8471,6 +8471,36 @@ function renderAdminSecurity() {
         </div>
       </div>
 
+      <!-- 🆕 Login Attempts Chart -->
+      <div class="bg-slate-800 p-4 rounded-lg">
+        <h3 class="text-xl font-bold mb-4">📊 Tentativas de Login (Últimos 7 dias)</h3>
+        <div class="mb-4">
+          <canvas id="loginAttemptsChart" height="80"></canvas>
+        </div>
+        <div class="grid md:grid-cols-3 gap-4 mt-4">
+          <div class="bg-green-900/30 p-3 rounded-lg border border-green-500/30 text-center">
+            <p class="text-2xl font-bold text-green-300" id="loginSuccessCount">-</p>
+            <p class="text-sm text-green-400">Logins com Sucesso</p>
+          </div>
+          <div class="bg-red-900/30 p-3 rounded-lg border border-red-500/30 text-center">
+            <p class="text-2xl font-bold text-red-300" id="loginFailedCount">-</p>
+            <p class="text-sm text-red-400">Logins Falhados</p>
+          </div>
+          <div class="bg-yellow-900/30 p-3 rounded-lg border border-yellow-500/30 text-center">
+            <p class="text-2xl font-bold text-yellow-300" id="loginSuccessRate">-</p>
+            <p class="text-sm text-yellow-400">Taxa de Sucesso</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🆕 Suspicious Activity Alerts -->
+      <div class="bg-gradient-to-r from-orange-900 to-red-900 p-4 rounded-xl border border-orange-500">
+        <h3 class="text-xl font-bold mb-4">⚠️ Alertas de Atividade Suspeita</h3>
+        <div id="suspiciousActivityAlerts">
+          <p class="text-slate-400">Carregando alertas...</p>
+        </div>
+      </div>
+
       <!-- Security Events List -->
       <div class="bg-slate-800 p-4 rounded-lg">
         <h3 class="text-xl font-bold mb-4">📊 Eventos de Segurança Recentes</h3>
@@ -8489,6 +8519,9 @@ function renderAdminSecurity() {
 
       <!-- Export Buttons -->
       <div class="flex flex-wrap gap-3">
+        <button onclick="generateWeeklySecurityReport()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-semibold">
+          📋 Gerar Relatório Semanal
+        </button>
         <button onclick="exportSecurityLogs()" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-lg font-semibold">
           📄 Exportar Logs de Segurança
         </button>
@@ -10395,6 +10428,12 @@ async function loadAndDisplaySecurityEvents() {
   
   // 🆕 Update Advanced Security Stats (2025 Research-Based)
   updateAdvancedSecurityStats();
+  
+  // 🆕 Render Login Attempts Chart
+  renderLoginAttemptsChart(securityEvents);
+  
+  // 🆕 Detect and Display Suspicious Activity
+  detectAndDisplaySuspiciousActivity(securityEvents);
 }
 
 // Update Advanced Security Dashboard Stats
@@ -10497,6 +10536,499 @@ function updateAdvancedSecurityStats() {
     console.log('[AdvancedSecurity] Dashboard updated successfully');
   } catch (error) {
     console.error('[AdvancedSecurity] Error updating dashboard:', error);
+  }
+}
+
+// 🆕 Render Login Attempts Chart (Chart.js)
+function renderLoginAttemptsChart(securityEvents) {
+  const canvas = document.getElementById('loginAttemptsChart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Get last 7 days data
+  const now = new Date();
+  const last7Days = [];
+  const successData = [];
+  const failedData = [];
+  
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    date.setHours(0, 0, 0, 0);
+    
+    const dateStr = date.toISOString().split('T')[0];
+    last7Days.push(date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+    
+    const nextDay = new Date(date);
+    nextDay.setDate(nextDay.getDate() + 1);
+    
+    const dayEvents = securityEvents.filter(e => {
+      const eventDate = new Date(e.timestamp);
+      return eventDate >= date && eventDate < nextDay;
+    });
+    
+    successData.push(dayEvents.filter(e => e.type === 'login_success').length);
+    failedData.push(dayEvents.filter(e => e.type === 'login_failed').length);
+  }
+  
+  // Destroy existing chart if any
+  if (window.loginAttemptsChartInstance) {
+    window.loginAttemptsChartInstance.destroy();
+  }
+  
+  // Create new chart
+  window.loginAttemptsChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: last7Days,
+      datasets: [
+        {
+          label: 'Logins com Sucesso',
+          data: successData,
+          borderColor: 'rgb(34, 197, 94)',
+          backgroundColor: 'rgba(34, 197, 94, 0.1)',
+          tension: 0.3,
+          fill: true
+        },
+        {
+          label: 'Logins Falhados',
+          data: failedData,
+          borderColor: 'rgb(239, 68, 68)',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          tension: 0.3,
+          fill: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: 'rgb(203, 213, 225)',
+            font: { size: 12 }
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          titleColor: 'rgb(203, 213, 225)',
+          bodyColor: 'rgb(203, 213, 225)',
+          borderColor: 'rgb(100, 116, 139)',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: 'rgb(148, 163, 184)',
+            stepSize: 1
+          },
+          grid: {
+            color: 'rgba(100, 116, 139, 0.2)'
+          }
+        },
+        x: {
+          ticks: {
+            color: 'rgb(148, 163, 184)'
+          },
+          grid: {
+            color: 'rgba(100, 116, 139, 0.2)'
+          }
+        }
+      }
+    }
+  });
+  
+  // Update summary stats
+  const totalSuccess = successData.reduce((a, b) => a + b, 0);
+  const totalFailed = failedData.reduce((a, b) => a + b, 0);
+  const successRate = totalSuccess + totalFailed > 0 
+    ? Math.round((totalSuccess / (totalSuccess + totalFailed)) * 100) 
+    : 0;
+  
+  const successCountEl = document.getElementById('loginSuccessCount');
+  const failedCountEl = document.getElementById('loginFailedCount');
+  const successRateEl = document.getElementById('loginSuccessRate');
+  
+  if (successCountEl) successCountEl.textContent = totalSuccess;
+  if (failedCountEl) failedCountEl.textContent = totalFailed;
+  if (successRateEl) successRateEl.textContent = `${successRate}%`;
+}
+
+// 🆕 Detect and Display Suspicious Activity
+function detectAndDisplaySuspiciousActivity(securityEvents) {
+  const alertsContainer = document.getElementById('suspiciousActivityAlerts');
+  if (!alertsContainer) return;
+  
+  const alerts = [];
+  const now = Date.now();
+  const last24h = now - (24 * 60 * 60 * 1000);
+  const last1h = now - (60 * 60 * 1000);
+  
+  // Get recent events
+  const recentEvents = securityEvents.filter(e => new Date(e.timestamp).getTime() > last24h);
+  
+  // Alert 1: Multiple failed login attempts from same user in last hour
+  const failedLogins = recentEvents.filter(e => 
+    e.type === 'login_failed' && 
+    new Date(e.timestamp).getTime() > last1h
+  );
+  
+  const failedByUser = {};
+  failedLogins.forEach(e => {
+    failedByUser[e.username] = (failedByUser[e.username] || 0) + 1;
+  });
+  
+  Object.entries(failedByUser).forEach(([username, count]) => {
+    if (count >= 3) {
+      alerts.push({
+        type: 'critical',
+        icon: '🚨',
+        title: 'Múltiplas Tentativas de Login Falhadas',
+        description: `Usuário "${username}" teve ${count} tentativas de login falhadas na última hora`,
+        timestamp: new Date().toISOString(),
+        recommendation: 'Verificar se é uma tentativa de acesso não autorizado. Considere bloquear temporariamente.'
+      });
+    }
+  });
+  
+  // Alert 2: Account lockouts in last 24h
+  const lockedAccounts = recentEvents.filter(e => e.type === 'account_locked');
+  if (lockedAccounts.length > 0) {
+    lockedAccounts.forEach(e => {
+      alerts.push({
+        type: 'high',
+        icon: '🔒',
+        title: 'Conta Bloqueada por Segurança',
+        description: `Conta "${e.username}" foi bloqueada automaticamente devido a múltiplas tentativas falhadas`,
+        timestamp: e.timestamp,
+        recommendation: 'Verificar com o usuário se foi ele tentando acessar. Investigar possível ataque.'
+      });
+    });
+  }
+  
+  // Alert 3: Login blocks due to rate limiting
+  const blockedLogins = recentEvents.filter(e => e.type === 'login_blocked');
+  if (blockedLogins.length >= 5) {
+    alerts.push({
+      type: 'high',
+      icon: '⚠️',
+      title: 'Múltiplos Bloqueios por Rate Limit',
+      description: `${blockedLogins.length} tentativas de login foram bloqueadas por rate limiting nas últimas 24h`,
+      timestamp: new Date().toISOString(),
+      recommendation: 'Possível ataque de força bruta. Monitorar logs de acesso.'
+    });
+  }
+  
+  // Alert 4: Unusual activity - many registrations in short time
+  const registrations = recentEvents.filter(e => 
+    e.type === 'register_success' && 
+    new Date(e.timestamp).getTime() > last1h
+  );
+  
+  if (registrations.length >= 3) {
+    alerts.push({
+      type: 'medium',
+      icon: '📝',
+      title: 'Múltiplos Registros em Curto Período',
+      description: `${registrations.length} novas contas foram criadas na última hora`,
+      timestamp: new Date().toISOString(),
+      recommendation: 'Verificar se são registros legítimos ou possível spam/ataque.'
+    });
+  }
+  
+  // Alert 5: Check for AI Security Agent high threat detections
+  const rateLimiterStats = AdaptiveRateLimiter.getStatistics();
+  if (rateLimiterStats.threatLevel === 'critical' || rateLimiterStats.threatLevel === 'high') {
+    alerts.push({
+      type: 'critical',
+      icon: '🤖',
+      title: 'Nível de Ameaça Elevado Detectado',
+      description: `Sistema de IA detectou nível de ameaça: ${rateLimiterStats.threatLevel.toUpperCase()}. Rate limit ajustado para ${rateLimiterStats.currentLimit} requisições/min`,
+      timestamp: new Date().toISOString(),
+      recommendation: 'Sistema adaptativo em ação. Monitorar evolução da ameaça.'
+    });
+  }
+  
+  // Render alerts
+  if (alerts.length === 0) {
+    alertsContainer.innerHTML = `
+      <div class="bg-green-900/30 border border-green-500/50 rounded-lg p-4 flex items-center gap-3">
+        <span class="text-3xl">✅</span>
+        <div>
+          <p class="font-bold text-green-300">Nenhuma Atividade Suspeita Detectada</p>
+          <p class="text-sm text-green-400">Sistema operando normalmente. Todos os indicadores estão saudáveis.</p>
+        </div>
+      </div>
+    `;
+  } else {
+    let html = '<div class="space-y-3">';
+    
+    // Sort by severity
+    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+    alerts.sort((a, b) => severityOrder[a.type] - severityOrder[b.type]);
+    
+    alerts.forEach(alert => {
+      const colorMap = {
+        critical: { bg: 'red-900/50', border: 'red-500', text: 'red-300' },
+        high: { bg: 'orange-900/50', border: 'orange-500', text: 'orange-300' },
+        medium: { bg: 'yellow-900/50', border: 'yellow-500', text: 'yellow-300' },
+        low: { bg: 'blue-900/50', border: 'blue-500', text: 'blue-300' }
+      };
+      
+      const colors = colorMap[alert.type];
+      
+      html += `
+        <div class="bg-${colors.bg} border border-${colors.border} rounded-lg p-4">
+          <div class="flex items-start gap-3">
+            <span class="text-3xl flex-shrink-0">${alert.icon}</span>
+            <div class="flex-1">
+              <div class="flex items-start justify-between gap-4 mb-2">
+                <h4 class="font-bold text-lg text-${colors.text}">${alert.title}</h4>
+                <span class="px-2 py-1 rounded text-xs bg-${colors.bg} border border-${colors.border} text-${colors.text} uppercase flex-shrink-0">
+                  ${alert.type}
+                </span>
+              </div>
+              <p class="text-sm text-slate-300 mb-2">${alert.description}</p>
+              <p class="text-xs text-slate-400 mb-2">
+                <strong>Timestamp:</strong> ${new Date(alert.timestamp).toLocaleString('pt-BR')}
+              </p>
+              <div class="bg-slate-800/50 rounded p-2 border-l-4 border-${colors.border}">
+                <p class="text-xs text-slate-300">
+                  <strong>💡 Recomendação:</strong> ${alert.recommendation}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+    alertsContainer.innerHTML = html;
+  }
+}
+
+// 🆕 Generate Weekly Security Report
+async function generateWeeklySecurityReport() {
+  try {
+    showNotification('⏳ Gerando relatório semanal...', 'info');
+    
+    // Get data for last 7 days
+    const settings = await dbGetAll(STORE_SETTINGS);
+    const securityEvents = settings
+      .filter(s => s.key.startsWith('security_log_'))
+      .map(s => s.value);
+    
+    const accessLogs = await dbGetAll(STORE_ACCESS_LOGS);
+    const accounts = await dbGetAll(STORE_ACCOUNTS);
+    
+    const now = new Date();
+    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Filter events for last 7 days
+    const weeklySecurityEvents = securityEvents.filter(e => 
+      new Date(e.timestamp) >= last7Days
+    );
+    
+    const weeklyAccessLogs = accessLogs.filter(log => 
+      new Date(log.timestamp) >= last7Days
+    );
+    
+    // Calculate statistics
+    const stats = {
+      totalSecurityEvents: weeklySecurityEvents.length,
+      loginSuccess: weeklySecurityEvents.filter(e => e.type === 'login_success').length,
+      loginFailed: weeklySecurityEvents.filter(e => e.type === 'login_failed').length,
+      loginBlocked: weeklySecurityEvents.filter(e => e.type === 'login_blocked').length,
+      accountsLocked: weeklySecurityEvents.filter(e => e.type === 'account_locked').length,
+      registrations: weeklySecurityEvents.filter(e => e.type === 'register_success').length,
+      totalAccesses: weeklyAccessLogs.length,
+      uniqueVisitors: new Set(weeklyAccessLogs.map(log => log.username)).size,
+      totalAccounts: accounts.length,
+      adminAccounts: accounts.filter(a => a.role === 'admin').length
+    };
+    
+    // Get DCCI Security Posture
+    const posture = DCCIFramework.calculatePosture();
+    
+    // Get Adaptive Rate Limiter stats
+    const rateLimiterStats = AdaptiveRateLimiter.getStatistics();
+    
+    // Build markdown report
+    let report = '# 🔐 Relatório Semanal de Segurança\n\n';
+    report += `**Período:** ${last7Days.toLocaleDateString('pt-BR')} - ${now.toLocaleDateString('pt-BR')}\n`;
+    report += `**Gerado em:** ${now.toLocaleString('pt-BR')}\n\n`;
+    report += '---\n\n';
+    
+    // Executive Summary
+    report += '## 📊 Resumo Executivo\n\n';
+    report += `- **Postura de Segurança:** ${posture.grade} (${(posture.overall * 100).toFixed(1)}%)\n`;
+    report += `- **Nível de Ameaça:** ${rateLimiterStats.threatLevel.toUpperCase()}\n`;
+    report += `- **Total de Eventos de Segurança:** ${stats.totalSecurityEvents}\n`;
+    report += `- **Total de Acessos:** ${stats.totalAccesses}\n`;
+    report += `- **Visitantes Únicos:** ${stats.uniqueVisitors}\n`;
+    report += `- **Contas Totais:** ${stats.totalAccounts} (${stats.adminAccounts} admin, ${stats.totalAccounts - stats.adminAccounts} usuário)\n\n`;
+    
+    // Authentication Statistics
+    report += '## 🔑 Estatísticas de Autenticação\n\n';
+    report += '| Métrica | Quantidade |\n';
+    report += '|---------|------------|\n';
+    report += `| Logins Bem-Sucedidos | ${stats.loginSuccess} |\n`;
+    report += `| Logins Falhados | ${stats.loginFailed} |\n`;
+    report += `| Logins Bloqueados (Rate Limit) | ${stats.loginBlocked} |\n`;
+    report += `| Contas Bloqueadas | ${stats.accountsLocked} |\n`;
+    report += `| Novos Registros | ${stats.registrations} |\n\n`;
+    
+    const successRate = stats.loginSuccess + stats.loginFailed > 0
+      ? ((stats.loginSuccess / (stats.loginSuccess + stats.loginFailed)) * 100).toFixed(1)
+      : 0;
+    report += `**Taxa de Sucesso de Login:** ${successRate}%\n\n`;
+    
+    // Security Posture (DCCI Framework)
+    report += '## 🛡️ Postura de Segurança (DCCI Framework)\n\n';
+    report += `**Pontuação Geral:** ${posture.grade} (${(posture.overall * 100).toFixed(1)}%)\n\n`;
+    report += '### Capacidades por Dimensão\n\n';
+    report += `- **Tecnológica:** ${(posture.breakdown.technological * 100).toFixed(1)}%\n`;
+    report += `- **Organizacional:** ${(posture.breakdown.organizational * 100).toFixed(1)}%\n`;
+    report += `- **Gerencial:** ${(posture.breakdown.managerial * 100).toFixed(1)}%\n\n`;
+    
+    // Recommendations
+    if (posture.recommendations && posture.recommendations.length > 0) {
+      report += '### 📋 Recomendações de Segurança\n\n';
+      posture.recommendations.forEach((rec, idx) => {
+        report += `${idx + 1}. **[${rec.priority}]** ${rec.area}: ${rec.action}\n`;
+        if (rec.research) {
+          report += `   - Fonte: ${rec.research}\n`;
+        }
+      });
+      report += '\n';
+    }
+    
+    // Threat Intelligence
+    report += '## 🤖 Inteligência de Ameaças (AI-Powered)\n\n';
+    report += `- **Nível de Ameaça Atual:** ${rateLimiterStats.threatLevel.toUpperCase()}\n`;
+    report += `- **Score de Ameaça:** ${rateLimiterStats.threatScore}/100\n`;
+    report += `- **Rate Limit Atual:** ${rateLimiterStats.currentLimit} req/min (base: ${rateLimiterStats.baseLimit})\n`;
+    report += `- **Padrões de Ataque Detectados:** ${rateLimiterStats.attackPatternsDetected}\n`;
+    report += `- **Padrões Legítimos Aprendidos:** ${rateLimiterStats.legitimatePatternsDetected}\n`;
+    report += `- **Identificadores Ativos:** ${rateLimiterStats.activeIdentifiers}\n`;
+    report += `- **Violações Recentes:** ${rateLimiterStats.recentViolations}\n\n`;
+    
+    // Access Analytics
+    report += '## 📈 Análise de Acessos\n\n';
+    report += `Durante a última semana, o sistema registrou **${stats.totalAccesses} acessos** de **${stats.uniqueVisitors} visitantes únicos**.\n\n`;
+    
+    // Breakdown by role
+    const accessByRole = {};
+    weeklyAccessLogs.forEach(log => {
+      accessByRole[log.role] = (accessByRole[log.role] || 0) + 1;
+    });
+    
+    report += '### Acessos por Tipo de Usuário\n\n';
+    Object.entries(accessByRole).forEach(([role, count]) => {
+      const percentage = ((count / stats.totalAccesses) * 100).toFixed(1);
+      report += `- **${role}:** ${count} acessos (${percentage}%)\n`;
+    });
+    report += '\n';
+    
+    // Daily breakdown
+    report += '### Acessos por Dia\n\n';
+    const dailyAccess = {};
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0];
+      dailyAccess[dateKey] = 0;
+    }
+    
+    weeklyAccessLogs.forEach(log => {
+      const dateKey = log.timestamp.split('T')[0];
+      if (dailyAccess[dateKey] !== undefined) {
+        dailyAccess[dateKey]++;
+      }
+    });
+    
+    Object.entries(dailyAccess).sort().forEach(([date, count]) => {
+      report += `- ${new Date(date).toLocaleDateString('pt-BR')}: ${count} acessos\n`;
+    });
+    report += '\n';
+    
+    // Suspicious Activity
+    report += '## ⚠️ Atividades Suspeitas\n\n';
+    
+    const suspiciousActivity = [];
+    
+    // Check for multiple failed logins
+    const failedByUser = {};
+    weeklySecurityEvents.filter(e => e.type === 'login_failed').forEach(e => {
+      failedByUser[e.username] = (failedByUser[e.username] || 0) + 1;
+    });
+    
+    Object.entries(failedByUser).forEach(([username, count]) => {
+      if (count >= 5) {
+        suspiciousActivity.push(`⚠️ Usuário "${username}" teve ${count} tentativas de login falhadas`);
+      }
+    });
+    
+    // Check for locked accounts
+    if (stats.accountsLocked > 0) {
+      suspiciousActivity.push(`🔒 ${stats.accountsLocked} conta(s) foram bloqueadas por excesso de tentativas`);
+    }
+    
+    // Check for rate limit violations
+    if (stats.loginBlocked > 10) {
+      suspiciousActivity.push(`🚨 ${stats.loginBlocked} tentativas de login foram bloqueadas por rate limiting`);
+    }
+    
+    if (suspiciousActivity.length > 0) {
+      suspiciousActivity.forEach(activity => {
+        report += `- ${activity}\n`;
+      });
+      report += '\n**Recomendação:** Investigar estas atividades e verificar se são tentativas legítimas ou ataques.\n\n';
+    } else {
+      report += '✅ Nenhuma atividade suspeita detectada durante o período.\n\n';
+    }
+    
+    // Zero Trust Session Analysis
+    const activeSessions = Object.keys(ZeroTrustFramework.activeSessions).length;
+    report += '## 🔐 Análise Zero Trust\n\n';
+    report += `- **Sessões Ativas:** ${activeSessions}\n`;
+    report += `- **Validação Contínua:** Habilitada\n`;
+    report += `- **Trust Score Mínimo:** ${(ZeroTrustFramework.config.trustScoreMin * 100).toFixed(0)}%\n\n`;
+    
+    // Footer
+    report += '---\n\n';
+    report += '## 📚 Metodologia\n\n';
+    report += 'Este relatório é baseado em:\n';
+    report += '- **DCCI Framework** (Pigola, 2024) - Avaliação holística de capacidades de cibersegurança\n';
+    report += '- **AI-Powered Security Agent** - Detecção inteligente de ameaças\n';
+    report += '- **Adaptive Rate Limiting** - Sistema de firewall com aprendizado de máquina\n';
+    report += '- **Zero Trust Framework** - Validação contínua de sessões e contexto\n';
+    report += '- **Privacy-Preserving Analytics** - Análise local sem transmissão de dados\n\n';
+    
+    report += '*Relatório gerado automaticamente pelo sistema de monitoramento de segurança do Pilgrim Fitness Tracker.*\n';
+    
+    // Download report
+    const blob = new Blob([report], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relatorio_seguranca_${now.toISOString().split('T')[0]}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showNotification('✅ Relatório semanal gerado com sucesso!', 'success');
+  } catch (err) {
+    console.error('Error generating weekly report:', err);
+    showNotification('❌ Erro ao gerar relatório: ' + err.message, 'error');
   }
 }
 
