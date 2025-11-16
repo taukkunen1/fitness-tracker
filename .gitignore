@@ -23,6 +23,16 @@ npm-debug.log*
 *.backup
 *.bak
 
+# Node.js
+node_modules/
+package-lock.json
+yarn.lock
+
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc.local
+
 # Nota: Os seguintes arquivos são intencionalmente incluídos no repositório:
 # - index.html.txt (versão alternativa com funcionalidades admin)
 # - update-site.sh e update-site.bat (scripts de deploy)

@@ -23,6 +23,35 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  
+  <!-- Firebase SDK -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+    
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyC1zhIHzZoTHx7XBfaYnSYya_TgrJR-eNU",
+      authDomain: "fitness-tracker-9c801.firebaseapp.com",
+      projectId: "fitness-tracker-9c801",
+      storageBucket: "fitness-tracker-9c801.firebasestorage.app",
+      messagingSenderId: "890869868034",
+      appId: "1:890869868034:web:034347f9849af262ea691b",
+      measurementId: "G-TYDL5MRFRL"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    
+    // Make Firebase available globally
+    window.firebaseApp = app;
+    window.firebaseAnalytics = analytics;
+    
+    console.log('✅ Firebase initialized successfully');
+  </script>
   <style>
     /* Theme CSS Variables */
     :root {
