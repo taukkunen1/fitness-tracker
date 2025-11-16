@@ -7055,7 +7055,7 @@ function renderDeveloper(user) {
             Enquanto a integração automática não está disponível, você pode registrar manualmente suas medições na aba 
             <strong>Evolução</strong> do sistema. Os dados serão salvos localmente e você poderá acompanhar seu progresso através dos gráficos.
           </p>
-          <button onclick="switchTab('evolucao')" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-semibold w-full">
+          <button onclick="state.activeTab='evolucao'; updateHash(); render();" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-semibold w-full">
             📊 Ir para Evolução
           </button>
         </div>
