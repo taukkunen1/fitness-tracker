@@ -1968,7 +1968,9 @@ let state = {
     totalFat: 0,
     totalKcal: 0,
     totalWeight: 0
-  }
+  },
+  compareProfile1: null, // For profile comparison feature
+  compareProfile2: null  // For profile comparison feature
 };
 
 // Chart holder
@@ -3752,6 +3754,44 @@ function handleDeleteProfile(userId) {
   });
 }
 
+/* ----------------------------- Profile Linking Handlers ----------------------------- */
+async function handleLinkProfile(profileId) {
+  try {
+    await linkProfileToAccount(authState.currentAccount.username, profileId);
+    
+    // Update current auth state
+    if (!authState.currentAccount.linkedProfiles) {
+      authState.currentAccount.linkedProfiles = [];
+    }
+    if (!authState.currentAccount.linkedProfiles.includes(profileId)) {
+      authState.currentAccount.linkedProfiles.push(profileId);
+    }
+    
+    alert(`✅ Perfil vinculado com sucesso!`);
+    render();
+  } catch (error) {
+    alert(`❌ Erro ao vincular perfil: ${error.message}`);
+  }
+}
+
+async function handleUnlinkProfile(profileId) {
+  if (!confirm('Deseja realmente desvincular este perfil da sua conta?')) return;
+  
+  try {
+    await unlinkProfileFromAccount(authState.currentAccount.username, profileId);
+    
+    // Update current auth state
+    if (authState.currentAccount.linkedProfiles) {
+      authState.currentAccount.linkedProfiles = authState.currentAccount.linkedProfiles.filter(p => p !== profileId);
+    }
+    
+    alert(`✅ Perfil desvinculado com sucesso!`);
+    render();
+  } catch (error) {
+    alert(`❌ Erro ao desvincular perfil: ${error.message}`);
+  }
+}
+
 /* ----------------------------- Templates application & custom programs ----------------------------- */
 function applyTemplateToUser(templateId, userId) {
   const tmpl = templates[templateId];
@@ -4278,6 +4318,11 @@ function render() {
   // Load progress photos for current user
   if (state.activeTab === 'fotos') {
     loadProgressPhotos();
+  }
+  
+  // Render comparison chart if in comparar tab
+  if (state.activeTab === 'comparar') {
+    setTimeout(() => renderComparisonChart(), 150);
   }
 
   // attach metric form listener if exists
@@ -7008,6 +7053,361 @@ function renderDeveloper(user) {
   `;
 }
 
+/* ----------------------------- Profile Management ----------------------------- */
+function renderPerfis() {
+  const profiles = Object.values(state.users);
+  const accountUsername = authState.currentAccount.username;
+  const linkedProfiles = authState.currentAccount.linkedProfiles || [];
+  
+  return `
+    <div class="space-y-6">
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h3 class="text-2xl font-bold mb-4">👥 Gerenciamento de Perfis</h3>
+        <p class="text-slate-300 mb-4">Gerencie todos os perfis vinculados à sua conta. Cada perfil possui um ID único e dados independentes.</p>
+        
+        <div class="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4 mb-6">
+          <h4 class="font-bold mb-2">ℹ️ Informações da Conta</h4>
+          <div class="text-sm text-slate-300 space-y-1">
+            <p><strong>Usuário:</strong> ${accountUsername}</p>
+            <p><strong>Email:</strong> ${authState.currentAccount.email}</p>
+            <p><strong>Role:</strong> ${authState.currentAccount.role}</p>
+            <p><strong>Perfis Vinculados:</strong> ${linkedProfiles.length}</p>
+          </div>
+        </div>
+        
+        <div class="mb-6">
+          <button onclick="handleAddProfile()" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-lg font-semibold">
+            ➕ Criar Novo Perfil
+          </button>
+        </div>
+        
+        <div class="space-y-4">
+          ${profiles.map(profile => {
+            const isLinked = linkedProfiles.includes(profile.id);
+            const metrics = profile.bodyMetrics && profile.bodyMetrics.length > 0 ? profile.bodyMetrics[profile.bodyMetrics.length - 1] : null;
+            
+            return `
+              <div class="bg-slate-700 p-6 rounded-xl border ${isLinked ? 'border-green-500/50' : 'border-slate-600'}">
+                <div class="flex justify-between items-start mb-4">
+                  <div>
+                    <h4 class="text-xl font-bold flex items-center gap-2">
+                      ${profile.gender === 'female' ? '👩' : '👨'} ${profile.name}
+                      ${isLinked ? '<span class="text-green-400 text-sm">✓ Vinculado</span>' : ''}
+                    </h4>
+                    <p class="text-slate-400 text-sm mt-1">ID: ${profile.id}</p>
+                  </div>
+                  <div class="flex gap-2">
+                    ${!isLinked ? `
+                      <button onclick="handleLinkProfile('${profile.id}')" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm">
+                        🔗 Vincular
+                      </button>
+                    ` : `
+                      <button onclick="handleUnlinkProfile('${profile.id}')" class="bg-orange-600 hover:bg-orange-500 px-4 py-2 rounded text-sm">
+                        🔓 Desvincular
+                      </button>
+                    `}
+                  </div>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div class="bg-slate-800 p-3 rounded">
+                    <p class="text-slate-400 text-xs">Idade</p>
+                    <p class="text-white font-bold">${profile.age} anos</p>
+                  </div>
+                  <div class="bg-slate-800 p-3 rounded">
+                    <p class="text-slate-400 text-xs">Altura</p>
+                    <p class="text-white font-bold">${profile.height} cm</p>
+                  </div>
+                  <div class="bg-slate-800 p-3 rounded">
+                    <p class="text-slate-400 text-xs">Peso Atual</p>
+                    <p class="text-white font-bold">${metrics ? metrics.weight : 0} kg</p>
+                  </div>
+                  <div class="bg-slate-800 p-3 rounded">
+                    <p class="text-slate-400 text-xs">Gordura</p>
+                    <p class="text-white font-bold">${metrics ? metrics.bodyFat : 0}%</p>
+                  </div>
+                </div>
+                
+                <div class="flex gap-2 text-sm">
+                  <button onclick="state.activeUser='${profile.id}'; state.activeTab='dashboard'; render();" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded">
+                    📊 Ver Dashboard
+                  </button>
+                  <button onclick="state.activeUser='${profile.id}'; state.activeTab='evolucao'; render();" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded">
+                    📈 Ver Evolução
+                  </button>
+                  <button onclick="handleDeleteProfile('${profile.id}')" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded">
+                    🗄️ Arquivar
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ----------------------------- Profile Comparison ----------------------------- */
+function renderComparar() {
+  const profiles = Object.values(state.users);
+  
+  if (profiles.length < 2) {
+    return `
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h3 class="text-2xl font-bold mb-4">⚖️ Comparar Perfis</h3>
+        <div class="bg-orange-900/30 border border-orange-500/50 rounded-lg p-4">
+          <p class="text-orange-200">
+            <strong>⚠️ Atenção:</strong> Você precisa de pelo menos 2 perfis para fazer comparações.
+            Vá para a aba "👥 Perfis" e crie um novo perfil.
+          </p>
+        </div>
+      </div>
+    `;
+  }
+  
+  const profile1Id = state.compareProfile1 || profiles[0].id;
+  const profile2Id = state.compareProfile2 || (profiles.length > 1 ? profiles[1].id : profiles[0].id);
+  
+  const profile1 = state.users[profile1Id];
+  const profile2 = state.users[profile2Id];
+  
+  const metrics1 = profile1.bodyMetrics && profile1.bodyMetrics.length > 0 ? profile1.bodyMetrics[profile1.bodyMetrics.length - 1] : null;
+  const metrics2 = profile2.bodyMetrics && profile2.bodyMetrics.length > 0 ? profile2.bodyMetrics[profile2.bodyMetrics.length - 1] : null;
+  
+  const workouts1 = profile1.workoutLogs || [];
+  const workouts2 = profile2.workoutLogs || [];
+  
+  return `
+    <div class="space-y-6">
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h3 class="text-2xl font-bold mb-4">⚖️ Comparar Perfis</h3>
+        <p class="text-slate-300 mb-6">Compare métricas, progresso e treinos entre diferentes perfis.</p>
+        
+        <div class="grid md:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label class="block text-sm font-semibold mb-2">Perfil 1:</label>
+            <select onchange="state.compareProfile1 = this.value; render();" class="w-full px-4 py-2 rounded bg-slate-700 text-white">
+              ${profiles.map(p => `
+                <option value="${p.id}" ${p.id === profile1Id ? 'selected' : ''}>
+                  ${p.gender === 'female' ? '👩' : '👨'} ${p.name}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-2">Perfil 2:</label>
+            <select onchange="state.compareProfile2 = this.value; render();" class="w-full px-4 py-2 rounded bg-slate-700 text-white">
+              ${profiles.map(p => `
+                <option value="${p.id}" ${p.id === profile2Id ? 'selected' : ''}>
+                  ${p.gender === 'female' ? '👩' : '👨'} ${p.name}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Comparison of Body Metrics -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h4 class="text-xl font-bold mb-4">📊 Comparação de Métricas Corporais</h4>
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Profile 1 Metrics -->
+          <div class="bg-slate-700 p-4 rounded-lg">
+            <h5 class="font-bold text-lg mb-3 flex items-center gap-2">
+              ${profile1.gender === 'female' ? '👩' : '👨'} ${profile1.name}
+            </h5>
+            ${metrics1 ? `
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300">Peso:</span>
+                  <span class="font-bold text-xl">${metrics1.weight} kg</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300">Gordura Corporal:</span>
+                  <span class="font-bold text-xl">${metrics1.bodyFat}%</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300">Massa Muscular:</span>
+                  <span class="font-bold text-xl">${metrics1.muscleMass} kg</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300">IMC:</span>
+                  <span class="font-bold text-xl">${metrics1.bmi}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300">TMB:</span>
+                  <span class="font-bold text-xl">${metrics1.bmr} kcal</span>
+                </div>
+              </div>
+            ` : '<p class="text-slate-400">Sem dados de métricas</p>'}
+          </div>
+          
+          <!-- Profile 2 Metrics -->
+          <div class="bg-slate-700 p-4 rounded-lg">
+            <h5 class="font-bold text-lg mb-3 flex items-center gap-2">
+              ${profile2.gender === 'female' ? '👩' : '👨'} ${profile2.name}
+            </h5>
+            ${metrics2 ? `
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300">Peso:</span>
+                  <span class="font-bold text-xl">${metrics2.weight} kg</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300">Gordura Corporal:</span>
+                  <span class="font-bold text-xl">${metrics2.bodyFat}%</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300">Massa Muscular:</span>
+                  <span class="font-bold text-xl">${metrics2.muscleMass} kg</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300">IMC:</span>
+                  <span class="font-bold text-xl">${metrics2.bmi}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300">TMB:</span>
+                  <span class="font-bold text-xl">${metrics2.bmr} kcal</span>
+                </div>
+              </div>
+            ` : '<p class="text-slate-400">Sem dados de métricas</p>'}
+          </div>
+        </div>
+        
+        <!-- Differences -->
+        ${metrics1 && metrics2 ? `
+          <div class="mt-6 bg-slate-700 p-4 rounded-lg">
+            <h5 class="font-bold mb-3">📊 Diferenças</h5>
+            <div class="grid md:grid-cols-3 gap-4 text-sm">
+              <div class="text-center">
+                <p class="text-slate-400 mb-1">Diferença de Peso</p>
+                <p class="font-bold text-lg ${Math.abs(metrics1.weight - metrics2.weight) > 5 ? 'text-orange-400' : 'text-green-400'}">
+                  ${(metrics1.weight - metrics2.weight).toFixed(1)} kg
+                </p>
+              </div>
+              <div class="text-center">
+                <p class="text-slate-400 mb-1">Diferença de Gordura</p>
+                <p class="font-bold text-lg ${Math.abs(metrics1.bodyFat - metrics2.bodyFat) > 3 ? 'text-orange-400' : 'text-green-400'}">
+                  ${(metrics1.bodyFat - metrics2.bodyFat).toFixed(1)}%
+                </p>
+              </div>
+              <div class="text-center">
+                <p class="text-slate-400 mb-1">Diferença de Massa Muscular</p>
+                <p class="font-bold text-lg ${Math.abs(metrics1.muscleMass - metrics2.muscleMass) > 3 ? 'text-orange-400' : 'text-green-400'}">
+                  ${(metrics1.muscleMass - metrics2.muscleMass).toFixed(1)} kg
+                </p>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+      
+      <!-- Workout Comparison -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h4 class="text-xl font-bold mb-4">🏋️ Comparação de Treinos</h4>
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Profile 1 Workouts -->
+          <div class="bg-slate-700 p-4 rounded-lg">
+            <h5 class="font-bold text-lg mb-3 flex items-center gap-2">
+              ${profile1.gender === 'female' ? '👩' : '👨'} ${profile1.name}
+            </h5>
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-300">Total de Treinos:</span>
+                <span class="font-bold text-xl">${workouts1.length}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-300">Último Treino:</span>
+                <span class="font-bold">${workouts1.length > 0 ? new Date(workouts1[workouts1.length - 1].date).toLocaleDateString('pt-BR') : 'Nenhum'}</span>
+              </div>
+            </div>
+            ${workouts1.length > 0 ? `
+              <div class="mt-4">
+                <p class="text-sm text-slate-400 mb-2">Últimos 3 treinos:</p>
+                <div class="space-y-2">
+                  ${workouts1.slice(-3).reverse().map(w => `
+                    <div class="bg-slate-800 p-2 rounded text-sm">
+                      <p class="font-semibold">${w.workoutName || 'Treino'}</p>
+                      <p class="text-xs text-slate-400">${new Date(w.date).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : '<p class="text-slate-400 mt-4 text-sm">Nenhum treino registrado</p>'}
+          </div>
+          
+          <!-- Profile 2 Workouts -->
+          <div class="bg-slate-700 p-4 rounded-lg">
+            <h5 class="font-bold text-lg mb-3 flex items-center gap-2">
+              ${profile2.gender === 'female' ? '👩' : '👨'} ${profile2.name}
+            </h5>
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-300">Total de Treinos:</span>
+                <span class="font-bold text-xl">${workouts2.length}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-300">Último Treino:</span>
+                <span class="font-bold">${workouts2.length > 0 ? new Date(workouts2[workouts2.length - 1].date).toLocaleDateString('pt-BR') : 'Nenhum'}</span>
+              </div>
+            </div>
+            ${workouts2.length > 0 ? `
+              <div class="mt-4">
+                <p class="text-sm text-slate-400 mb-2">Últimos 3 treinos:</p>
+                <div class="space-y-2">
+                  ${workouts2.slice(-3).reverse().map(w => `
+                    <div class="bg-slate-800 p-2 rounded text-sm">
+                      <p class="font-semibold">${w.workoutName || 'Treino'}</p>
+                      <p class="text-xs text-slate-400">${new Date(w.date).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : '<p class="text-slate-400 mt-4 text-sm">Nenhum treino registrado</p>'}
+          </div>
+        </div>
+        
+        <!-- Workout Stats Comparison -->
+        <div class="mt-6 bg-slate-700 p-4 rounded-lg">
+          <h5 class="font-bold mb-3">📈 Estatísticas de Treino</h5>
+          <div class="grid md:grid-cols-2 gap-4 text-sm">
+            <div class="text-center">
+              <p class="text-slate-400 mb-1">${profile1.name}</p>
+              <p class="font-bold text-2xl text-purple-400">${workouts1.length}</p>
+              <p class="text-xs text-slate-400">treinos registrados</p>
+            </div>
+            <div class="text-center">
+              <p class="text-slate-400 mb-1">${profile2.name}</p>
+              <p class="font-bold text-2xl text-pink-400">${workouts2.length}</p>
+              <p class="text-xs text-slate-400">treinos registrados</p>
+            </div>
+          </div>
+          <div class="mt-4 text-center">
+            <p class="text-slate-400 text-sm">
+              ${workouts1.length > workouts2.length ? 
+                `${profile1.name} tem ${workouts1.length - workouts2.length} treinos a mais` : 
+                workouts2.length > workouts1.length ?
+                `${profile2.name} tem ${workouts2.length - workouts1.length} treinos a mais` :
+                'Ambos têm o mesmo número de treinos'
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Evolution Comparison Chart Placeholder -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h4 class="text-xl font-bold mb-4">📈 Comparação de Evolução</h4>
+        <p class="text-slate-300 mb-4">Visualize a evolução de peso, gordura corporal e massa muscular dos dois perfis ao longo do tempo.</p>
+        <div id="comparisonChart" class="bg-slate-700 p-4 rounded-lg" style="min-height: 300px;">
+          <canvas id="comparisonChartCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderExercicios(user) {
   const exercises = getAllUniqueExercises(user);
   const selectedExercise = state.selectedExercise || (exercises.length > 0 ? 'MOSTRAR_TODOS' : null);
@@ -8269,6 +8669,190 @@ function compareProgressPhotos() {
   `;
   
   resultDiv.classList.remove('hidden');
+}
+
+/* ----------------------------- Comparison Chart ----------------------------- */
+function renderComparisonChart() {
+  // Check if Chart.js is available
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js not loaded, skipping chart rendering');
+    return;
+  }
+  
+  const canvas = document.getElementById('comparisonChartCanvas');
+  if (!canvas) return;
+  
+  const profiles = Object.values(state.users);
+  if (profiles.length < 2) return;
+  
+  const profile1Id = state.compareProfile1 || profiles[0].id;
+  const profile2Id = state.compareProfile2 || (profiles.length > 1 ? profiles[1].id : profiles[0].id);
+  
+  const profile1 = state.users[profile1Id];
+  const profile2 = state.users[profile2Id];
+  
+  if (!profile1 || !profile2) return;
+  
+  const metrics1 = (profile1.bodyMetrics || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  const metrics2 = (profile2.bodyMetrics || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  
+  // Combine and sort all dates
+  const allDates = [...new Set([...metrics1.map(m => m.date), ...metrics2.map(m => m.date)])].sort();
+  
+  // Create data arrays
+  const weight1 = allDates.map(date => {
+    const metric = metrics1.find(m => m.date === date);
+    return metric ? metric.weight : null;
+  });
+  
+  const weight2 = allDates.map(date => {
+    const metric = metrics2.find(m => m.date === date);
+    return metric ? metric.weight : null;
+  });
+  
+  const bodyFat1 = allDates.map(date => {
+    const metric = metrics1.find(m => m.date === date);
+    return metric ? metric.bodyFat : null;
+  });
+  
+  const bodyFat2 = allDates.map(date => {
+    const metric = metrics2.find(m => m.date === date);
+    return metric ? metric.bodyFat : null;
+  });
+  
+  const muscleMass1 = allDates.map(date => {
+    const metric = metrics1.find(m => m.date === date);
+    return metric ? metric.muscleMass : null;
+  });
+  
+  const muscleMass2 = allDates.map(date => {
+    const metric = metrics2.find(m => m.date === date);
+    return metric ? metric.muscleMass : null;
+  });
+  
+  const datasets = [
+    {
+      label: `${profile1.name} - Peso (kg)`,
+      data: weight1,
+      borderColor: '#8B5CF6',
+      backgroundColor: '#8B5CF633',
+      tension: 0.2,
+      yAxisID: 'y'
+    },
+    {
+      label: `${profile2.name} - Peso (kg)`,
+      data: weight2,
+      borderColor: '#EC4899',
+      backgroundColor: '#EC489933',
+      tension: 0.2,
+      yAxisID: 'y'
+    },
+    {
+      label: `${profile1.name} - Gordura (%)`,
+      data: bodyFat1,
+      borderColor: '#10B981',
+      backgroundColor: '#10B98133',
+      tension: 0.2,
+      yAxisID: 'y2',
+      borderDash: [5, 5]
+    },
+    {
+      label: `${profile2.name} - Gordura (%)`,
+      data: bodyFat2,
+      borderColor: '#F59E0B',
+      backgroundColor: '#F59E0B33',
+      tension: 0.2,
+      yAxisID: 'y2',
+      borderDash: [5, 5]
+    },
+    {
+      label: `${profile1.name} - Massa Muscular (kg)`,
+      data: muscleMass1,
+      borderColor: '#3B82F6',
+      backgroundColor: '#3B82F633',
+      tension: 0.2,
+      yAxisID: 'y',
+      borderDash: [10, 5]
+    },
+    {
+      label: `${profile2.name} - Massa Muscular (kg)`,
+      data: muscleMass2,
+      borderColor: '#EF4444',
+      backgroundColor: '#EF444433',
+      tension: 0.2,
+      yAxisID: 'y',
+      borderDash: [10, 5]
+    }
+  ];
+  
+  const config = {
+    type: 'line',
+    data: {
+      labels: allDates,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            color: '#E2E8F0'
+          }
+        },
+        title: {
+          display: true,
+          text: 'Comparação de Evolução',
+          color: '#E2E8F0',
+          font: {
+            size: 16
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#94A3B8' },
+          grid: { color: '#334155' }
+        },
+        y: {
+          type: 'linear',
+          position: 'left',
+          title: {
+            display: true,
+            text: 'Peso / Massa Muscular (kg)',
+            color: '#E2E8F0'
+          },
+          ticks: { color: '#94A3B8' },
+          grid: { color: '#334155' }
+        },
+        y2: {
+          type: 'linear',
+          position: 'right',
+          title: {
+            display: true,
+            text: 'Gordura Corporal (%)',
+            color: '#E2E8F0'
+          },
+          ticks: { color: '#94A3B8' },
+          grid: {
+            drawOnChartArea: false
+          }
+        }
+      }
+    }
+  };
+  
+  // Destroy existing chart if it exists
+  if (window.comparisonChart) {
+    window.comparisonChart.destroy();
+  }
+  
+  window.comparisonChart = new Chart(canvas, config);
 }
 
 /* ============================= AUTHENTICATION UI ============================= */
