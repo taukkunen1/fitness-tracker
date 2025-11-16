@@ -34,7 +34,6 @@ Scripts e guias de deploy:
 - [HTTPS Setup Guide](deployment/HTTPS-DEPLOYMENT-GUIDE.md)
 - [Render Deploy](deployment/RENDER-DEPLOY.md)
 - [Quick Deploy Guide](deployment/DEPLOY-RAPIDO.md)
-- [Deployment Checklist](deployment/DEPLOYMENT-CHECKLIST.md)
 - Scripts: `update-site.sh` e `update-site.bat`
 
 #### `/security` - 🔐 Segurança

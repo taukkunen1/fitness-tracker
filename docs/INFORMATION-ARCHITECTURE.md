@@ -37,6 +37,7 @@ fitness-tracker/
 ├── CHANGELOG.md                  # Histórico de mudanças (Keep a Changelog)
 ├── SECURITY.md                   # Política de segurança
 ├── LICENSE                       # Licença do projeto
+├── DEPLOYMENT-CHECKLIST.md       # Checklist de deploy (requerido por CI/CD)
 │
 ├── docs/                         # 📚 Toda a documentação
 │   ├── README.md                 # Índice da documentação
@@ -97,6 +98,16 @@ fitness-tracker/
     ├── workflows/
     └── ISSUE_TEMPLATE/
 ```
+
+### 📝 Nota sobre Arquivos na Raiz
+
+Alguns arquivos devem permanecer na raiz por razões técnicas:
+
+- **DEPLOYMENT-CHECKLIST.md**: Requerido pelo workflow de CI/CD (`.github/workflows/https-validation.yml`)
+- **Dockerfile, docker-compose.yml, nginx.conf**: Esperados por ferramentas de deploy
+- **render.yaml**: Configuração da plataforma Render
+
+Estes arquivos não devem ser movidos para `docs/` mesmo que sejam documentação, pois são dependências de automação.
 
 ---
 
