@@ -2,9 +2,11 @@
 
 Esta pasta contém toda a documentação organizada do projeto em categorias específicas.
 
-## 🗺️ Guia de Arquitetura de Informação
+## 🗺️ Arquitetura e Informação
 
-**📘 Novo:** [Information Architecture Guide](INFORMATION-ARCHITECTURE.md) - Guia completo sobre como organizar arquivos, documentação e estrutura do projeto.
+**📘 Essencial:** 
+- **[Arquitetura do Sistema (ARQUITETURA.md)](../ARQUITETURA.md)** - 🏗️ Documentação completa da arquitetura separando backend (lógica) e frontend (interface), com todas as características principais do sistema
+- **[Information Architecture Guide](INFORMATION-ARCHITECTURE.md)** - Guia completo sobre como organizar arquivos, documentação e estrutura do projeto
 
 ## 📁 Estrutura de Pastas
 

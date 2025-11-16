@@ -34,6 +34,28 @@
 
 ## 📚 TODOS OS DOCUMENTOS
 
+### 🏗️ Arquitetura e Estrutura (ESSENCIAL)
+
+#### ARQUITETURA.md (43KB) ⭐ NOVO!
+**O QUE É:** Documentação completa da arquitetura do sistema separando backend (lógica) e frontend (interface)  
+**QUANDO LER:** Para entender completamente como o sistema funciona  
+**TEMPO:** 30-45 minutos  
+**CONTEÚDO:**
+- ✅ Visão geral da arquitetura (SPA 100% client-side)
+- ✅ Camada de Backend Lógico (IndexedDB, Web Crypto API, State Management)
+- ✅ Camada de Frontend (UI Components, Routing, Visualizações)
+- ✅ Estrutura completa de arquivos explicada
+- ✅ Fluxo de dados (autenticação, salvamento, navegação)
+- ✅ Todas as características principais do sistema
+- ✅ Tecnologias utilizadas (com justificativas)
+- ✅ Segurança (7 camadas de proteção)
+- ✅ Escalabilidade e performance
+- ✅ Diagramas ASCII para visualização
+
+**LEIA SE:** Quer entender tudo sobre a estrutura e funcionamento do site
+
+---
+
 ### 🌟 Documentos Principais (COMECE AQUI)
 
 #### 0. GERENCIAMENTO-BRANCHES.md (16KB) ⭐ NOVO!
