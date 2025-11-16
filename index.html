@@ -4035,19 +4035,12 @@ function renderReferenceLinksHTML(refs) {
   return refs.map(r => `<a href="${r.link}" target="_blank" class="text-blue-300 underline">${r.authors} ${r.year}</a>`).join(' • ');
 }
 function buildReferenceNotesForWorkout(workoutName) {
-  const name = (workoutName || '').toLowerCase();
-  let tags = ['training'];
-  if (name.includes('hip') || name.includes('glúteo') || name.includes('thrust')) tags.push('hypertrophy');
-  if (name.includes('agach') || name.includes('leg')) tags.push('volume');
-  if (name.includes('supino') || name.includes('press')) tags.push('strength');
-  const refs = getTopReferencesByTags(tags);
-  if (!refs.length) return '';
-  return `Base científica: ${refs.slice(0,3).map(r => `${r.authors} ${r.year}`).join(' • ')}. ` + renderReferenceLinksHTML(refs);
+  // References have been moved to dedicated page
+  return '';
 }
 function buildReferenceNotesForNutrition() {
-  const refs = getTopReferencesByTags(['nutrition','protein','creatine','diet']);
-  if (!refs.length) return '';
-  return `Referências: ${refs.slice(0,3).map(r => `${r.authors} ${r.year}`).join(' • ')}. ` + renderReferenceLinksHTML(refs);
+  // References have been moved to dedicated page
+  return '';
 }
 
 /* ----------------------------- Event Delegation for Meal Buttons -----------------------------
@@ -4134,13 +4127,6 @@ function toggleDashboardHelp() {
 }
 
 // Toggle scientific references panel (Progressive Disclosure)
-function toggleScientificRefs() {
-  const panel = document.getElementById('scientificRefsPanel');
-  if (panel) {
-    panel.classList.toggle('hidden');
-  }
-}
-
 // Toggle period comparison view (Future enhancement placeholder)
 function togglePeriodComparison() {
   showNotification('📊 Comparação de períodos será implementada em breve!', 'info');
@@ -4233,9 +4219,9 @@ function render() {
 
     <div class="max-w-7xl mx-auto px-4 py-6">
       <div class="flex flex-wrap gap-3 mb-6">
-        ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao','developer'].map(tab => `
+        ${['dashboard','treino','exercicios','fotos','nutricao','alimentacao','evolucao','referencias','developer'].map(tab => `
           <button onclick="state.activeTab='${tab}'; render();" class="px-6 py-3 rounded-xl font-semibold ${state.activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-slate-800/50 text-slate-300'}">
-            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : '👨‍💻 Developer'}
+            ${tab === 'dashboard' ? '📊 Dashboard' : tab === 'treino' ? '🏋️ Treinos' : tab === 'exercicios' ? '💪 Exercícios' : tab === 'fotos' ? '📸 Fotos' : tab === 'nutricao' ? '🍎 Nutrição' : tab === 'alimentacao' ? '🍲 Alimentação' : tab === 'evolucao' ? '📈 Evolução' : tab === 'referencias' ? '📚 Referências' : '👨‍💻 Developer'}
           </button>
         `).join('')}
         ${isAdmin() ? `
@@ -4266,6 +4252,7 @@ function render() {
         ${state.activeTab === 'nutricao' ? renderNutricao(currentUser) : ''}
         ${state.activeTab === 'alimentacao' ? renderAlimentacao() : ''}
         ${state.activeTab === 'evolucao' ? renderEvolucao(bodyMetrics, currentUser) : ''}
+        ${state.activeTab === 'referencias' ? renderReferencias() : ''}
         ${state.activeTab === 'developer' ? renderDeveloper(currentUser) : ''}
         ${state.activeTab === 'admin_tasks' && isAdmin() ? renderAdminTasks() : ''}
         ${state.activeTab === 'admin_suggestions' && isAdmin() ? renderAdminSuggestions() : ''}
@@ -4648,18 +4635,13 @@ function renderDashboard(user, latest) {
         </div>
       </div>
       
-      <!-- Evidence-Based Recommendations (Contextual Help with References) -->
+      <!-- Evidence-Based Recommendations (Contextual Help) -->
       <div class="bg-slate-800/70 backdrop-blur-sm p-6 rounded-2xl border-2 border-slate-600">
         <div class="flex items-start gap-4">
           <span class="text-5xl">📚</span>
           <div class="flex-1">
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-2xl font-bold text-slate-200">Recomendações Científicas Personalizadas</h3>
-              <button onclick="toggleScientificRefs()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-xs transition-colors">
-                Ver Estudos
-              </button>
-            </div>
-            <p class="text-slate-300 text-sm mb-4">${notes || 'Configure referências científicas no painel Developer para recomendações baseadas nos seus dados e na literatura científica mais recente.'}</p>
+            <h3 class="text-2xl font-bold text-slate-200 mb-3">Recomendações Personalizadas</h3>
+            <p class="text-slate-300 text-sm mb-4">${notes || 'Recomendações baseadas nos seus dados e metas de composição corporal.'}</p>
             
             <!-- Personalized Recommendations Grid -->
             <div class="grid md:grid-cols-2 gap-4">
@@ -4671,10 +4653,7 @@ function renderDashboard(user, latest) {
                 </div>
                 <p class="text-2xl font-bold text-green-400 mb-1">${Math.round(latest.weight * 1.8)} - ${Math.round(latest.weight * 2.2)}g</p>
                 <p class="text-xs text-slate-400 mb-3">1.8-2.2g/kg de peso corporal</p>
-                <div class="flex items-center gap-2 text-xs text-slate-400">
-                  <span class="bg-slate-800 px-2 py-1 rounded">📖 Phillips et al. 2022</span>
-                  <span class="text-green-400">✓ Hipertrofia otimizada</span>
-                </div>
+                <span class="text-green-400 text-xs">✓ Hipertrofia otimizada</span>
               </div>
               
               <!-- Caloric Adjustment Recommendation -->
@@ -4685,22 +4664,8 @@ function renderDashboard(user, latest) {
                 </div>
                 <p class="text-2xl font-bold text-orange-400 mb-1">${user.goals?.weight > latest.weight ? '+300 a +500' : '-300 a -500'} kcal</p>
                 <p class="text-xs text-slate-400 mb-3">Déficit/Superávit recomendado</p>
-                <div class="flex items-center gap-2 text-xs text-slate-400">
-                  <span class="bg-slate-800 px-2 py-1 rounded">📖 Slowery 2019</span>
-                  <span class="text-orange-400">✓ ${user.goals?.weight > latest.weight ? 'Ganho' : 'Perda'} saudável</span>
-                </div>
+                <span class="text-orange-400 text-xs">✓ ${user.goals?.weight > latest.weight ? 'Ganho' : 'Perda'} saudável</span>
               </div>
-            </div>
-            
-            <!-- Additional Context -->
-            <div id="scientificRefsPanel" class="hidden mt-4 pt-4 border-t border-slate-600">
-              <h4 class="font-semibold text-sm text-slate-300 mb-2">📊 Base de Evidências:</h4>
-              <ul class="text-xs text-slate-400 space-y-1 ml-4">
-                <li>• <strong>Proteína para Hipertrofia:</strong> Meta-análise com 49 estudos (Phillips et al., 2022)</li>
-                <li>• <strong>Déficit Calórico:</strong> Revisão sistemática de composição corporal (Slowery, 2019)</li>
-                <li>• <strong>Frequência Treino:</strong> 3-5x/semana ótimo para ganhos musculares (Schoenfeld, 2019)</li>
-                <li>• <strong>Hidratação:</strong> 50-60% do peso corporal é referência saudável (WHO, 2023)</li>
-              </ul>
             </div>
           </div>
         </div>
@@ -5109,7 +5074,7 @@ function renderNutritionRecommendations(user) {
 
     <div class="bg-slate-800 p-6 rounded-xl mb-6">
       <h4 class="font-bold text-xl mb-4">🍗 Base de Alimentação Diária Recomendada</h4>
-      <p class="text-slate-300 text-sm mb-4">Quantidades calculadas com base no seu metabolismo basal (${nutrition.bmr} kcal), TDEE (${Math.round(nutrition.tdee)} kcal) e metas de composição corporal. Baseado em estudos científicos (Phillips 2022, Schoenfeld 2023, Wang 2024).</p>
+      <p class="text-slate-300 text-sm mb-4">Quantidades calculadas com base no seu metabolismo basal (${nutrition.bmr} kcal), TDEE (${Math.round(nutrition.tdee)} kcal) e metas de composição corporal.</p>
       
       <!-- Protein Sources -->
       <div class="mb-6">
@@ -6823,35 +6788,86 @@ function handleDeleteComparison(comparisonId) {
   });
 }
 
-function renderCiencia() {
+function renderReferencias() {
   const filtered = (state.references || []).filter(r => r.year >= 2020 && r.year <= 2025);
+  
   return `
-    <div class="bg-slate-800 p-4 rounded">
-      <div class="flex justify-between items-center">
-        <h3 class="font-bold">Estudos científicos (2020 → 2025-11)</h3>
-        <div class="flex gap-2">
-          <button onclick="importScientificStudiesSeed()" class="bg-green-600 px-3 py-1 rounded">⤓ Importar estudos</button>
-          <button onclick="exportReferencesJSON()" class="bg-blue-600 px-3 py-1 rounded">⬇️ Exportar JSON</button>
-          <button onclick="clearReferences()" class="bg-red-600 px-3 py-1 rounded">🗄️ Mover p/ archive</button>
+    <div class="space-y-6">
+      <!-- Page Header -->
+      <div class="bg-gradient-to-r from-slate-800 to-purple-900 p-8 rounded-2xl border-2 border-purple-500/30">
+        <h2 class="text-4xl font-bold mb-3 flex items-center gap-3">
+          <span>📚</span>
+          <span>Referências Científicas</span>
+        </h2>
+        <p class="text-slate-300 text-lg">
+          Acervo de estudos científicos utilizados como base para as recomendações e informações do Pilgrim
+        </p>
+      </div>
+
+      <!-- Import Section -->
+      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+        <h3 class="text-xl font-bold mb-4">Gerenciar Acervo</h3>
+        <div class="flex gap-3">
+          <button onclick="importScientificStudiesSeed()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-semibold transition-colors">
+            ⤓ Importar Estudos
+          </button>
+          <button onclick="exportReferencesJSON()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-semibold transition-colors">
+            ⬇️ Exportar JSON
+          </button>
         </div>
       </div>
 
-      <div class="mt-4">
-        ${filtered.length === 0 ? '<p class="text-slate-400">Nenhuma referência importada. Use o botão importar.</p>' : filtered.map(ref => `
-          <div class="bg-slate-700 p-3 rounded mb-3">
-            <p class="font-bold">${ref.title}</p>
-            <p class="text-slate-300 text-xs">${ref.authors} — ${ref.year} • ${ref.journal}</p>
-            <p class="text-slate-400 text-sm mt-2">${ref.summary || ''}</p>
-            <p class="mt-2"><a href="${ref.link}" target="_blank" class="text-blue-300 underline">Abrir estudo / DOI</a></p>
-            <div class="mt-2 flex gap-2">
-              <button onclick="navigator.clipboard.writeText('${ref.link}').then(()=>alert('Link copiado'))" class="bg-white text-black px-2 py-1 rounded">Copiar link</button>
-              <button onclick="if(confirm('Mover esta referência para archive?')) { archiveItem('references','${ref.id}','reference', ${JSON.stringify(ref).replace(/'/g, "\\'")}).then(()=>{ state.references = state.references.filter(r=>r.id!=='${ref.id}'); saveAllToDB(); render(); alert('Movido para archive') }) }" class="text-red-400">Arquivar</button>
-            </div>
+      <!-- References List -->
+      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+        <h3 class="text-2xl font-bold mb-6">Estudos Científicos (2020 — 2025)</h3>
+        
+        ${filtered.length === 0 ? `
+          <div class="bg-slate-700/50 p-8 rounded-lg text-center">
+            <p class="text-slate-400 text-lg mb-4">Nenhuma referência importada ainda.</p>
+            <p class="text-slate-500 text-sm">Use o botão "Importar Estudos" acima para carregar o acervo científico.</p>
           </div>
-        `).join('')}
+        ` : `
+          <div class="space-y-4">
+            ${filtered.map(ref => `
+              <div class="bg-slate-700/50 p-5 rounded-lg border-l-4 border-purple-500 hover:bg-slate-700 transition-colors">
+                <h4 class="font-bold text-lg text-white mb-2">${ref.title}</h4>
+                <p class="text-slate-300 text-sm mb-3">
+                  <span class="font-semibold">${ref.authors}</span> (${ref.year})
+                </p>
+                <p class="text-slate-400 text-sm mb-3">
+                  <span class="italic">${ref.journal}</span>
+                </p>
+                ${ref.summary ? `
+                  <p class="text-slate-400 text-sm mb-3 pl-4 border-l-2 border-slate-600">
+                    ${ref.summary}
+                  </p>
+                ` : ''}
+                ${ref.link ? `
+                  <a href="${ref.link}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 text-sm underline inline-block">
+                    🔗 Acessar publicação
+                  </a>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `}
+      </div>
+
+      <!-- Info Footer -->
+      <div class="bg-blue-900/20 border border-blue-700/50 p-4 rounded-lg">
+        <p class="text-sm text-slate-300">
+          <strong>ℹ️ Sobre este acervo:</strong> Esta coleção contém estudos científicos revisados por pares 
+          de 2020 a 2025, utilizados como base para as recomendações de nutrição, treinamento e composição corporal 
+          apresentadas no Pilgrim.
+        </p>
       </div>
     </div>
   `;
+}
+
+// Keep renderCiencia for backward compatibility (deprecated)
+function renderCiencia() {
+  return renderReferencias();
 }
 
 function renderDeveloper(user) {
