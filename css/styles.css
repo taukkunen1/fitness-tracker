@@ -1,0 +1,96 @@
+/* Theme CSS Variables */
+:root {
+  --bg-primary: 15 23 42; /* slate-900 */
+  --bg-secondary: 30 41 59; /* slate-800 */
+  --bg-tertiary: 51 65 85; /* slate-700 */
+  --text-primary: 255 255 255;
+  --text-secondary: 226 232 240; /* slate-200 */
+  --text-tertiary: 148 163 184; /* slate-400 */
+  --accent-primary: 168 85 247; /* purple-500 */
+  --accent-secondary: 147 51 234; /* purple-600 */
+  --border-color: 71 85 105; /* slate-600 */
+}
+
+.light {
+  --bg-primary: 248 250 252; /* slate-50 */
+  --bg-secondary: 241 245 249; /* slate-100 */
+  --bg-tertiary: 226 232 240; /* slate-200 */
+  --text-primary: 15 23 42; /* slate-900 */
+  --text-secondary: 30 41 59; /* slate-800 */
+  --text-tertiary: 71 85 105; /* slate-600 */
+  --accent-primary: 147 51 234; /* purple-600 */
+  --accent-secondary: 168 85 247; /* purple-500 */
+  --border-color: 203 213 225; /* slate-300 */
+}
+
+/* Light theme overrides for common Tailwind classes */
+.light .bg-slate-800,
+.light .bg-slate-800\/50,
+.light .bg-slate-800\/70,
+.light .bg-slate-800\/90 {
+  background-color: rgb(241 245 249) !important; /* slate-100 */
+}
+
+.light .bg-slate-700,
+.light .bg-slate-700\/50,
+.light .bg-slate-700\/60 {
+  background-color: rgb(226 232 240) !important; /* slate-200 */
+}
+
+.light .bg-slate-900 {
+  background-color: rgb(248 250 252) !important; /* slate-50 */
+}
+
+.light .text-white {
+  color: rgb(15 23 42) !important; /* slate-900 */
+}
+
+.light .text-slate-300 {
+  color: rgb(30 41 59) !important; /* slate-800 */
+}
+
+.light .text-slate-400 {
+  color: rgb(71 85 105) !important; /* slate-600 */
+}
+
+.light .border-slate-700,
+.light .border-slate-600,
+.light .border-slate-500 {
+  border-color: rgb(203 213 225) !important; /* slate-300 */
+}
+
+.light .bg-black\/40,
+.light .bg-black\/60 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px);
+}
+
+/* Purple accents stay the same in both themes */
+
+/* Pequeno ajuste para tabelas e canvas em mobile */
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 6px 8px; }
+
+/* Notification animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(20px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.3s ease-in;
+}
+
+/* Smooth theme transition */
+body, .bg-slate-800, .bg-slate-700, .bg-slate-900, .text-white, .text-slate-300, .text-slate-400 {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
