@@ -243,3 +243,62 @@ function truncate(str, length, suffix = '...') {
   if (str.length <= length) return str;
   return str.slice(0, length - suffix.length) + suffix;
 }
+
+/**
+ * Escape HTML to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped HTML
+ */
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Escape string for use in JavaScript string literals within HTML attributes
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped JavaScript string
+ */
+function escapeJsString(text) {
+  if (!text) return '';
+  return String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+}
+
+/**
+ * Combined meal nutrition lookup: prioritize custom meals, then LiveUp marmitas
+ * @param {string} name - Meal name
+ * @returns {object} Nutrition info {kcal, prot, fat}
+ */
+function getMealNutritionByNameCombined(name) {
+  // First check custom meals
+  const customMeal = state.customMeals.find(m => m.name === name);
+  if (customMeal) {
+    return { 
+      kcal: parseNumber(customMeal.kcal), 
+      prot: parseNumber(customMeal.prot), 
+      fat: parseNumber(customMeal.fat) 
+    };
+  }
+  // Then check LiveUp marmitas
+  const liveUpMeal = livUpMarmitas.find(m => m.name === name);
+  if (liveUpMeal) {
+    return { 
+      kcal: parseNumber(liveUpMeal.kcal), 
+      prot: parseNumber(liveUpMeal.prot), 
+      fat: parseNumber(liveUpMeal.fat) 
+    };
+  }
+  // Default values if not found
+  return { kcal: 0, prot: 0, fat: 0 };
+}
+
+/**
+ * Legacy function for backward compatibility
+ * @param {string} name - Meal name
+ * @returns {object} Nutrition info {kcal, prot, fat}
+ */
+function getMealNutritionByName(name) {
+  return getMealNutritionByNameCombined(name);
+}
