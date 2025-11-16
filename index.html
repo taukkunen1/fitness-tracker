@@ -2310,6 +2310,12 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Escape string for use in JavaScript string literals within HTML attributes
+function escapeJsString(text) {
+  if (!text) return '';
+  return String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+}
+
 function parseNumber(value) {
   if (!value && value !== 0) return 0;
   const n = parseFloat(String(value).replace(/[^\d.-]/g, ''));
@@ -2881,6 +2887,9 @@ function showWorkoutExercises(templateId) {
   const formDiv = document.getElementById('workoutExercisesForm');
   const exercisesList = document.getElementById('exercisesList');
   
+  // Escape templateId once at the beginning
+  const escapedTemplateId = escapeJsString(templateId);
+  
   let html = `
     <div class="bg-gradient-to-r from-purple-900 to-slate-800 p-4 rounded-lg mb-4">
       <h4 class="font-bold text-xl text-purple-300 mb-2">${template.name}</h4>
@@ -2891,12 +2900,13 @@ function showWorkoutExercises(templateId) {
   
   session.exercises.forEach((exercise, index) => {
     const isMobility = exercise.name.toLowerCase().includes('mobilidade');
+    const escapedExerciseName = escapeJsString(exercise.name);
     html += `
       <div class="bg-slate-700 p-4 rounded-lg">
         <h5 class="font-semibold text-lg mb-3">${exercise.name}</h5>
         ${exercise.notes ? `<p class="text-slate-400 text-sm mb-3">💡 ${exercise.notes}</p>` : ''}
         
-        <form onsubmit="handleQuickExerciseLog(event, '${exercise.name}', '${templateId}')" class="space-y-3">
+        <form onsubmit="handleQuickExerciseLog(event, '${escapedExerciseName}', '${escapedTemplateId}')" class="space-y-3">
           <div class="text-sm text-purple-300 font-semibold mb-2">Registre as 3 séries:</div>
           
           <!-- Série 1 -->
@@ -3054,7 +3064,7 @@ function showWorkoutExercises(templateId) {
                 inputs['volume' + i].value = volume > 0 ? volume.toFixed(1) + ' kg' : '';
                 total += volume;
               }
-              const totalElem = document.getElementById('totalVolume_${index}');
+             const totalElem = document.getElementById('totalVolume_' + ${index});
               if (totalElem) {
                 totalElem.textContent = total > 0 ? total.toFixed(1) + ' kg' : '0 kg';
               }
@@ -3065,14 +3075,14 @@ function showWorkoutExercises(templateId) {
               inputs[name].addEventListener('input', updateVolumes);
             });
           })();
-        </script>
+        <\/script>
       </div>
     `;
   });
   
   html += `
     <div class="mt-6 p-4 bg-gradient-to-r from-green-700 to-emerald-800 rounded-lg">
-      <button onclick="handleRegisterAllExercises('${templateId}')" class="w-full bg-white text-green-800 hover:bg-green-100 px-6 py-3 rounded-lg font-bold text-lg">
+      <button onclick="handleRegisterAllExercises('${escapedTemplateId}')" class="w-full bg-white text-green-800 hover:bg-green-100 px-6 py-3 rounded-lg font-bold text-lg">
         ✅ Registrar Todos os Exercícios
       </button>
       <p class="text-sm text-green-100 mt-2 text-center">Registra todos os exercícios acima de uma vez com os valores informados</p>
@@ -6827,21 +6837,6 @@ function renderExercicios(user) {
             </div>`
           }
         </div>
-                      const weight = parseNumber(log.weight);
-                      const reps = parseNumber(log.reps);
-                      const sets = parseNumber(log.sets);
-                      return sum + (weight * reps * sets);
-                    }, 0))} kg</p>
-                  </div>
-                  <div class="bg-white/10 backdrop-blur p-3 rounded">
-                    <p class="text-sm text-purple-200 mb-1">Exercícios Únicos</p>
-                    <p class="text-2xl font-bold">${new Set(workoutsOnDate.map(w => w.exercise)).size}</p>
-                  </div>
-                </div>
-              </div>
-            </div>`
-          }
-        </div>
       </div>
     `;
   }
@@ -6950,10 +6945,6 @@ function renderExercicios(user) {
                 </div>
               `;
             }).join('')}
-          </div>`
-        }
-              </tbody>
-            </table>
           </div>`
         }
       </div>
