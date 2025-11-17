@@ -92,23 +92,25 @@ module.exports = (env, argv) => {
     
     module: {
       rules: [
-        {
-          test: /\.js$/,
-          exclude: /node_modules/,
-          use: {
-            loader: 'babel-loader',
-            options: {
-              presets: [
-                ['@babel/preset-env', {
-                  targets: {
-                    browsers: ['last 2 versions', 'not dead', '> 0.5%']
-                  },
-                  modules: false,
-                }]
-              ],
-            },
-          },
-        },
+        // No babel-loader needed since code is already ES5 compatible
+        // Uncomment if you need to transpile modern JS
+        // {
+        //   test: /\.js$/,
+        //   exclude: /node_modules/,
+        //   use: {
+        //     loader: 'babel-loader',
+        //     options: {
+        //       presets: [
+        //         ['@babel/preset-env', {
+        //           targets: {
+        //             browsers: ['last 2 versions', 'not dead', '> 0.5%']
+        //           },
+        //           modules: false,
+        //         }]
+        //       ],
+        //     },
+        //   },
+        // },
       ],
     },
     
