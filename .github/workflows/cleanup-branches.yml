@@ -1,6 +1,11 @@
 ---
 name: Cleanup Merged Branches
 
+# This workflow automatically deletes merged branches
+# Note: GITHUB_TOKEN has default permissions. If branch protection rules
+# prevent deletion, you may need to use a PAT with appropriate permissions
+# stored in repository secrets (e.g., secrets.PAT_TOKEN)
+
 on:
   pull_request:
     types: [closed]
@@ -33,10 +38,31 @@ jobs:
         run: |
           # Get all merged branches except main
           git fetch origin
-          git branch -r --merged origin/main | \
+
+          # Get list of branches to delete
+          branches_to_delete=$(git branch -r --merged origin/main | \
             grep -v "main" | \
             grep -v "HEAD" | \
-            sed 's/origin\///' | \
-            xargs -r -I {} git push origin --delete {}
+            sed 's/origin\///' || true)
+
+          if [ -z "$branches_to_delete" ]; then
+            echo "✅ No merged branches to delete"
+            exit 0
+          fi
+
+          echo "Branches to delete:"
+          echo "$branches_to_delete"
+
+          # Delete branches one by one with error handling
+          echo "$branches_to_delete" | while IFS= read -r branch; do
+            if [ -n "$branch" ]; then
+              echo "Deleting branch: $branch"
+              if git push origin --delete "$branch" 2>&1; then
+                echo "✅ Deleted: $branch"
+              else
+                echo "⚠️  Failed to delete: $branch (may be protected)"
+              fi
+            fi
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
