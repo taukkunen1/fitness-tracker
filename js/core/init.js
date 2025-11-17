@@ -49,32 +49,76 @@ async function initApp() {
   
   await saveAllToDB();
   
-  // Auto-create and login as Pedro admin (per requirements)
-  // Check if Pedro admin account exists
+  // Auto-create Pedro and Valentina admin accounts with their respective profiles
+  // Pedro admin account
   let pedroAccount = await dbGet(STORE_ACCOUNTS, 'Pedro');
   if (!pedroAccount) {
     try {
       // Create Pedro admin account with specified credentials
-      const salt = generateSalt();
-      const passwordHash = await hashPassword('123456', salt);
+      const saltPedro = generateSalt();
+      const passwordHashPedro = await hashPassword('123456', saltPedro);
       
       pedroAccount = {
         username: 'Pedro',
         email: 'pedro@fitness-tracker.com',
-        passwordHash,
-        salt,
+        passwordHash: passwordHashPedro,
+        salt: saltPedro,
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
-        linkedProfiles: ['pedro'],
+        linkedProfiles: ['pedro'], // Only pedro profile linked
         twoFactorEnabled: false,
         accountLocked: false,
         role: 'admin'
       };
       
       await dbPut(STORE_ACCOUNTS, pedroAccount);
+      
+      // Save to Firebase Firestore
+      if (typeof saveAccountToFirestore === 'function' && typeof isFirebaseAvailable === 'function') {
+        if (isFirebaseAvailable()) {
+          await saveAccountToFirestore('Pedro', pedroAccount);
+        }
+      }
+      
       console.log('✅ Pedro admin account created successfully');
     } catch (err) {
       console.error('Failed to create Pedro admin account:', err);
+    }
+  }
+  
+  // Valentina admin account
+  let valentinaAccount = await dbGet(STORE_ACCOUNTS, 'Valentina');
+  if (!valentinaAccount) {
+    try {
+      // Create Valentina admin account with specified credentials
+      const saltValentina = generateSalt();
+      const passwordHashValentina = await hashPassword('123456', saltValentina);
+      
+      valentinaAccount = {
+        username: 'Valentina',
+        email: 'valentina@fitness-tracker.com',
+        passwordHash: passwordHashValentina,
+        salt: saltValentina,
+        createdAt: new Date().toISOString(),
+        lastLogin: null,
+        linkedProfiles: ['valentina'], // Only valentina profile linked
+        twoFactorEnabled: false,
+        accountLocked: false,
+        role: 'admin'
+      };
+      
+      await dbPut(STORE_ACCOUNTS, valentinaAccount);
+      
+      // Save to Firebase Firestore
+      if (typeof saveAccountToFirestore === 'function' && typeof isFirebaseAvailable === 'function') {
+        if (isFirebaseAvailable()) {
+          await saveAccountToFirestore('Valentina', valentinaAccount);
+        }
+      }
+      
+      console.log('✅ Valentina admin account created successfully');
+    } catch (err) {
+      console.error('Failed to create Valentina admin account:', err);
     }
   }
   

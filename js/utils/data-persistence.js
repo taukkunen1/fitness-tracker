@@ -5,12 +5,19 @@
  */
 
 /**
- * Save all application data to IndexedDB and localStorage
+ * Save all application data to Firebase Firestore (primary) and IndexedDB (cache)
  * Saves users, comparisons, references, and timestamp
  */
 async function saveAllToDB() {
   try {
-    // users
+    // Save to Firebase Firestore (primary storage)
+    if (typeof saveAllUsersToFirestore === 'function' && typeof isFirebaseAvailable === 'function') {
+      if (isFirebaseAvailable()) {
+        await saveAllUsersToFirestore(state.users);
+      }
+    }
+    
+    // Save to IndexedDB (cache/fallback)
     for (const id of Object.keys(state.users)) {
       await dbPut(STORE_USERS, state.users[id]);
     }
@@ -35,22 +42,41 @@ async function saveAllToDB() {
 }
 
 /**
- * Load all application data from IndexedDB with localStorage fallback
+ * Load all application data from Firebase Firestore (primary) with IndexedDB/localStorage fallback
  * Loads users, comparisons, references and handles legacy migrations
  */
 async function loadAllFromDB() {
   let users = {};
   let comparisons = [];
   let references = [];
+  
+  // Try loading from Firebase Firestore first
   try {
-    const dbUsers = await dbGetAll(STORE_USERS);
-    const dbComparisons = await dbGetAll(STORE_COMPARISONS);
-    const dbReferences = await dbGetAll(STORE_REFERENCES);
-    if (dbUsers && dbUsers.length) dbUsers.forEach(u => users[u.id] = u);
-    if (dbComparisons && dbComparisons.length) comparisons = dbComparisons;
-    if (dbReferences && dbReferences.length) references = dbReferences;
+    if (typeof loadAllUsersFromFirestore === 'function' && typeof isFirebaseAvailable === 'function') {
+      if (isFirebaseAvailable()) {
+        const firestoreUsers = await loadAllUsersFromFirestore();
+        if (firestoreUsers && Object.keys(firestoreUsers).length > 0) {
+          users = firestoreUsers;
+          console.log('✅ Loaded users from Firebase Firestore');
+        }
+      }
+    }
   } catch (err) {
-    console.warn('DB load failed, fallback to localStorage', err);
+    console.warn('Firebase load failed, falling back to IndexedDB', err);
+  }
+  
+  // Fallback to IndexedDB if Firebase didn't return data
+  if (Object.keys(users).length === 0) {
+    try {
+      const dbUsers = await dbGetAll(STORE_USERS);
+      const dbComparisons = await dbGetAll(STORE_COMPARISONS);
+      const dbReferences = await dbGetAll(STORE_REFERENCES);
+      if (dbUsers && dbUsers.length) dbUsers.forEach(u => users[u.id] = u);
+      if (dbComparisons && dbComparisons.length) comparisons = dbComparisons;
+      if (dbReferences && dbReferences.length) references = dbReferences;
+    } catch (err) {
+      console.warn('DB load failed, fallback to localStorage', err);
+    }
   }
 
   // fallback localStorage if empty
