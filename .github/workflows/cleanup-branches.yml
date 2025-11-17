@@ -1,0 +1,70 @@
+---
+name: Cleanup Merged Branches
+
+# This workflow automatically deletes merged branches
+# Note: GITHUB_TOKEN has default permissions. If branch protection rules
+# prevent deletion, you may need to use a PAT with appropriate permissions
+# stored in repository secrets (e.g., secrets.PAT_TOKEN)
+
+on:
+  pull_request:
+    types: [closed]
+  schedule:
+    # Rodar todo domingo às 00:00
+    - cron: '0 0 * * 0'
+  workflow_dispatch:  # Permitir execução manual
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: >
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true) ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Delete merged branches
+        run: |
+          # Get all merged branches except main
+          git fetch origin
+
+          # Get list of branches to delete
+          branches_to_delete=$(git branch -r --merged origin/main | \
+            grep -v "main" | \
+            grep -v "HEAD" | \
+            sed 's/origin\///')
+
+          if [ -z "$branches_to_delete" ]; then
+            echo "✅ No merged branches to delete"
+            exit 0
+          fi
+
+          echo "Branches to delete:"
+          echo "$branches_to_delete"
+
+          # Delete branches one by one with error handling
+          echo "$branches_to_delete" | while IFS= read -r branch; do
+            if [ -n "$branch" ]; then
+              echo "Deleting branch: $branch"
+              if git push origin --delete "$branch" >/dev/null 2>&1; then
+                echo "✅ Deleted: $branch"
+              else
+                echo "⚠️  Failed to delete: $branch (may be protected)"
+              fi
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
