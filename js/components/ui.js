@@ -884,11 +884,14 @@ async function handleHevyCsvImport(event) {
     }
     
     if (!user.workoutLogs) user.workoutLogs = [];
+    if (!user.workoutHistory) user.workoutHistory = [];
     
     // Add all workouts
     let addedCount = 0;
+    let addedExerciseCount = 0;
+    
     workouts.forEach(workout => {
-      // Check if workout already exists (by date, startTime and name)
+      // Check if workout already exists in workoutLogs (by date, startTime and name)
       const exists = user.workoutLogs.some(w => 
         w.date === workout.date && 
         w.startTime === workout.startTime && 
@@ -898,14 +901,59 @@ async function handleHevyCsvImport(event) {
       if (!exists) {
         user.workoutLogs.push(workout);
         addedCount++;
+        
+        // Also add exercises to workoutHistory so they appear in the Training page
+        if (workout.exercises && workout.exercises.length > 0) {
+          workout.exercises.forEach(exercise => {
+            // Convert exercise sets to workoutHistory format
+            const setsData = exercise.sets.map(set => ({
+              setNumber: set.setIndex + 1,
+              reps: set.reps || 0,
+              weight: set.weightKg || 0,
+              volume: (set.reps || 0) * (set.weightKg || 0)
+            }));
+            
+            const totalVolume = setsData.reduce((sum, set) => sum + set.volume, 0);
+            
+            // Create workoutHistory entry for this exercise
+            const historyEntry = {
+              id: Date.now() + Math.random(), // Ensure unique ID
+              date: workout.date,
+              time: workout.startTime || '00:00',
+              exercise: exercise.name,
+              category: workout.name, // Use workout name as category
+              individualSets: setsData,
+              totalSets: setsData.length,
+              totalVolume: totalVolume,
+              completed: true,
+              // Legacy fields for backwards compatibility
+              sets: setsData.length.toString(),
+              reps: setsData.map(s => s.reps).join('/'),
+              weight: setsData.map(s => s.weight).join('/'),
+              source: 'hevy' // Mark as imported from Hevy
+            };
+            
+            // Check if this exercise doesn't already exist in history
+            const exerciseExists = user.workoutHistory.some(h =>
+              h.date === historyEntry.date &&
+              h.exercise === historyEntry.exercise &&
+              h.time === historyEntry.time
+            );
+            
+            if (!exerciseExists) {
+              user.workoutHistory.unshift(historyEntry);
+              addedExerciseCount++;
+            }
+          });
+        }
       }
     });
     
     await saveAllToDB();
     render();
     
-    statusEl.textContent = `✅ ${addedCount} treino(s) importado(s) com sucesso!`;
-    showNotification(`✅ ${addedCount} treino(s) do Hevy importado(s)!`, 'success');
+    statusEl.textContent = `✅ ${addedCount} treino(s) e ${addedExerciseCount} exercício(s) importado(s)!`;
+    showNotification(`✅ ${addedCount} treino(s) do Hevy importado(s) com ${addedExerciseCount} exercício(s)!`, 'success');
     
     // Clear the file input
     event.target.value = '';
