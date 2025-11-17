@@ -78,9 +78,9 @@ module.exports = (env, argv) => {
             reuseExistingChunk: true,
           },
           // Módulos de segurança (alta prioridade)
-          security: {
+          securityModules: {
             test: /[\\/]js[\\/]auth[\\/]/,
-            name: 'security',
+            name: 'security-modules',
             priority: 20,
           },
         },
