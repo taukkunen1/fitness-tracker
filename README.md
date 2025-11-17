@@ -292,6 +292,14 @@ O sistema implementa conceitos de pesquisas científicas de ponta:
 - [ ] Sincronização em nuvem
 - [ ] Apps mobile nativos
 
+### 🔥 Future Features (Planned)
+- [ ] **Firebase Authentication** - Replace current IndexedDB auth with cloud-based authentication
+- [ ] **Firebase Firestore** - Cloud data synchronization across devices
+- [ ] **Firebase Cloud Functions** - Serverless backend for advanced features
+- [ ] **Firebase Storage** - Cloud backup for progress photos
+
+> 📖 For more details on Firebase integration, see **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)**
+
 ## 🤝 Contribuindo
 
 Contribuições são bem-vindas! Por favor, leia as diretrizes antes de contribuir.
