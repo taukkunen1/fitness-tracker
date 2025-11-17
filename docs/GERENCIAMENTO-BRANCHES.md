@@ -74,7 +74,7 @@ git branch -r --merged origin/main
 
 ```bash
 # Deletar TODAS as branches locais já merged (exceto main e branch atual)
-git branch --merged main | grep -v "main" | grep -v "\*" | xargs git branch -d
+git branch --merged main | grep -v "main" | grep -v "\*" | xargs -r git branch -d
 
 # Ou deletar uma por vez
 git branch -d nome-da-branch
@@ -323,7 +323,7 @@ git branch -a
 git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short) %(committerdate:relative)'
 
 # 2. Deletar branches merged
-git branch --merged main | grep -v "main" | xargs git branch -d
+git branch --merged main | grep -v "main" | xargs -r git branch -d
 
 # 3. Limpar referências remotas
 git fetch --prune origin
@@ -372,7 +372,7 @@ git pull origin main
 
 # Deletar branches locais merged
 echo "Deletando branches locais merged..."
-git branch --merged main | grep -v "main" | grep -v "\*" | xargs git branch -d
+git branch --merged main | grep -v "main" | grep -v "\*" | xargs -r git branch -d
 
 # Limpar referências remotas
 echo "Limpando referências remotas obsoletas..."
