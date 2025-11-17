@@ -272,8 +272,11 @@ console.log(commonFoods.proteinas);
 
 - `MODULARIZATION_PLAN.md` - Plano completo de 8 fases
 - `MIGRATION_GUIDE.md` - Guia prático com exemplos
-- `README_MODULARIZATION.md` - Resumo e status
-- `MODULARIZATION_PROGRESS.md` - Este arquivo
+- `MODULARIZATION_PROGRESS.md` - Este arquivo (91% completo)
+- `MODULARIZATION_DIAGRAM.md` - Estrutura visual
+- `START_HERE.md` - Ponto de entrada
+- `(obsoleto) README_MODULARIZATION.md` - ⚠️ Desatualizado (9%)
+- `(obsoleto) MODULARIZATION_SUMMARY.md` - ⚠️ Desatualizado (66%)
 
 ## 🎯 Próximos Passos Recomendados
 

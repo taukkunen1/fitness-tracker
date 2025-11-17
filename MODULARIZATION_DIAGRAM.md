@@ -119,9 +119,11 @@ fitness-tracker/
 ├── 📚 Documentação/
 │   ├── MODULARIZATION_PLAN.md         ✅ Plano completo (8 fases)
 │   ├── MIGRATION_GUIDE.md             ✅ Guia prático
-│   ├── README_MODULARIZATION.md       ✅ Status
-│   ├── MODULARIZATION_SUMMARY.md      ✅ Resumo executivo
-│   └── MODULARIZATION_DIAGRAM.md      📄 Este arquivo
+│   ├── MODULARIZATION_PROGRESS.md     ✅ Progresso detalhado (91%)
+│   ├── MODULARIZATION_DIAGRAM.md      📄 Este arquivo
+│   ├── START_HERE.md                  ✅ Ponto de entrada
+│   ├── (obsoleto) README_MODULARIZATION.md ⚠️ Desatualizado
+│   └── (obsoleto) MODULARIZATION_SUMMARY.md ⚠️ Desatualizado
 │
 └── 📁 js/
     │

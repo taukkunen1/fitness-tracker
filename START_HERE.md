@@ -146,17 +146,21 @@ fitness-tracker/
 ├── 📄 index.html (original, 100% funcional)
 ├── 📄 index-modular.html (demo modular)
 │
-├── 📚 Documentação (5 arquivos)
+├── 📚 Documentação (4 arquivos principais + 2 obsoletos)
 │   ├── MODULARIZATION_PLAN.md
 │   ├── MIGRATION_GUIDE.md
-│   ├── README_MODULARIZATION.md
-│   ├── MODULARIZATION_SUMMARY.md
-│   └── MODULARIZATION_DIAGRAM.md
+│   ├── MODULARIZATION_PROGRESS.md (91% - use este!)
+│   ├── MODULARIZATION_DIAGRAM.md
+│   ├── (obsoleto) README_MODULARIZATION.md
+│   └── (obsoleto) MODULARIZATION_SUMMARY.md
 │
-└── 📁 js/ (código modular)
-    ├── core/ (db.js, router.js)
-    ├── auth/ (security.js)
-    └── utils/ (helpers.js)
+└── 📁 js/ (código modular - 24 módulos)
+    ├── core/ (5 módulos: db.js, router.js, state.js, theme.js, init.js)
+    ├── auth/ (4 módulos: security.js, advanced-security.js, authentication.js, auth-ui.js)
+    ├── data/ (4 módulos: initial-users.js, templates.js, common-foods.js, exercise-library.js)
+    ├── utils/ (6 módulos: helpers.js, charts.js, data-persistence.js, handlers.js, etc.)
+    ├── modules/ (4 módulos: dashboard.js, treino.js, nutricao.js, admin.js)
+    └── components/ (1 módulo: ui.js)
 ```
 
 ---
