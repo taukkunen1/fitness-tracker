@@ -2599,21 +2599,22 @@ const initialUsers = (function() {
       id: 'pedro',
       name: 'Pedro',
       gender: 'male',
-      age: 30,
-      height: 175,
+      age: 27, // Idade: 27 anos
+      height: 175, // Altura: 175 cm
       workoutHistory: [],
       mealHistory: [],
       workoutLogs: [],
       bodyMetrics: [{
         id: 'm_pedro_' + now,
-        date: new Date().toISOString().split('T')[0],
+        date: '2025-11-10', // Medição tirada no dia 10
         weight: 68.95,
         bodyFat: 18.8,
-        muscleMass: 28.9,
+        muscleMass: 56.0, // Massa Magra
+        skeletalMuscleMass: 31.8, // Massa Muscular Esquelética
         visceralFat: 8,
-        waterPercent: 55.0,
-        waterWeight: parseFloat((68.95 * 0.55).toFixed(2)),
-        bmr: Math.round(10 * 68.95 + 6.25 * 175 - 5 * 30 + 5),
+        waterPercent: 59.9, // Água Corporal Total 41.3L / 68.95kg * 100
+        waterWeight: 41.3, // Água Corporal Total em L
+        bmr: 1675, // TMB
         muscleSize: 40,
         bmi: parseFloat((68.95 / ((175/100) * (175/100))).toFixed(1)),
         // Segmented muscle mass (kg) - based on bioimpedance analysis
@@ -2629,24 +2630,26 @@ const initialUsers = (function() {
         bodyFatLeftLeg: 20.3,
         bodyFatTrunk: 21.5,
         // Advanced body composition
+        fatMass: 13.0, // Massa Gorda em kg
+        leanMass: 56.0, // Massa Magra em kg
         boneMass: 3.2, // kg - bone mineral content
         proteinMass: 13.5, // kg - protein content
         mineralMass: 4.1, // kg - mineral content
         // Metabolic rates
-        rmr: 1580, // Resting Metabolic Rate (kcal/day)
+        rmr: 1675, // Resting Metabolic Rate (kcal/day) - igual ao TMB
         tdee: 2200, // Total Daily Energy Expenditure (kcal/day)
         // Bioelectrical impedance analysis
         impedance: 485, // Ohms - whole body impedance at 50kHz
-        phaseAngle: 6.8, // degrees - cellular health indicator (normal: 5-7°)
+        phaseAngle: 6.3, // Ângulo de Fase em graus
         reactance: 58, // Ohms
         resistance: 480, // Ohms
         // Ages and body composition indices
-        metabolicAge: 28, // years - metabolic age
+        metabolicAge: 23, // Idade Metabólica
         bodyAge: 29, // years - biological/body age
         // Circumferences (cm) - for tracking muscle growth
         chest: 93.5, // Peito
         waist: 80.5, // Cintura
-        hips: 88.5, // Quadris
+        hips: 88.5, // Quadril
         rightArm: 27, // Bíceps Direito
         leftArm: 28, // Bíceps Esquerdo
         rightThigh: 52, // Coxa Direita
@@ -7304,9 +7307,11 @@ async function handleHevyCsvImport(event) {
     }
     
     if (!user.workoutLogs) user.workoutLogs = [];
+    if (!user.workoutHistory) user.workoutHistory = [];
     
     // Add all workouts
     let addedCount = 0;
+    let addedExerciseCount = 0;
     workouts.forEach(workout => {
       // Check if workout already exists (by date, startTime and name)
       const exists = user.workoutLogs.some(w => 
@@ -7318,21 +7323,58 @@ async function handleHevyCsvImport(event) {
       if (!exists) {
         user.workoutLogs.push(workout);
         addedCount++;
+        
+        // Also populate workoutHistory with individual exercises for the Treinos tab
+        if (workout.exercises && workout.exercises.length > 0) {
+          workout.exercises.forEach((exercise, exerciseIdx) => {
+            // Create individual set entries in workoutHistory
+            const setsData = exercise.sets.map(set => ({
+              setNumber: set.setIndex + 1,
+              reps: set.reps || 0,
+              weight: set.weightKg || 0,
+              volume: (set.reps || 0) * (set.weightKg || 0)
+            }));
+            
+            // Calculate total volume
+            const totalVolume = setsData.reduce((sum, set) => sum + set.volume, 0);
+            
+            // Create workoutHistory entry with unique ID
+            const historyEntry = {
+              id: Date.now() + exerciseIdx + Math.floor(Math.random() * 1000),
+              date: workout.date,
+              time: workout.startTime || '00:00',
+              exercise: sanitizeInput(exercise.name),
+              category: 'Hevy Import',
+              individualSets: setsData,
+              totalSets: setsData.length,
+              totalVolume: totalVolume,
+              completed: true,
+              // Keep legacy fields for backwards compatibility
+              sets: setsData.length.toString(),
+              reps: setsData.map(s => s.reps).join('/'),
+              weight: setsData.map(s => s.weight).join('/')
+            };
+            
+            user.workoutHistory.unshift(historyEntry);
+            addedExerciseCount++;
+          });
+        }
       }
     });
     
     await saveAllToDB();
     render();
     
-    statusEl.textContent = `✅ ${addedCount} treino(s) importado(s) com sucesso!`;
-    showNotification(`✅ ${addedCount} treino(s) do Hevy importado(s)!`, 'success');
+    statusEl.textContent = `✅ ${addedCount} treino(s) e ${addedExerciseCount} exercício(s) importado(s)!`;
+    showNotification(`✅ ${addedCount} treino(s) do Hevy importado(s) com ${addedExerciseCount} exercícios!`, 'success');
     
     // Clear the file input
     event.target.value = '';
     
-    // Switch to workouts view
+    // Switch to treino tab to show imported exercises
     setTimeout(() => {
-      switchEvolucaoTab('workouts');
+      state.activeTab = 'treino';
+      render();
       statusEl.textContent = '';
     }, 3000);
     
@@ -7449,7 +7491,7 @@ function parseHevyCsv(csvText) {
     
     // Create exercise summary
     const exercises = Array.from(exerciseGroups.entries()).map(([name, sets]) => ({
-      name,
+      name: sanitizeInput(name),
       sets: sets.map(s => ({
         setIndex: s.setIndex,
         setType: s.setType,
@@ -7458,7 +7500,7 @@ function parseHevyCsv(csvText) {
         distanceKm: s.distanceKm,
         durationSeconds: s.durationSeconds,
         rpe: s.rpe,
-        notes: s.notes
+        notes: sanitizeInput(s.notes || '')
       }))
     }));
     
