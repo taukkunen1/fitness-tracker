@@ -8,7 +8,7 @@ git pull origin main
 
 # Deletar branches locais merged
 echo "Deletando branches locais merged..."
-git branch --merged main | grep -v "main" | grep -v "\*" | xargs git branch -d
+git branch --merged main | grep -v "main" | grep -v "\*" | xargs -r git branch -d
 
 # Limpar referências remotas
 echo "Limpando referências remotas obsoletas..."
