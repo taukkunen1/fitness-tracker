@@ -7398,6 +7398,7 @@ async function handleHevyCsvImport(event) {
     setTimeout(() => {
       state.activeTab = 'treino';
       state.currentWorkoutDay = mostRecentDate;
+      updateHash();
       render();
       statusEl.textContent = '';
       showNotification(`📍 Navegando para ${mostRecentDate} - veja seus treinos importados na aba Treinos!`, 'info');
