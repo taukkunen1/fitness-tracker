@@ -2,16 +2,23 @@
 
 ## Visão Geral
 
-Este documento descreve as medidas de segurança implementadas no Fitness Tracker Pro para proteção contra ataques modernos em 2025, incluindo recursos avançados baseados em pesquisas científicas de ponta.
+Este documento descreve as medidas de segurança implementadas no Fitness Tracker Pro para proteção contra ataques modernos em 2025, incluindo recursos avançados baseados em pesquisas científicas de ponta e melhores práticas da OWASP.
 
-## 🎓 Recursos Avançados de Segurança (2025 Research-Based)
+## 📚 Documentação de Segurança Completa
 
-O sistema implementa conceitos de pesquisas científicas recentes sobre segurança cibernética:
+### Arquitetura e Modelo de Segurança
+- **[Security Architecture](docs/security/SECURITY-ARCHITECTURE.md)** - 🏗️ Visão completa da arquitetura de segurança em camadas
+- **[Backend Security Model](docs/security/BACKEND-SECURITY-MODEL.md)** - 🔥 Modelo OWASP recomendado (Backend + mínimo cliente)
+- **[Obfuscation & Minification](docs/security/OBFUSCATION-MINIFICATION.md)** - 🔒 Guia de ofuscação e minificação de código
+- **[WebAssembly Implementation](docs/security/WEBASSEMBLY-IMPLEMENTATION.md)** - 🧱 Proteção de lógica crítica com WASM
 
-### Documentação de Pesquisa
+### Pesquisas e Frameworks Avançados (2025)
 - **[Cybersecurity Research 2025](docs/security/CYBERSECURITY-RESEARCH-2025.md)** - Visão geral das pesquisas e implementações
 - **[Advanced Security Implementation](docs/security/ADVANCED-SECURITY-IMPLEMENTATION.md)** - Guia técnico detalhado
 - **[Zero Trust & Privacy Framework](docs/security/ZERO-TRUST-PRIVACY-FRAMEWORK.md)** - Arquitetura Zero Trust e privacidade
+
+### Deploy e Operações
+- **[Security Deployment Checklist](docs/deployment/SECURITY-DEPLOYMENT-CHECKLIST.md)** - ✅ Checklist completo para deploy seguro
 
 ### Recursos Implementados
 
