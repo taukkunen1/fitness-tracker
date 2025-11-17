@@ -644,6 +644,90 @@ function handleQuickExerciseLog(event, exerciseName, templateId) {
         setNumber: i,
         reps: parseFloat(reps),
         weight: parseFloat(weight),
+        volume: parseFloat(reps) * parseFloat(weight)
+      });
+    }
+  }
+  
+  if (setsData.length === 0) {
+    showNotification('⚠️ Por favor, preencha pelo menos uma série', 'error');
+    return;
+  }
+  
+  // Get template to find category
+  const template = templates[templateId];
+  const category = template ? template.name : '';
+  
+  // Log workout with individual sets
+  handleLogWorkoutWithSets(exerciseName, setsData, category);
+  
+  // Show success notification
+  const totalVolume = setsData.reduce((sum, set) => sum + set.volume, 0);
+  showNotification(`✅ ${exerciseName} registrado! ${setsData.length} séries • ${totalVolume.toFixed(1)} kg volume total`, 'success');
+  
+  // Reset form
+  form.reset();
+}
+
+// Handle registering all exercises from a template at once
+function handleRegisterAllExercises(templateId) {
+  const template = templates[templateId];
+  if (!template) {
+    showNotification('❌ Treino não encontrado', 'error');
+    return;
+  }
+  
+  const session = template.sessions.A;
+  if (!session || !session.exercises) {
+    showNotification('❌ Nenhum exercício encontrado neste treino', 'error');
+    return;
+  }
+  
+  // Collect all forms
+  const forms = document.querySelectorAll('#exercisesList form');
+  let registeredCount = 0;
+  let totalVolume = 0;
+  
+  forms.forEach((form, index) => {
+    const exercise = session.exercises[index];
+    if (!exercise) return;
+    
+    // Collect sets data
+    const setsData = [];
+    for (let i = 1; i <= 3; i++) {
+      const reps = form['reps' + i]?.value;
+      const weight = form['weight' + i]?.value;
+      
+      if (reps && weight) {
+        const volume = parseFloat(reps) * parseFloat(weight);
+        setsData.push({
+          setNumber: i,
+          reps: parseFloat(reps),
+          weight: parseFloat(weight),
+          volume: volume
+        });
+        totalVolume += volume;
+      }
+    }
+    
+    // Only log if at least one set is filled
+    if (setsData.length > 0) {
+      handleLogWorkoutWithSets(exercise.name, setsData, template.name);
+      registeredCount++;
+    }
+  });
+  
+  if (registeredCount === 0) {
+    showNotification('⚠️ Nenhum exercício foi preenchido', 'error');
+    return;
+  }
+  
+  showNotification(`✅ ${registeredCount} exercício(s) registrado(s)! Volume total: ${totalVolume.toFixed(1)} kg`, 'success');
+  
+  // Hide the form and refresh
+  hideWorkoutExercises();
+  render();
+}
 
 console.log('✅ Handlers module loaded');
 
