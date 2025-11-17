@@ -1,0 +1,27 @@
+---
+name: Cleanup Merged Branches
+
+'on':
+  pull_request:
+    types: [closed]
+  schedule:
+    # Rodar todo domingo às 00:00
+    - cron: '0 0 * * 0'
+  workflow_dispatch:  # Permitir execução manual
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.pull_request.merged == true ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Delete merged branches
+        uses: jessfraz/branch-cleanup-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

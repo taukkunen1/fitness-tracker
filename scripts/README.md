@@ -4,6 +4,58 @@ Utilitários e scripts de automação para o projeto Pilgrim.
 
 ## 📋 Scripts Disponíveis
 
+### `cleanup-branches.sh` - Limpeza Automática de Branches
+
+Script para limpar branches locais e remotas que já foram merged na branch main.
+
+**Uso**:
+```bash
+./scripts/cleanup-branches.sh
+```
+
+**O que o script faz**:
+1. 🔄 **Checkout e update** - Muda para main e atualiza com origin
+2. 🗑️ **Delete local branches** - Remove branches locais já merged
+3. 🧹 **Prune remote refs** - Limpa referências remotas obsoletas
+4. 📊 **Show results** - Exibe branches restantes e contadores
+
+**Saída Esperada**:
+```
+🧹 Limpando branches merged...
+Switched to branch 'main'
+Already up to date.
+Deletando branches locais merged...
+Deleted branch copilot/old-feature (was 1234567).
+Limpando referências remotas obsoletas...
+✅ Limpeza concluída!
+
+Branches restantes:
+* main
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/main
+
+Total de branches locais: 1
+Total de branches remotas: 2
+```
+
+**Requisitos**:
+- Git instalado
+- Estar em um repositório Git
+- Ter permissões para deletar branches
+
+**Notas de Segurança**:
+- ⚠️ Apenas deleta branches locais já merged (flag `-d`)
+- ⚠️ Não deleta a branch main ou a branch atual
+- ⚠️ Não deleta branches remotas (apenas local)
+- ✅ Seguro para uso regular
+
+**Automação**:
+Para limpeza automática, veja também:
+- `.github/workflows/cleanup-branches.yml` - GitHub Actions workflow
+- `docs/GERENCIAMENTO-BRANCHES.md` - Documentação completa
+
+---
+
 ### `verify-ssl.sh` - Verificação de SSL/HTTPS
 
 Script completo para validação de configuração HTTPS e certificados SSL.
