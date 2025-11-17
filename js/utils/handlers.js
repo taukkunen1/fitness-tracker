@@ -252,9 +252,90 @@ function handleLogWorkoutWithSets(exerciseName, setsData, category = '') {
   
   if (!user.workoutHistory) user.workoutHistory = [];
   user.workoutHistory.unshift(newLog);
+  
+  // IMPORTANT: Also create/update a workout log entry for the dashboard
+  createOrUpdateWorkoutLogFromExercise(user, newLog);
+  
   addOrUpdateUser(user);
   
   render();
+}
+
+// Helper function to create or update a workoutLog entry when exercises are registered
+function createOrUpdateWorkoutLogFromExercise(user, exerciseLog) {
+  if (!user.workoutLogs) user.workoutLogs = [];
+  
+  const workoutDate = exerciseLog.date;
+  const workoutCategory = exerciseLog.category || 'Treino';
+  
+  // Look for an existing workout log for this date and category
+  let workoutLog = user.workoutLogs.find(w => 
+    w.date === workoutDate && 
+    w.name === workoutCategory &&
+    w.source === 'template'
+  );
+  
+  if (!workoutLog) {
+    // Create a new workout log entry
+    workoutLog = {
+      id: 'workout_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11),
+      date: workoutDate,
+      name: workoutCategory,
+      type: 'musculacao',
+      startTime: exerciseLog.time,
+      endTime: exerciseLog.time, // Will be updated as more exercises are added
+      duration: 0, // Will be calculated based on exercises
+      calories: 0, // Will be estimated from volume
+      avgHeartRate: null,
+      maxHeartRate: null,
+      distance: null,
+      avgSpeed: null,
+      intensity: null,
+      notes: '',
+      createdAt: new Date().toISOString(),
+      source: 'template', // Mark this as auto-generated from template exercises
+      exercises: [] // Store exercise details
+    };
+    user.workoutLogs.push(workoutLog);
+  }
+  
+  // Add the exercise to the workout log
+  const exerciseDetail = {
+    name: exerciseLog.exercise,
+    sets: exerciseLog.individualSets.map(set => ({
+      reps: set.reps,
+      weight: set.weight,
+      volume: set.volume
+    }))
+  };
+  
+  if (!workoutLog.exercises) workoutLog.exercises = [];
+  workoutLog.exercises.push(exerciseDetail);
+  
+  // Update end time to the latest exercise time
+  workoutLog.endTime = exerciseLog.time;
+  
+  // Calculate duration (difference between start and end time)
+  if (workoutLog.startTime && workoutLog.endTime) {
+    const [startHour, startMin] = workoutLog.startTime.split(':').map(Number);
+    const [endHour, endMin] = workoutLog.endTime.split(':').map(Number);
+    let duration = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+    if (duration < 0) duration += 24 * 60; // Handle overnight
+    
+    // If duration is 0 or very small (exercises registered quickly), estimate based on number of exercises
+    // Rough estimate: 5 minutes per exercise (including rest time)
+    if (duration < 5) {
+      duration = workoutLog.exercises.length * 5;
+    }
+    
+    workoutLog.duration = duration;
+  }
+  
+  // Estimate calories from total volume (rough estimate: 1 kcal per 10 kg of volume)
+  const totalVolume = workoutLog.exercises.reduce((sum, ex) => {
+    return sum + ex.sets.reduce((setSum, set) => setSum + (set.volume || 0), 0);
+  }, 0);
+  workoutLog.calories = Math.round(totalVolume / 10);
 }
 
 function handleEditWorkout(id) {

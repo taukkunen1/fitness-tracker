@@ -957,3 +957,14 @@ async function exportTasksToJSON() {
   const tasks = await getAllTasks();
   const json = JSON.stringify(tasks, null, 2);
   
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tasks_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showNotification('✅ Tasks exportadas!', 'success');
+}
+
