@@ -321,6 +321,13 @@ function createOrUpdateWorkoutLogFromExercise(user, exerciseLog) {
     const [endHour, endMin] = workoutLog.endTime.split(':').map(Number);
     let duration = (endHour * 60 + endMin) - (startHour * 60 + startMin);
     if (duration < 0) duration += 24 * 60; // Handle overnight
+    
+    // If duration is 0 or very small (exercises registered quickly), estimate based on number of exercises
+    // Rough estimate: 5 minutes per exercise (including rest time)
+    if (duration < 5) {
+      duration = workoutLog.exercises.length * 5;
+    }
+    
     workoutLog.duration = duration;
   }
   
