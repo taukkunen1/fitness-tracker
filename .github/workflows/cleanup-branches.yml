@@ -43,7 +43,7 @@ jobs:
           branches_to_delete=$(git branch -r --merged origin/main | \
             grep -v "main" | \
             grep -v "HEAD" | \
-            sed 's/origin\///' || true)
+            sed 's/origin\///')
 
           if [ -z "$branches_to_delete" ]; then
             echo "✅ No merged branches to delete"
@@ -57,7 +57,7 @@ jobs:
           echo "$branches_to_delete" | while IFS= read -r branch; do
             if [ -n "$branch" ]; then
               echo "Deleting branch: $branch"
-              if git push origin --delete "$branch" 2>&1; then
+              if git push origin --delete "$branch" >/dev/null 2>&1; then
                 echo "✅ Deleted: $branch"
               else
                 echo "⚠️  Failed to delete: $branch (may be protected)"

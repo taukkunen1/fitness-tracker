@@ -28,5 +28,5 @@ echo "Branches restantes:"
 git branch -a
 
 echo ""
-echo "Total de branches locais:" $(git branch | wc -l)
-echo "Total de branches remotas:" $(git branch -r | wc -l)
+echo "Total de branches locais: $(git branch | wc -l)"
+echo "Total de branches remotas: $(git branch -r | wc -l)"
