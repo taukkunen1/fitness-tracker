@@ -33,6 +33,23 @@ yarn.lock
 firebase-debug.log
 .firebaserc.local
 
+# Build artifacts
+dist/
+build/
+*.min.js
+*.min.css
+*.wasm.map
+
+# WebAssembly build artifacts
+wasm/*.wasm
+wasm/*.js
+wasm/*.html
+wasm/a.out*
+
+# Webpack
+.webpack/
+webpack-stats.json
+
 # Nota: Os seguintes arquivos são intencionalmente incluídos no repositório:
 # - index.html.txt (versão alternativa com funcionalidades admin)
 # - update-site.sh e update-site.bat (scripts de deploy)
