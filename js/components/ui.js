@@ -1697,9 +1697,12 @@ function renderConfiguracoes() {
 
 /* ----------------------------- Profile Management ----------------------------- */
 function renderPerfis() {
-  const profiles = Object.values(state.users);
   const accountUsername = authState.currentAccount.username;
   const linkedProfiles = authState.currentAccount.linkedProfiles || [];
+  
+  // Filter to show only profiles linked to this account
+  const allProfiles = Object.values(state.users);
+  const profiles = allProfiles.filter(profile => linkedProfiles.includes(profile.id));
   
   return `
     <div class="space-y-6">
@@ -1739,15 +1742,9 @@ function renderPerfis() {
                     <p class="text-slate-400 text-sm mt-1">ID: ${profile.id}</p>
                   </div>
                   <div class="flex gap-2">
-                    ${!isLinked ? `
-                      <button onclick="handleLinkProfile('${profile.id}')" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm">
-                        🔗 Vincular
-                      </button>
-                    ` : `
-                      <button onclick="handleUnlinkProfile('${profile.id}')" class="bg-orange-600 hover:bg-orange-500 px-4 py-2 rounded text-sm">
-                        🔓 Desvincular
-                      </button>
-                    `}
+                    <button onclick="handleUnlinkProfile('${profile.id}')" class="bg-orange-600 hover:bg-orange-500 px-4 py-2 rounded text-sm">
+                      🔓 Desvincular
+                    </button>
                   </div>
                 </div>
                 
@@ -1792,7 +1789,10 @@ function renderPerfis() {
 
 /* ----------------------------- Profile Comparison ----------------------------- */
 function renderComparar() {
-  const profiles = Object.values(state.users);
+  // Get linked profiles for this account
+  const linkedProfiles = authState.currentAccount.linkedProfiles || [];
+  const allProfiles = Object.values(state.users);
+  const profiles = allProfiles.filter(profile => linkedProfiles.includes(profile.id));
   
   if (profiles.length < 2) {
     return `

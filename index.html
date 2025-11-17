@@ -148,6 +148,243 @@ function loadLS(key) {
   try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch (err) { return null; }
 }
 
+// ============================= FIREBASE FIRESTORE PERSISTENCE =============================
+
+// Firebase configuration (matches firebase-config.js)
+const firebaseConfig = {
+  apiKey: "AIzaSyC1zhIHzZoTHx7XBfaYnSYya_TgrJR-eNU",
+  authDomain: "fitness-tracker-9c801.firebaseapp.com",
+  projectId: "fitness-tracker-9c801",
+  storageBucket: "fitness-tracker-9c801.firebasestorage.app",
+  messagingSenderId: "890869868034",
+  appId: "1:890869868034:web:034347f9849af262ea691b",
+  measurementId: "G-TYDL5MRFRL"
+};
+
+// Firebase app instance and Firestore reference
+let firebaseApp = null;
+let firestoreDB = null;
+let firebaseInitialized = false;
+
+/**
+ * Initialize Firebase and Firestore
+ */
+async function initializeFirebase() {
+  if (firebaseInitialized) {
+    return true;
+  }
+  
+  try {
+    // Import Firebase modules dynamically
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+    const { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where } = 
+      await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    
+    // Initialize Firebase app
+    firebaseApp = initializeApp(firebaseConfig);
+    firestoreDB = getFirestore(firebaseApp);
+    
+    // Store Firebase methods globally for easy access
+    window.firebaseFirestore = {
+      collection,
+      doc,
+      setDoc,
+      getDoc,
+      getDocs,
+      deleteDoc,
+      query,
+      where
+    };
+    
+    firebaseInitialized = true;
+    console.log('✅ Firebase Firestore initialized successfully');
+    return true;
+  } catch (err) {
+    console.error('Failed to initialize Firebase:', err);
+    firebaseInitialized = false;
+    return false;
+  }
+}
+
+/**
+ * Save a user profile to Firestore
+ */
+async function saveUserToFirestore(userId, userData) {
+  try {
+    if (!firebaseInitialized) {
+      await initializeFirebase();
+    }
+    
+    if (!firestoreDB || !window.firebaseFirestore) {
+      console.warn('Firestore not available, skipping save');
+      return false;
+    }
+    
+    const { doc, setDoc } = window.firebaseFirestore;
+    const userRef = doc(firestoreDB, 'users', userId);
+    
+    await setDoc(userRef, {
+      ...userData,
+      lastUpdated: new Date().toISOString()
+    });
+    
+    console.log(`✅ User ${userId} saved to Firestore`);
+    return true;
+  } catch (err) {
+    console.error(`Failed to save user ${userId} to Firestore:`, err);
+    return false;
+  }
+}
+
+/**
+ * Load a user profile from Firestore
+ */
+async function loadUserFromFirestore(userId) {
+  try {
+    if (!firebaseInitialized) {
+      await initializeFirebase();
+    }
+    
+    if (!firestoreDB || !window.firebaseFirestore) {
+      console.warn('Firestore not available');
+      return null;
+    }
+    
+    const { doc, getDoc } = window.firebaseFirestore;
+    const userRef = doc(firestoreDB, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      console.log(`✅ User ${userId} loaded from Firestore`);
+      return userSnap.data();
+    } else {
+      console.log(`User ${userId} not found in Firestore`);
+      return null;
+    }
+  } catch (err) {
+    console.error(`Failed to load user ${userId} from Firestore:`, err);
+    return null;
+  }
+}
+
+/**
+ * Load all users from Firestore
+ */
+async function loadAllUsersFromFirestore() {
+  try {
+    if (!firebaseInitialized) {
+      await initializeFirebase();
+    }
+    
+    if (!firestoreDB || !window.firebaseFirestore) {
+      console.warn('Firestore not available');
+      return {};
+    }
+    
+    const { collection, getDocs } = window.firebaseFirestore;
+    const usersCollection = collection(firestoreDB, 'users');
+    const usersSnapshot = await getDocs(usersCollection);
+    
+    const users = {};
+    usersSnapshot.forEach((doc) => {
+      users[doc.id] = doc.data();
+    });
+    
+    console.log(`✅ Loaded ${Object.keys(users).length} users from Firestore`);
+    return users;
+  } catch (err) {
+    console.error('Failed to load users from Firestore:', err);
+    return {};
+  }
+}
+
+/**
+ * Save account data to Firestore
+ */
+async function saveAccountToFirestore(username, accountData) {
+  try {
+    if (!firebaseInitialized) {
+      await initializeFirebase();
+    }
+    
+    if (!firestoreDB || !window.firebaseFirestore) {
+      console.warn('Firestore not available, skipping save');
+      return false;
+    }
+    
+    const { doc, setDoc } = window.firebaseFirestore;
+    const accountRef = doc(firestoreDB, 'accounts', username);
+    
+    await setDoc(accountRef, {
+      ...accountData,
+      lastUpdated: new Date().toISOString()
+    });
+    
+    console.log(`✅ Account ${username} saved to Firestore`);
+    return true;
+  } catch (err) {
+    console.error(`Failed to save account ${username} to Firestore:`, err);
+    return false;
+  }
+}
+
+/**
+ * Load account data from Firestore
+ */
+async function loadAccountFromFirestore(username) {
+  try {
+    if (!firebaseInitialized) {
+      await initializeFirebase();
+    }
+    
+    if (!firestoreDB || !window.firebaseFirestore) {
+      console.warn('Firestore not available');
+      return null;
+    }
+    
+    const { doc, getDoc } = window.firebaseFirestore;
+    const accountRef = doc(firestoreDB, 'accounts', username);
+    const accountSnap = await getDoc(accountRef);
+    
+    if (accountSnap.exists()) {
+      console.log(`✅ Account ${username} loaded from Firestore`);
+      return accountSnap.data();
+    } else {
+      return null;
+    }
+  } catch (err) {
+    console.error(`Failed to load account ${username} from Firestore:`, err);
+    return null;
+  }
+}
+
+/**
+ * Save all user profiles to Firestore
+ */
+async function saveAllUsersToFirestore(users) {
+  try {
+    const savePromises = Object.keys(users).map(userId => 
+      saveUserToFirestore(userId, users[userId])
+    );
+    
+    await Promise.all(savePromises);
+    console.log(`✅ All users saved to Firestore`);
+    return true;
+  } catch (err) {
+    console.error('Failed to save all users to Firestore:', err);
+    return false;
+  }
+}
+
+/**
+ * Check if Firebase is available and initialized
+ */
+function isFirebaseAvailable() {
+  return firebaseInitialized && firestoreDB !== null;
+}
+
+console.log('✅ Firebase persistence functions loaded');
+
 // ============================= THEME MANAGEMENT SYSTEM =============================
 
 // Theme state
@@ -4115,7 +4352,27 @@ function handleAddProfile() {
     customPrograms: {}
   };
   addOrUpdateUser(user);
-  alert('✅ Perfil criado: ' + name);
+  
+  // Automatically link the new profile to the current account
+  if (authState.isAuthenticated && authState.currentAccount) {
+    linkProfileToAccount(authState.currentAccount.username, id).then(() => {
+      // Update current auth state
+      if (!authState.currentAccount.linkedProfiles) {
+        authState.currentAccount.linkedProfiles = [];
+      }
+      if (!authState.currentAccount.linkedProfiles.includes(id)) {
+        authState.currentAccount.linkedProfiles.push(id);
+      }
+      
+      alert('✅ Perfil criado e vinculado: ' + name);
+      render();
+    }).catch(err => {
+      console.error('Failed to link profile:', err);
+      alert('✅ Perfil criado: ' + name);
+    });
+  } else {
+    alert('✅ Perfil criado: ' + name);
+  }
 }
 
 /* Soft-delete profile (moves to archive), never removes without explicit user's permanent deletion action */
@@ -4684,6 +4941,29 @@ window.addEventListener('hashchange', () => {
    permanently without explicit permanent-delete action in archive manager.
 ----------------------------------------------------------------------------- */
 
+/**
+ * Get profiles that are visible to the current account
+ * Returns only profiles that are linked to the current account
+ * @returns {Object} Object with userId as key and user data as value
+ */
+function getVisibleProfiles() {
+  if (!authState.isAuthenticated || !authState.currentAccount) {
+    return {};
+  }
+  
+  const linkedProfiles = authState.currentAccount.linkedProfiles || [];
+  const visibleProfiles = {};
+  
+  // Filter state.users to only include linked profiles
+  Object.keys(state.users).forEach(userId => {
+    if (linkedProfiles.includes(userId)) {
+      visibleProfiles[userId] = state.users[userId];
+    }
+  });
+  
+  return visibleProfiles;
+}
+
 function render() {
   const app = document.getElementById('app');
   
@@ -4693,7 +4973,18 @@ function render() {
     return;
   }
   
-  const currentUser = state.users[state.activeUser] || Object.values(state.users)[0];
+  // Get only visible profiles for this account
+  const visibleProfiles = getVisibleProfiles();
+  
+  // Set active user to first visible profile if current active user is not visible
+  if (!visibleProfiles[state.activeUser]) {
+    const firstVisible = Object.keys(visibleProfiles)[0];
+    if (firstVisible) {
+      state.activeUser = firstVisible;
+    }
+  }
+  
+  const currentUser = visibleProfiles[state.activeUser] || Object.values(visibleProfiles)[0];
   if (!currentUser) {
     app.innerHTML = '<div class="p-8 text-white">Carregando...</div>';
     return;
@@ -4712,10 +5003,10 @@ function render() {
           <p class="text-purple-300 text-sm mt-1">Usuário: <strong>${authState.currentAccount.username}</strong> | Email: ${authState.currentAccount.email}</p>
         </div>
         <div class="flex gap-2 items-center">
-          ${Object.keys(state.users).map(id => `
+          ${Object.keys(visibleProfiles).map(id => `
             <div class="flex items-center gap-2">
-              <button onclick="state.activeUser='${id}'; render();" class="px-4 py-2 rounded-lg font-semibold ${state.activeUser === id ? (state.users[id].gender === 'female' ? 'bg-pink-500 text-white' : 'bg-blue-500 text-white') : 'bg-slate-700 text-slate-300'}">
-                ${state.users[id].gender === 'female' ? '👩' : '👨'} ${state.users[id].name}
+              <button onclick="state.activeUser='${id}'; render();" class="px-4 py-2 rounded-lg font-semibold ${state.activeUser === id ? (visibleProfiles[id].gender === 'female' ? 'bg-pink-500 text-white' : 'bg-blue-500 text-white') : 'bg-slate-700 text-slate-300'}">
+                ${visibleProfiles[id].gender === 'female' ? '👩' : '👨'} ${visibleProfiles[id].name}
               </button>
               <button title="Mover perfil para archive" onclick="handleDeleteProfile('${id}')" class="text-red-400 hover:text-red-300 px-2">🗄️</button>
             </div>
@@ -11615,6 +11906,10 @@ function showNotification(message, type = 'info') {
 window.addEventListener('beforeunload', () => { try { saveAllToDB(); } catch (e) { } });
 
 (async function initApp() {
+  // Initialize Firebase first
+  console.log('🔥 Initializing Firebase...');
+  await initializeFirebase();
+  
   // Load security state
   loadLoginAttempts();
   

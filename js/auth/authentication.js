@@ -220,6 +220,14 @@ async function registerAccount(username, email, password) {
   };
   
   await dbPut(STORE_ACCOUNTS, account);
+  
+  // Save to Firebase Firestore
+  if (typeof saveAccountToFirestore === 'function' && typeof isFirebaseAvailable === 'function') {
+    if (isFirebaseAvailable()) {
+      await saveAccountToFirestore(username, account);
+    }
+  }
+  
   logSecurityEvent('register_success', username, `New account created${isFirstAccount ? ' (first account - auto-promoted to admin)' : ''}`);
   
   return account;
@@ -339,6 +347,13 @@ async function loginAccount(username, password) {
   account.lastLogin = new Date().toISOString();
   await dbPut(STORE_ACCOUNTS, account);
   
+  // Save to Firebase Firestore
+  if (typeof saveAccountToFirestore === 'function' && typeof isFirebaseAvailable === 'function') {
+    if (isFirebaseAvailable()) {
+      await saveAccountToFirestore(username, account);
+    }
+  }
+  
   // Create session (using Zero Trust token)
   authState.sessionToken = sessionToken;
   createSession(account);
@@ -366,6 +381,14 @@ async function linkProfileToAccount(accountUsername, profileId) {
   if (!account.linkedProfiles.includes(profileId)) {
     account.linkedProfiles.push(profileId);
     await dbPut(STORE_ACCOUNTS, account);
+    
+    // Save to Firebase Firestore
+    if (typeof saveAccountToFirestore === 'function' && typeof isFirebaseAvailable === 'function') {
+      if (isFirebaseAvailable()) {
+        await saveAccountToFirestore(accountUsername, account);
+      }
+    }
+    
     logSecurityEvent('profile_linked', accountUsername, `Profile ${profileId} linked to account`);
   }
 }
@@ -384,6 +407,14 @@ async function unlinkProfileFromAccount(accountUsername, profileId) {
   if (account.linkedProfiles) {
     account.linkedProfiles = account.linkedProfiles.filter(p => p !== profileId);
     await dbPut(STORE_ACCOUNTS, account);
+    
+    // Save to Firebase Firestore
+    if (typeof saveAccountToFirestore === 'function' && typeof isFirebaseAvailable === 'function') {
+      if (isFirebaseAvailable()) {
+        await saveAccountToFirestore(accountUsername, account);
+      }
+    }
+    
     logSecurityEvent('profile_unlinked', accountUsername, `Profile ${profileId} unlinked from account`);
   }
 }
@@ -415,6 +446,14 @@ async function promoteToAdmin(username) {
   
   account.role = 'admin';
   await dbPut(STORE_ACCOUNTS, account);
+  
+  // Save to Firebase Firestore
+  if (typeof saveAccountToFirestore === 'function' && typeof isFirebaseAvailable === 'function') {
+    if (isFirebaseAvailable()) {
+      await saveAccountToFirestore(username, account);
+    }
+  }
+  
   logSecurityEvent('admin_promotion', username, `User promoted to admin by ${authState.currentAccount ? authState.currentAccount.username : 'system'}`);
 }
 
